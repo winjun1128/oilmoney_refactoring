@@ -1,9 +1,19 @@
 import logo from './logo.svg';
 import './App.css';
-import Page from './page/Page';
+import React from "react";
+import SideBar from './page/SideBar';
+import Auth from './page/auth/Auth';
+
+
 
 function App() {
-  return <Page/>;
+  // return <Page/>;
+  return (
+    <div>
+      <SideBar />
+      <Auth />
+    </div>
+  );
 }
 
 export default App;
