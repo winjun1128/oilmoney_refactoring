@@ -29,7 +29,7 @@
 
 .auth-input {
     border: 1px solid rgb(180, 180, 180);
-    width: 200px;
+    width: 230px;
     height: 20px;
     margin: 5px;
     padding: 7px;
@@ -40,7 +40,7 @@
 
 .auth-button {
     margin-top: 12px;
-    width: 216px;
+    width: 246px;
     height: 35px;
     font-size: 15px;
     border: 1px solid rgb(191, 224, 255);
@@ -60,7 +60,7 @@
     align-items: center;
     text-align: center;
     color: #727272;
-    padding: 0 35px;
+    padding: 0 20px;
 }
 
 .auth-login-text::before,
@@ -106,9 +106,10 @@
     background-color: rgb(200, 228, 255);
     border-radius: 5px;
     position: absolute;
+    z-index: 100;
     margin-top: 9px;
     font-size: 13px;
-    right: 91px;
+    right: 76px;
 }
 
 .auth-confirm-button:hover {
@@ -129,7 +130,7 @@
     flex-direction: column;
     align-items: flex-start;
     font-size: 14px;
-    margin: 20px 0 5px 55px;
+    margin: 20px 0 5px 40px;
     color: #161616;
 }
 

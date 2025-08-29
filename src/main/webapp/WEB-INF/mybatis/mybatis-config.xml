@@ -9,9 +9,10 @@
 		<setting name="jdbcTypeForNull" value="NULL"/>
 	</settings>	
 	
-<!-- 	<typeAliases>	
-		<typeAlias type="com.app.dto.room.Room" alias="Room"/>
-	</typeAliases>	 -->
+ 	<typeAliases>	
+		<typeAlias type="com.app.dto.users.Users" alias="Users"/>
+		<typeAlias type="com.app.dto.users.EmailCode" alias="EmailCode"/>	
+	</typeAliases>
 		
 		
 </configuration>	
