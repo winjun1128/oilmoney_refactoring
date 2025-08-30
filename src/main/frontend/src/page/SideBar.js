@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple } from "@fortawesome/free-solid-svg-icons";
@@ -10,6 +10,11 @@ export default function SideBar() {
     const [isLogIn, setIsLogin] = useState(false);
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
+
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (token) setIsLogin(true);
+    }, []);
     
     const handleMyInfoClick = () => {
         if (isLogIn) {
@@ -115,6 +120,7 @@ export default function SideBar() {
                 setIsLoginModalOpen={setIsLoginModalOpen}
                 isSignUpModalOpen={isSignUpModalOpen}
                 setIsSignUpModalOpen={setIsSignUpModalOpen}
+                setIsLogin={setIsLogin}
             />
 
         </>

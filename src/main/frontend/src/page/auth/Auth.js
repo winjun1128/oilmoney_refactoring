@@ -1,8 +1,13 @@
+import { useState } from 'react';
 import './Auth.css';
 import LoginModal from './LoginModal';
 import SignupModal from './SignupModal';
+import MyPage from '../mypage/MyPage';
 
-export default function Auth({ isLoginModalOpen, setIsLoginModalOpen, isSignUpModalOpen, setIsSignUpModalOpen, }) {
+export default function Auth({ isLoginModalOpen, setIsLoginModalOpen, isSignUpModalOpen, setIsSignUpModalOpen, setIsLogin }) {
+
+    const [userInfo, setUserInfo] = useState({});
+
     return (
         <>
             <LoginModal
@@ -12,7 +17,10 @@ export default function Auth({ isLoginModalOpen, setIsLoginModalOpen, isSignUpMo
                     setIsLoginModalOpen(false);
                     setIsSignUpModalOpen(true);
                 }}
+                setIsLogin={setIsLogin}
+                setUserInfo={setUserInfo} 
             />
+
             <SignupModal
                 isOpen={isSignUpModalOpen}
                 onClose={() => setIsSignUpModalOpen(false)}
@@ -21,6 +29,10 @@ export default function Auth({ isLoginModalOpen, setIsLoginModalOpen, isSignUpMo
                     setIsLoginModalOpen(true);
                 }}
             />
+
+            {userInfo && Object.keys(userInfo).length > 0 && (
+                <MyPage userInfo={userInfo} setUserInfo={setUserInfo} setIsLogin={setIsLogin} />
+            )}
         </>
     );
 }

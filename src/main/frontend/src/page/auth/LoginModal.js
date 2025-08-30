@@ -1,6 +1,24 @@
+import { useState } from 'react';
 import './Auth.css';
+import axios from 'axios';
 
-function LoginModal({ isOpen, onClose, onSwitchToSignUp }) {
+function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo }) {
+
+    const [userId, setUserId] = useState("");
+    const [pw, setPw] = useState("");
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const res = await axios.post("/auth/login", { userId, pw });
+            localStorage.setItem("token", res.data.token);
+            setIsLogin(true);
+            setUserInfo(res.data.user);
+            onClose();
+        } catch (error) {
+            alert("아이디 또는 비밀번호가 일치하지 않습니다.");
+        }
+    };
 
     if (!isOpen) {
         return null;
@@ -10,9 +28,9 @@ function LoginModal({ isOpen, onClose, onSwitchToSignUp }) {
         <div className='auth-modal-container' onClick={onClose}>
             <div className='auth-modal-content' onClick={(e) => e.stopPropagation()}>
                 <img src='/images/oilmoney_logo.png' alt='큰 로고' id="login-logo" />
-                <form>
-                    <input type='text' className='auth-input' placeholder='아이디' /><br />
-                    <input type='password' className='auth-input' placeholder='비밀번호' /><br />
+                <form onSubmit={handleSubmit}>
+                    <input type='text' className='auth-input' value={userId} placeholder='아이디' onChange={(e) => setUserId(e.target.value)} /><br />
+                    <input type='password' className='auth-input' value={pw} placeholder='비밀번호' onChange={(e) => setPw(e.target.value)} /><br />
                     <button type='submit' className='auth-button'>로그인</button>
                 </form>
                 <div className='auth-sns-login'>

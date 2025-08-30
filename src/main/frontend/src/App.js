@@ -3,6 +3,7 @@ import './App.css';
 import React from "react";
 import SideBar from './page/SideBar';
 import Auth from './page/auth/Auth';
+import MyPage from './page/mypage/MyPage';
 
 
 
@@ -10,8 +11,9 @@ function App() {
   // return <Page/>;
   return (
     <div>
-      <SideBar />
+      {/* <SideBar /> */}
       <Auth />
+      <MyPage />;
     </div>
   );
 }

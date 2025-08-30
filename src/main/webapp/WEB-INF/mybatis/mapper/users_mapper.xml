@@ -32,4 +32,35 @@
 		select code from t_email_verification where email = #{email}
 	</select>
 	
+	<!-- 사용자 정보 조회 -->
+	<select id="getUserInfo" parameterType="string" resultType="Users">
+		select 
+			user_id AS userId, pw, name, email, phone_num AS phoneNum, addr
+		from t_users where user_id = #{userId}
+	</select>
+	
+	<!-- 사용자 정보 수정 -->
+	<update id="updateUserInfo">
+		update t_users
+		<set>
+			email = #{email}, phone_num = #{phoneNum}, addr = #{addr}
+			<if test="newPw != null and newPw != ''">
+				, pw = #{newPw}
+			</if>
+		</set>
+		where user_id = #{userId}
+	</update>
+	
+	<!-- 로그인 -->
+	<select id="loginUser" parameterType="map" resultType="Users">
+		select 
+			user_id AS userId, pw, name, email, phone_num AS phoneNum, addr
+		from t_users where user_id = #{userId} and pw = #{pw}
+	</select>
+	
+	<!-- 회원탈퇴 -->
+	<delete id="deleteUser" parameterType="string">
+		delete from t_users where user_id = #{userId}
+	</delete>
+	
 </mapper>

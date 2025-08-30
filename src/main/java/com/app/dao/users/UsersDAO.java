@@ -8,4 +8,11 @@ public interface UsersDAO {
 	void insertEmailCode(EmailCode emailCode);
 	String getCodeByEmail(String email);
 	int insertUser(Users user);
+	
+	Users getUserInfo(String userId);
+	int updateUserInfo(Users users, String newPw);
+	
+	Users login(String userId, String pw);
+	
+	int deleteUser(String userId);
 }

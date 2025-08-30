@@ -7,4 +7,11 @@ public interface UsersService {
 	void insertEmailCode(String email);
 	String getCodeByEmail(String email);
 	boolean insertUser(Users user);
+	
+    Users getUserInfo(String userId);
+    boolean updateUserInfo(Users users, String newPw);
+    
+    Users login(String userId, String pw);
+    
+    boolean deleteUser(String userId, String pw);
 }
