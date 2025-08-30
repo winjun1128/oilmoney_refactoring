@@ -28,6 +28,22 @@
   color: #61dafb;
 }
 
+.page-wrapper {
+  position: absolute;
+  top: 0;
+  left: 80px; /* 사이드바 너비만큼 왼쪽 시작 */
+  width: 0; /* 처음에는 너비 0 */
+  height: 100%;
+  background: #ffffff;
+  transition: width 0.5s ease; /* 너비를 늘리며 슬라이드 */
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+.page-wrapper.active {
+  width: calc(100% - 80px); /* 활성화 시 전체 너비 확장 */
+}
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);

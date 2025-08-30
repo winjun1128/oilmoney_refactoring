@@ -3,7 +3,7 @@ import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple } from "@fortawesome/free-solid-svg-icons";
 
-export default function SideBar() {
+export default function SideBar({ onSelect }) {
     const itemsTop = [
         { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소", active: true },
         { icon: <FontAwesomeIcon icon={faChargingStation} style={{ fontSize: "24px" }} />, label: "충전소" },
@@ -60,22 +60,17 @@ export default function SideBar() {
                     />
                 </div>
 
-                <nav
-                    style={{
-                        marginTop: "0.5rem",
-                        display: "flex",
-                        width: "100%",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                    }}
-                >
-                    {itemsTop.map((it, idx) => (
-                        <DockButton key={idx} label={it.label}>
-                            {it.icon}
-                        </DockButton>
-                    ))}
-                </nav>
+                <nav>
+                {itemsTop.map((it, idx) => (
+                    <DockButton 
+                        key={idx} 
+                        label={it.label} 
+                        onClick={() => onSelect(it.label)} // 클릭 시 App에 전달
+                    >
+                        {it.icon}
+                    </DockButton>
+                ))}
+            </nav>
             </div>
 
             {/* ─── 아래쪽 (내정보: mt-auto로 바닥에 고정) ─── */}
@@ -96,7 +91,7 @@ export default function SideBar() {
     );
 }
 
-function DockButton({ children, label }) {
+function DockButton({ children, label, onClick }) {
     return (
         <button
             style={{
@@ -122,6 +117,7 @@ function DockButton({ children, label }) {
                 e.currentTarget.style.color = "#1f2937";
                 e.currentTarget.style.backgroundColor = "transparent";
             }}
+            onClick={onClick} // 클릭 이벤트 전달
         >
             <span style={{ fontSize: "15px", lineHeight: "1.75rem" }}>{children}</span>
             <span style={{ fontSize: "15px", marginTop: "0.25rem", textAlign: "center" }}>{label}</span>
