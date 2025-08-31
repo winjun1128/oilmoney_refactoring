@@ -1156,79 +1156,85 @@ const onModalDragEnd = () => {
     }
   };
 
-  /** 추천지 클릭 → 경유/목적지 경로 그리기 */
-  const drawDetourForPoint = async (p) => {
-    try {
-      const ctx = routeCtxRef.current;
-      if (!ctx || !window.kakao?.maps || !mapRef.current) return;
+  // ✅ 마커 클릭 시:
+// destFixed === false → 도착지로 계속 갱신(파란선)
+// destFixed === true  → 경유로 갱신(보라선)
+const drawDetourForPoint = async (p) => {
+  try {
+    const ctx = routeCtxRef.current;
+    if (!ctx?.origin || !window.kakao?.maps || !mapRef.current) return;
+    const { kakao } = window;
 
-      const { kakao } = window;
+    // ── CASE A: 도착지가 '고정되지 않은' 상태 → 항상 도착지로 갱신
+    if (!ctx.destFixed) {
+      const destLonLat = [Number(p.lng), Number(p.lat)];
 
-      // 출발지만 있는 모드: 선택지 → 목적지로 전환
-      if (ctx.origin && !ctx.dest) {
-        const destLonLat = [Number(p.lng), Number(p.lat)];
-        const route = await fetchOsrm(ctx.origin, destLonLat);
+      if (polyRef.current) { polyRef.current.setMap(null); polyRef.current = null; }
+      if (viaRef.current)  { viaRef.current.setMap(null);  viaRef.current = null; }
 
-        if (polyRef.current) { polyRef.current.setMap(null); polyRef.current = null; }
-        if (viaRef.current) { viaRef.current.setMap(null); viaRef.current = null; }
+      const route = await fetchOsrm(ctx.origin, destLonLat);
+      const path = route.geometry.coordinates.map(([lon, lat]) => new kakao.maps.LatLng(lat, lon));
 
-        const path = route.geometry.coordinates.map(([lon, lat]) => new kakao.maps.LatLng(lat, lon));
-        const blue = new kakao.maps.Polyline({
-          path, strokeWeight: 5, strokeColor: "#1e88e5", strokeOpacity: 0.9, strokeStyle: "solid",
-        });
-        blue.setMap(mapRef.current);
-        polyRef.current = blue;
+      const blue = new kakao.maps.Polyline({
+        path, strokeWeight: 5, strokeColor: "#1e88e5", strokeOpacity: 0.9, strokeStyle: "solid",
+      });
+      blue.setMap(mapRef.current);
+      polyRef.current = blue;
 
-        replaceDestPin({ lat: p.lat, lng: p.lng, name: "도착" });
+      replaceDestPin({ lat: p.lat, lng: p.lng, name: "도착" });
 
-        routeCtxRef.current = {
-          origin: ctx.origin,
-          dest: destLonLat,
-          baseMeters: route.distance,
-          baseSeconds: route.duration,
-          path,
-        };
+      routeCtxRef.current = {
+        origin: ctx.origin,
+        dest: destLonLat,
+        baseMeters: route.distance,
+        baseSeconds: route.duration,
+        path,
+        // ✨ 포인트: 여기서도 계속 false 유지 → 다음 클릭도 '도착지 갱신'
+        destFixed: false,
+      };
 
-        const km = (route.distance / 1000).toFixed(2);
-        const min = Math.round(route.duration / 60);
-        setSummary(`출발 → ${p.name || "선택지"}: 총 ${km} km / 약 ${min} 분`);
-        setDetourSummary("");
+      const km  = (route.distance / 1000).toFixed(2);
+      const min = Math.round(route.duration / 60);
+      setSummary(`출발 → ${p.name || "선택지"}: 총 ${km} km / 약 ${min} 분`);
+      setDetourSummary("");
 
-        const bounds = new kakao.maps.LatLngBounds();
-        path.forEach((pt) => bounds.extend(pt));
-        mapRef.current.setBounds(bounds);
-        return;
-      }
+      const bounds = new kakao.maps.LatLngBounds();
+      path.forEach((pt) => bounds.extend(pt));
+      mapRef.current.setBounds(bounds);
 
-      // 기본 경로가 있는 모드: 경유선(보라)
-      if (ctx.origin && ctx.dest && ctx.path) {
-        const via = [Number(p.lng), Number(p.lat)];
-        const route = await fetchOsrmVia(ctx.origin, via, ctx.dest);
-
-        if (viaRef.current) { viaRef.current.setMap(null); viaRef.current = null; }
-
-        const path = route.geometry.coordinates.map(([lon, lat]) => new kakao.maps.LatLng(lat, lon));
-        const purple = new kakao.maps.Polyline({
-          path, strokeWeight: 5, strokeColor: "#8e24aa", strokeOpacity: 0.9, strokeStyle: "solid",
-        });
-        purple.setMap(mapRef.current);
-        viaRef.current = purple;
-
-        const km = (route.distance / 1000).toFixed(2);
-        const min = Math.round(route.duration / 60);
-        const dKm = ((route.distance - ctx.baseMeters) / 1000).toFixed(2);
-        const dMn = Math.max(0, Math.round((route.duration - ctx.baseSeconds) / 60));
-        setDetourSummary(`경유(${p.name || "선택지"}) 포함: 총 ${km} km / 약 ${min} 분  (+${dKm} km · +${dMn} 분)`);
-
-        const bounds = new kakao.maps.LatLngBounds();
-        path.forEach((pt) => bounds.extend(pt));
-        mapRef.current.setBounds(bounds);
-      }
-    } catch (e) {
-      console.error("경유/선택 경로 오류:", e);
-      alert("경로를 계산하지 못했습니다.");
+      applyFiltersToMarkers();
+      return;
     }
-  };
+
+    // ── CASE B: 도착지가 '고정'된 상태 → 경유 경로(보라선)
+    const via = [Number(p.lng), Number(p.lat)];
+    const route = await fetchOsrmVia(ctx.origin, via, ctx.dest);
+
+    if (viaRef.current) { viaRef.current.setMap(null); viaRef.current = null; }
+
+    const path = route.geometry.coordinates.map(([lon, lat]) => new kakao.maps.LatLng(lat, lon));
+    const purple = new kakao.maps.Polyline({
+      path, strokeWeight: 5, strokeColor: "#8e24aa", strokeOpacity: 0.9, strokeStyle: "solid",
+    });
+    purple.setMap(mapRef.current);
+    viaRef.current = purple;
+
+    const km  = (route.distance / 1000).toFixed(2);
+    const min = Math.round(route.duration / 60);
+    const dKm = ((route.distance - ctx.baseMeters) / 1000).toFixed(2);
+    const dMn = Math.max(0, Math.round((route.duration - ctx.baseSeconds) / 60));
+    setDetourSummary(`경유(${p.name || "선택지"}) 포함: 총 ${km} km / 약 ${min} 분  (+${dKm} km · +${dMn} 분)`);
+
+    const bounds = new kakao.maps.LatLngBounds();
+    path.forEach((pt) => bounds.extend(pt));
+    mapRef.current.setBounds(bounds);
+  } catch (e) {
+    console.error("경유/도착 처리 실패:", e);
+    alert("경로를 계산하지 못했습니다.");
+  }
+};
+
+
 
   /* ───────── 지도 클릭으로 출발/도착 지정 ───────── */
   const onMapClick = async ({ lat, lng }) => {
@@ -1286,6 +1292,7 @@ const onModalDragEnd = () => {
           baseMeters: route.distance,
           baseSeconds: route.duration,
           path,
+          destFixed: true, // ← 사용자가 도착을 명시 확정
         };
 
         const km = (route.distance / 1000).toFixed(2);
@@ -1343,6 +1350,7 @@ const onModalDragEnd = () => {
           baseMeters: 0,
           baseSeconds: 0,
           path: null,
+          destFixed: false, // ← 도착지 아직 '고정' 아님(마커 클릭할 때마다 도착지로 갱신)
         };
 
         const { kakao } = window;
@@ -1372,6 +1380,7 @@ const onModalDragEnd = () => {
         baseMeters: route.distance,
         baseSeconds: route.duration,
         path,
+        destFixed: true, // ← 도착지 '고정'(이후 마커는 경유로 계산)
       };
 
       const km = (route.distance / 1000).toFixed(2);
@@ -1456,9 +1465,20 @@ const onModalDragEnd = () => {
       {/* 좌: 필터 패널 / 우: 지도  */}
       <div style={{ display: "flex", gap: 12, flex: 1, minHeight: 0 }}>
         {/* ← 필터 패널 */}
-        <div className="sidebar" style={{ width: isFilterOpen ? 260 : 0 }}>
+        <aside className={`filter-flyout ${isFilterOpen ? "open" : ""}`}>
           <div className="sidebar-card">
-            <h3 className="sidebar-title">필터</h3>
+           {/* 헤더: 제목 + 닫기(X) */}
+            <div className="sidebar-header">
+              <h3 className="sidebar-title">필터</h3>
+              <button
+                className="icon-btn close-btn"
+                aria-label="패널 닫기"
+                title="패널 닫기"
+                onClick={() => setIsFilterOpen(false)}
+              >
+                ×
+              </button>
+            </div>
 
             <div className="form-group">
               <span className="form-label">종류</span>
@@ -1595,21 +1615,29 @@ const onModalDragEnd = () => {
               <div className="small-note">편집 ON일 때만 모드 버튼이 활성화됩니다.</div>
             </div>
           </div>
-        </div>
+        </aside>
 
-        {/* → 오른쪽(제목/요약 + 지도) */}
+       {/* → 오른쪽(제목/요약 + 지도) */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-          <div style={{ display: "flex", justifyContent: "flex-end", paddingBottom: 8 }}>
-            <div style={{ textAlign: "right" }}>
-              <h1 style={{ margin: 0 }}>경로와 출발지 기준의 주유소/LPG/충전소 추천</h1>
-              {summary && <div style={{ marginTop: 4 }}>✅ {summary}</div>}
-              {detourSummary && <div style={{ marginTop: 2 }}>➡️ {detourSummary}</div>}
-            </div>
-          </div>
+          
+          {/* 지도 래퍼: relative, 오버레이: absolute */}
+          <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
+            <div
+              id="map"
+              style={{ position: "absolute", inset: 0, border: "1px solid #ddd"}}
+            />
 
-          {/* 지도 */}
-          <div id="map" style={{ flex: 1, minHeight: 0, border: "1px solid #ddd", borderRadius: 8 }} />
+            {(summary || detourSummary) && (
+              <div className="map-summary">
+                <div className="map-summary__card">
+                  {summary && <div className="map-summary__row">✅ {summary}</div>}
+                  {detourSummary && <div className="map-summary__row">➡️ {detourSummary}</div>}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
+
       </div>
 
       {/* 상태/유가 모달 */}

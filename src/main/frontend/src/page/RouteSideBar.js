@@ -1,20 +1,16 @@
 import React from "react";
 import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGasPump, faChargingStation, faShare, faChartSimple,faArrowsLeftRight } from "@fortawesome/free-solid-svg-icons";
+import { faGasPump, faChargingStation, faShare, faChartSimple} from "@fortawesome/free-solid-svg-icons";
+import { useNavigate } from "react-router-dom"; 
 
 export default function RouteSideBar() {
+    const navigate = useNavigate();   // ✅ 훅 선언
     const itemsTop = [
-        { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소", active: true },
-        { icon: <FontAwesomeIcon icon={faChargingStation} style={{ fontSize: "24px" }} />, label: "충전소" },
-        { icon: <FontAwesomeIcon icon={faShare} style={{ fontSize: "24px" }} />, label: "목적지" },
+        { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소", onClick: ()=> navigate("/") },
+        { icon: <FontAwesomeIcon icon={faChargingStation} style={{ fontSize: "24px" }} />, label: "충전소" , onClick: ()=> navigate("/")},
+        { icon: <FontAwesomeIcon icon={faShare} style={{ fontSize: "24px" }} />, label: "목적지",onClick: () => window.dispatchEvent(new CustomEvent("ui:toggleFilters")) },
         { icon: <FontAwesomeIcon icon={faChartSimple} style={{ fontSize: "24px" }} />, label: "유가정보" },
-       // ⬇️ 이 아이템이 필터 패널 토글 역할
-        {
-            icon: <FontAwesomeIcon icon={faArrowsLeftRight} style={{ fontSize: "24px" }} />,
-            label: "패널",
-            onClick: () => window.dispatchEvent(new CustomEvent("ui:toggleFilters")),
-        },
     ];
 
     return (
