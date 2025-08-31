@@ -3,10 +3,10 @@ import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple } from "@fortawesome/free-solid-svg-icons";
 
-export default function SideBar() {
+export default function SideBar({ onFilterChange }) {
     const itemsTop = [
-        { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소", active: true },
-        { icon: <FontAwesomeIcon icon={faChargingStation} style={{ fontSize: "24px" }} />, label: "충전소" },
+        { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소",action: () => onFilterChange(prev => prev === "oil" ? null : "oil") },
+        { icon: <FontAwesomeIcon icon={faChargingStation} style={{ fontSize: "24px" }} />, label: "충전소" ,action: () => onFilterChange(prev => prev === "charge" ? null : "charge")},
         { icon: <FontAwesomeIcon icon={faShare} style={{ fontSize: "24px" }} />, label: "목적지" },
         { icon: <FontAwesomeIcon icon={faChartSimple} style={{ fontSize: "24px" }} />, label: "유가정보" },
     ];
@@ -17,16 +17,16 @@ export default function SideBar() {
                 position: "fixed",
                 left: 0,
                 top: 0,
-                zIndex: 40,
+                zIndex: 999,
                 width: 80,
                 height: "100vh",
-                borderRight: "1px solid #e5e7eb", // gray-200
+                borderRight: "1px solid #e5e7eb",
                 backgroundColor: "#ffffff",
                 display: "flex",
                 flexDirection: "column",
             }}
         >
-            {/* ─── 위쪽 (로고 + 메뉴) ─── */}
+            {/* ✅ 위쪽 (로고 + 메뉴)  */}
             <div
                 style={{
                     display: "flex",
@@ -71,14 +71,14 @@ export default function SideBar() {
                     }}
                 >
                     {itemsTop.map((it, idx) => (
-                        <DockButton key={idx} label={it.label}>
+                        <DockButton key={idx} label={it.label} onClick={it.action}>
                             {it.icon}
                         </DockButton>
                     ))}
                 </nav>
             </div>
 
-            {/* ─── 아래쪽 (내정보: mt-auto로 바닥에 고정) ─── */}
+            {/* ✅ 아래쪽 (내정보: mt-auto로 바닥에 고정) */}
             <div
                 style={{
                     marginTop: "auto",
@@ -96,9 +96,10 @@ export default function SideBar() {
     );
 }
 
-function DockButton({ children, label }) {
+function DockButton({ children, label,onClick = () => {} }) {
     return (
         <button
+            onClick={onClick} 
             style={{
                 display: "flex",
                 flexDirection: "column",
