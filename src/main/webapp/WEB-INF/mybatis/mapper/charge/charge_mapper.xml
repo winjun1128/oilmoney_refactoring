@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<!DOCTYPE mapper PUBLIC
+		   "-//mybatis.org//DTD Mapper 3.0//EN" 
+		   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="charge_mapper">
+
+ <select id="chargeFilter" parameterType="com.app.dto.ChargeSearchDTO" resultType="com.app.dto.ChargeDTO">
+    SELECT * 
+    FROM T_CHARGE
+    WHERE 1=1
+    <if test="region != null and region != ''">
+      AND ZCODE = #{region}
+    </if>
+    <if test="city != null and city != ''">
+      AND SCODE = #{city}
+    </if>
+    <if test="free">
+      AND FREE_YN = 'Y'
+    </if>
+    <if test="twentyFour">
+      AND OPEN_24H_YN = 'Y'
+    </if>
+    <if test="parking">
+      AND PARKING_YN = 'Y'
+    </if>
+
+    <!-- 충전기 타입 -->
+    <if test="chargerTypes != null and chargerTypes.size > 0">
+      AND CHARGER_TYPE IN
+      <foreach collection="chargerTypes" item="type" open="(" separator="," close=")">
+        #{type}
+      </foreach>
+    </if>
+  </select>
+
+</mapper>
