@@ -1,0 +1,151 @@
+/* src/components/RouteMap.css */
+:root{
+  --panel-bg:#fafafa;
+  --panel-border:#eee;
+  --text:#222;
+  --text-muted:#6b7280;
+  --accent:#2b8af7;
+  --accent-600:#1e72d4;
+}
+
+/* 왼쪽 패널 컨테이너 */
+.sidebar{
+  position:relative;
+  transition:width .24s ease;
+  overflow-x:hidden;          /* 가로 스크롤 차단 */
+  flex-shrink:0;
+}
+
+/* 패널 카드 */
+.sidebar-card{
+  height:100%;
+  padding:16px 14px 18px;     /* 여백 넉넉히 */
+  border:1px solid var(--panel-border);
+  border-radius:12px;
+  background:var(--panel-bg);
+  box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+  gap:20px;                   /* 섹션 간 간격 크게 */
+  overflow-y:auto;            /* 세로 스크롤만 */
+  overflow-x:hidden;          /* 가로 스크롤 완전 차단 */
+  max-width:100%;
+}
+.sidebar-card > * { min-width:0; }  /* flex overflow 방지 */
+
+/* 제목 */
+.sidebar-title{
+  margin:0 0 4px;
+  font-size:18px;
+  font-weight:700;
+  color:var(--text);
+}
+
+/* 폼 섹션 */
+.form-group{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin:2px 0 18px;          /* 위아래 간격 확대 */
+}
+.form-label{
+  font-size:12px;
+  font-weight:600;
+  color:var(--text-muted);
+}
+.help-text{ font-size:12px; color:var(--text-muted); }
+.small-note{ font-size:11px; color:var(--text-muted); }
+
+/* 한 줄 라벨/컨트롤 */
+.label-row{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:10px 0 18px;         /* 행 간격 크게 */
+}
+.label-row__label{
+  width:92px;
+  font-size:12px;
+  color:var(--text-muted);
+  font-weight:600;
+}
+.label-row__control{ flex:1; min-width:0; }
+
+/* 인풋/셀렉트 */
+.input, .select{
+  width:100%;
+  min-width:0;
+  padding:10px 12px;
+  font-size:14px;
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  background:#fff;
+  transition:border-color .2s, box-shadow .2s, background .2s;
+}
+.input:focus, .select:focus{
+  outline:none;
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(43,138,247,.15);
+}
+
+/* 버튼 */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 12px;
+  font-size:13px;
+  font-weight:700;
+  border-radius:10px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  cursor:pointer;
+  transition:transform .04s, box-shadow .2s, background .2s, border-color .2s;
+}
+.btn:active{ transform:translateY(1px); }
+.btn:disabled{ opacity:.55; cursor:not-allowed; }
+
+.btn-primary{
+  background:var(--accent);
+  color:#fff;
+  border-color:var(--accent);
+}
+.btn-primary:hover{
+  background:var(--accent-600);
+  border-color:var(--accent-600);
+}
+.btn-ghost{ background:#fff; }
+.btn-ghost:hover{ background:#f3f4f6; }
+
+.btn-toggle{ background:#fff; }
+.btn-toggle.on{
+  background:#e8f5e9;
+  border-color:#cde9d5;
+}
+
+/* 버튼 묶음 */
+.btn-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin:8px 0 16px;
+}
+.btn-row.compact{ gap:8px; }
+
+/* 스크롤바(세로만 미화) */
+.sidebar-card::-webkit-scrollbar{ width:10px; height:10px; }
+.sidebar-card::-webkit-scrollbar-thumb{
+  background:#e1e4e8;
+  border-radius:8px;
+  border:2px solid transparent;
+  background-clip:padding-box;
+}
+
+/* 선택 토글 칩(출발/도착) 하이라이트 */
+.btn-choice{ background:#fff; }
+.btn-choice.on{
+  background:#eef5ff;
+  border-color:#cfe0ff;
+  box-shadow:0 0 0 3px rgba(43,138,247,.12);
+}
+

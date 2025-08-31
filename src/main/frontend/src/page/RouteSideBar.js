@@ -1,14 +1,20 @@
 import React from "react";
 import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGasPump, faChargingStation, faShare, faChartSimple} from "@fortawesome/free-solid-svg-icons";
+import { faGasPump, faChargingStation, faShare, faChartSimple,faArrowsLeftRight } from "@fortawesome/free-solid-svg-icons";
 
-export default function SideBar() {
+export default function RouteSideBar() {
     const itemsTop = [
         { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소", active: true },
         { icon: <FontAwesomeIcon icon={faChargingStation} style={{ fontSize: "24px" }} />, label: "충전소" },
         { icon: <FontAwesomeIcon icon={faShare} style={{ fontSize: "24px" }} />, label: "목적지" },
         { icon: <FontAwesomeIcon icon={faChartSimple} style={{ fontSize: "24px" }} />, label: "유가정보" },
+       // ⬇️ 이 아이템이 필터 패널 토글 역할
+        {
+            icon: <FontAwesomeIcon icon={faArrowsLeftRight} style={{ fontSize: "24px" }} />,
+            label: "패널",
+            onClick: () => window.dispatchEvent(new CustomEvent("ui:toggleFilters")),
+        },
     ];
 
     return (
@@ -72,7 +78,7 @@ export default function SideBar() {
                 >
                     {/* 토글추가 */}
                     {itemsTop.map((it, idx) => (
-                        <DockButton key={idx} label={it.label}>
+                        <DockButton key={idx} label={it.label} onClick={it.onClick}>
                             {it.icon}
                         </DockButton>
                     ))}
@@ -97,10 +103,11 @@ export default function SideBar() {
     );
 }
 //버튼연결
-function DockButton({ children, label }) {
+function DockButton({ children, label,onClick }) {
     return (
         <button
             type="button"
+            onClick={onClick}   //버튼에 연결
             style={{
                 display: "flex",
                 flexDirection: "column",
