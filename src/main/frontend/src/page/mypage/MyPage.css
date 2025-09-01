@@ -1,7 +1,7 @@
 .mypage-container {
     margin: 10px;
     display: flex;
-    /* gap: 10px; */
+    /* height: 100vh; */
 }
 
 .mypage-left {
@@ -22,6 +22,7 @@
 .mypage-profile-img {
     width: 140px;
     cursor: pointer;
+    margin-top: 15px;
     margin-bottom: 14px;
 }
 
@@ -30,12 +31,12 @@
 }
 
 .mypage-left-menu {
-    margin-top: 80px;
+    margin-top: 100px;
     display: flex;
     flex-direction: column;
     margin-left: 25px;
     gap: 20px;
-    font-size: 20px;
+    font-size: 19px;
     color: rgb(34, 34, 34);
 }
 
@@ -48,8 +49,11 @@
     display: flex;
     gap: 8px;
     justify-content: center;
-    font-size: 14px;
+    font-size: 15px;
     color: #9b9b9b;
+    position: fixed;
+    bottom: 40px;
+    left: 160px;
 }
 
 .mypage-left-footer>span {
@@ -106,3 +110,39 @@
 }
 
 /* EditInfo css */
+.edit-info-container{
+    margin: 40px;
+    border: 1px solid black;
+    min-width: 700px;
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.edit-title{
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+}
+
+.edit-title-text{
+    font-size: 25px;
+    font-weight: bold;
+}
+
+.edit-buttons{
+    display: flex;
+    gap: 10px;
+}
+.edit-button{
+    max-height: 30px;
+    
+}
+
+.edit-contents{
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 20px;
+}

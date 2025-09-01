@@ -3,10 +3,12 @@ import SideBar from "../SideBar";
 import './MyPage.css';
 import EditInfo from "./EditInfo";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
-function MyPage({ setIsLoginModalOpen }) {
+function MyPage({ userInfo, setUserInfo, setIsLogin }) {
 
-    const [userInfo, setUserInfo] = useState({});
+    const navigate = useNavigate();
+
     const [selectMenu, setSelectMenu] = useState("");
     const [isPwAuth, setIsPwAuth] = useState(false);
     const [pw, setPw] = useState("");
@@ -14,21 +16,39 @@ function MyPage({ setIsLoginModalOpen }) {
     const [deletePw, setDeletePw] = useState("");
     const [deleteModal, setDeleteModal] = useState(false);
 
+    // useEffect(() => {
+    //     const token = localStorage.getItem("token");
+    //     if (!token) {
+    //         if (setIsLoginModalOpen) setIsLoginModalOpen(true);
+    //         return;
+    //     }
+    //     axios.get("/mypage", {
+    //         headers: { "Authorization": "Bearer " + token }
+    //     })
+    //         .then(response => setUserInfo(response.data))
+    //         .catch(error => {
+    //             console.log(error);
+    //             if (setIsLoginModalOpen) setIsLoginModalOpen(true);
+    //         });
+    // }, []);
+
     useEffect(() => {
         const token = localStorage.getItem("token");
         if (!token) {
-            if (setIsLoginModalOpen) setIsLoginModalOpen(true);
+            if (setIsLogin) setIsLogin(false);
             return;
         }
+
         axios.get("/mypage", {
             headers: { "Authorization": "Bearer " + token }
         })
-            .then(response => setUserInfo(response.data))
-            .catch(error => {
-                console.log(error);
-                setIsLoginModalOpen(true);
+            .then(res => setUserInfo(res.data))
+            .catch(err => {
+                console.log(err);
+                if (setIsLogin) setIsLogin(false);
             });
-    }, [setIsLoginModalOpen]);
+    }, [setUserInfo, setIsLogin]);
+
 
     const handlePwCheck = () => {
         if (pw === userInfo.pw) {
@@ -88,8 +108,8 @@ function MyPage({ setIsLoginModalOpen }) {
     const handleLogout = () => {
         if (window.confirm("정말 로그아웃하시겠습니까?")) {
             localStorage.removeItem("token");
-            //setIsLogin(false);
-            window.location.href = "/";
+            setIsLogin(false); // 상태로 처리
+            navigate("/");
         }
     };
 
@@ -108,25 +128,24 @@ function MyPage({ setIsLoginModalOpen }) {
                             <span>{userInfo.email}</span>
                         </div>
                         <div className="mypage-left-menu">
-                            <span onClick={() => handleMenuClick("car")}>내 차 등록/관리</span>
-                            <span onClick={() => handleMenuClick("favorite")}>즐겨찾기</span>
-                            <span onClick={() => handleMenuClick("review")}>내가 쓴 리뷰</span>
-                            <span onClick={() => handleMenuClick("editInfo")}>개인정보 수정</span>
+                            <span onClick={() => handleMenuClick("car")}>🚘 등록 차량 수</span>
+                            <span onClick={() => handleMenuClick("favorite")}>⭐ 즐겨찾기</span>
+                            <span onClick={() => handleMenuClick("review")}>📝 내가 쓴 리뷰</span>
                         </div>
                         <div className="mypage-left-footer">
-                            <span onClick={handleDeleteAccount}>탈퇴하기 </span>|<span onClick={handleLogout}> 로그아웃</span>
+                            <span onClick={handleDeleteAccount}>회원탈퇴 </span>|<span onClick={handleLogout}> 로그아웃</span>
                         </div>
                     </div>
 
                     <div className="mypage-right">
-                        {selectMenu === "car" && <div>내차등록</div>}
+                        {/* {selectMenu === "car" && <div>내차등록</div>}
                         {selectMenu === "favorite" && <div>즐겨찾기</div>}
                         {selectMenu === "review" && <div>내가 쓴 리뷰</div>}
-                        {selectMenu === "editInfo" && isPwAuth && (
+                        {selectMenu === "editInfo" && isPwAuth && ( */}
                             <div>
                                 <EditInfo userInfo={userInfo} setUserInfo={setUserInfo} />
                             </div>
-                        )}
+                        {/* )} */}
                     </div>
                 </div>
             </div>

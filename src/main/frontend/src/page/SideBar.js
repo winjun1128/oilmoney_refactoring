@@ -1,18 +1,31 @@
-import React, { useEffect, useState } from "react";
 import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple } from "@fortawesome/free-solid-svg-icons";
-import Auth from "./auth/Auth";
 import { useNavigate } from "react-router-dom";
 
 
 export default function SideBar({ isLogin, setIsLoginModalOpen }) {
 
+    // const navigate = useNavigate();
+
+    // const handleMyInfoClick = () => {
+    //     const token = localStorage.getItem("token");
+    //     if (!!token) {
+    //         navigate("/mypage");
+    //     } else {
+    //         setIsLoginModalOpen(true);
+    //     }
+    // };
+
+    console.log("SideBar props:", { isLogin, setIsLoginModalOpen });
+
     const navigate = useNavigate();
 
     const handleMyInfoClick = () => {
         const token = localStorage.getItem("token");
-        if (token) {
+        console.log("토큰:", token);
+        console.log("setIsLoginModalOpen:", setIsLoginModalOpen);
+        if (!!token) {
             navigate("/mypage");
         } else {
             setIsLoginModalOpen(true);

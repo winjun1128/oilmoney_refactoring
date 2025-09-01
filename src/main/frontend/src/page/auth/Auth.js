@@ -1,12 +1,9 @@
-import { useState } from 'react';
+import SideBar from '../SideBar';
 import './Auth.css';
 import LoginModal from './LoginModal';
 import SignupModal from './SignupModal';
-import MyPage from '../mypage/MyPage';
 
-export default function Auth({ isLoginModalOpen, setIsLoginModalOpen, isSignUpModalOpen, setIsSignUpModalOpen, setIsLogin }) {
-
-    const [userInfo, setUserInfo] = useState({});
+export default function Auth({ isLoginModalOpen, setIsLoginModalOpen, isSignUpModalOpen, setIsSignUpModalOpen, setIsLogin, setUserInfo }) {
 
     return (
         <>
@@ -18,7 +15,7 @@ export default function Auth({ isLoginModalOpen, setIsLoginModalOpen, isSignUpMo
                     setIsSignUpModalOpen(true);
                 }}
                 setIsLogin={setIsLogin}
-                setUserInfo={setUserInfo} 
+                setUserInfo={setUserInfo}
             />
 
             <SignupModal
@@ -29,11 +26,6 @@ export default function Auth({ isLoginModalOpen, setIsLoginModalOpen, isSignUpMo
                     setIsLoginModalOpen(true);
                 }}
             />
-{/* 
-            {userInfo && Object.keys(userInfo).length > 0 && (
-                <MyPage userInfo={userInfo} setUserInfo={setUserInfo} setIsLogin={setIsLogin} />
-            )} */}
-            
         </>
     );
 }

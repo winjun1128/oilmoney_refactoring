@@ -1,11 +1,12 @@
 import SideBar from "./SideBar";
 
-export default function App() {
+export default function App({isLogin, setIsLoginModalOpen}) {
     return (
         <div style={{ display: "flex", height: "100vh" }}>
             {/* 왼쪽 구역 */}
             <div style={{ width: "80px", background: "#f3f4f6", borderRight: "1px solid black" }}>
-                <SideBar />
+                <SideBar isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />
+                
             </div>
 
             {/* 오른쪽 구역 */}
