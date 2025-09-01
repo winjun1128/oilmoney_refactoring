@@ -24,7 +24,7 @@ public class MyPageController {
 	@GetMapping("/mypage")
 	public ResponseEntity<?> getUserInfo(HttpServletRequest request) {
 		String token = JwtProvider.extractToken(request);
-		if(token == null || !JwtProvider.isVaildToken(token)) {
+		if(token == null || token.isEmpty() || !JwtProvider.isValidToken(token)) {
 			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다");
 		}
 		
@@ -40,7 +40,7 @@ public class MyPageController {
 								HttpServletRequest request,
 								@RequestParam(required=false) String newPw) {
 		String token = JwtProvider.extractToken(request);
-		if(token == null || !JwtProvider.isVaildToken(token)) {
+		if(token == null || !JwtProvider.isValidToken(token)) {
 			return "인증 실패";
 		}
 		

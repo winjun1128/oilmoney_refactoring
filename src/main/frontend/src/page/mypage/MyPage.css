@@ -16,17 +16,17 @@
     justify-content: center;
     align-items: center;
     margin-top: 40px;
-    gap: 10px;
+    gap: 5px;
 }
 
 .mypage-profile-img {
-    width: 120px;
+    width: 140px;
     cursor: pointer;
-    margin-bottom: 5px;
+    margin-bottom: 14px;
 }
 
 .mypage-left-profile>span {
-    font-size: 18px;
+    font-size: 20px;
 }
 
 .mypage-left-menu {

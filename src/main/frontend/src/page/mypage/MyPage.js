@@ -4,7 +4,7 @@ import './MyPage.css';
 import EditInfo from "./EditInfo";
 import axios from "axios";
 
-function MyPage() {
+function MyPage({ setIsLoginModalOpen }) {
 
     const [userInfo, setUserInfo] = useState({});
     const [selectMenu, setSelectMenu] = useState("");
@@ -17,14 +17,18 @@ function MyPage() {
     useEffect(() => {
         const token = localStorage.getItem("token");
         if (!token) {
+            if (setIsLoginModalOpen) setIsLoginModalOpen(true);
             return;
         }
         axios.get("/mypage", {
             headers: { "Authorization": "Bearer " + token }
         })
             .then(response => setUserInfo(response.data))
-            .catch(error => console.log(error));
-    }, [setUserInfo]);
+            .catch(error => {
+                console.log(error);
+                setIsLoginModalOpen(true);
+            });
+    }, [setIsLoginModalOpen]);
 
     const handlePwCheck = () => {
         if (pw === userInfo.pw) {
@@ -51,35 +55,35 @@ function MyPage() {
     }
 
     const confirmDeleteAccount = async () => {
-    try {
-        const token = localStorage.getItem("token");
-        console.log("[MyPage] 회원탈퇴 요청 - 입력 PW:", deletePw);
+        try {
+            const token = localStorage.getItem("token");
+            console.log("[MyPage] 회원탈퇴 요청 - 입력 PW:", deletePw);
 
-        const res = await axios.post("/auth/delete", 
-            null, 
-            {
-                params: { pw: deletePw },
-                headers: { "Authorization": "Bearer " + token }
+            const res = await axios.post("/auth/delete",
+                null,
+                {
+                    params: { pw: deletePw },
+                    headers: { "Authorization": "Bearer " + token }
+                }
+            );
+
+            console.log("[MyPage] 서버 응답:", res.data);
+
+            if (res.data.success) {
+                alert("회원 탈퇴가 완료되었습니다.");
+                localStorage.removeItem("token");
+                //setIsLogin(false);
+                window.location.href = "/";
+            } else {
+                alert(res.data.message);
+                setDeletePw("");
             }
-        );
 
-        console.log("[MyPage] 서버 응답:", res.data);
-
-        if(res.data.success){
-            alert("회원 탈퇴가 완료되었습니다.");
-            localStorage.removeItem("token");
-            //setIsLogin(false);
-            window.location.href = "/";
-        } else {
-            alert(res.data.message);
-            setDeletePw("");
+        } catch (error) {
+            console.log(error);
+            alert("탈퇴 중 오류가 발생했습니다.");
         }
-
-    } catch (error) {
-        console.log(error);
-        alert("탈퇴 중 오류가 발생했습니다.");
-    }
-};
+    };
 
     const handleLogout = () => {
         if (window.confirm("정말 로그아웃하시겠습니까?")) {

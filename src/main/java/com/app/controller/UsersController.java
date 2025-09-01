@@ -1,5 +1,6 @@
 package com.app.controller;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -90,10 +91,10 @@ public class UsersController {
 
 		if (user != null) {
 			// JWT 생성
-			String token = JwtProvider.createAccessToken(user.getUserId());
+			String accessToken = JwtProvider.createAccessToken(user.getUserId());
 
 			response.put("success", true);
-			response.put("token", token);
+			response.put("accessToken", accessToken);
 			response.put("userInfo", user);
 			System.out.println("[Controller] 로그인 성공 : " + users.getUserId());
 		} else {

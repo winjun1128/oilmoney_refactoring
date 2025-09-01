@@ -11,11 +11,18 @@ function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo
         e.preventDefault();
         try {
             const res = await axios.post("/auth/login", { userId, pw });
-            localStorage.setItem("token", res.data.token);
-            setIsLogin(true);
-            setUserInfo(res.data.user);
-            onClose();
+            if (res.data.success) {
+                // 토큰 저장
+                localStorage.setItem("token", res.data.accessToken);
+                setIsLogin(true);
+                setUserInfo(res.data.userInfo);
+                onClose();
+                alert("로그인 성공!");
+            } else {
+                alert(res.data.message);
+            }
         } catch (error) {
+            console.log(error);
             alert("아이디 또는 비밀번호가 일치하지 않습니다.");
         }
     };

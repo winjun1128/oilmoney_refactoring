@@ -3,24 +3,19 @@ import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple } from "@fortawesome/free-solid-svg-icons";
 import Auth from "./auth/Auth";
+import { useNavigate } from "react-router-dom";
 
 
-export default function SideBar() {
+export default function SideBar({ isLogin, setIsLoginModalOpen }) {
 
-    const [isLogIn, setIsLogin] = useState(false);
-    const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-    const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
+    const navigate = useNavigate();
 
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (token) setIsLogin(true);
-    }, []);
-    
     const handleMyInfoClick = () => {
-        if (isLogIn) {
-            window.location.href = "/mypage"; // 로그인 상태면 마이페이지 이동
+        const token = localStorage.getItem("token");
+        if (token) {
+            navigate("/mypage");
         } else {
-            setIsLoginModalOpen(true); // 로그인 모달 열기
+            setIsLoginModalOpen(true);
         }
     };
 
@@ -114,15 +109,6 @@ export default function SideBar() {
                     </DockButton>
                 </div>
             </aside>
-
-            <Auth
-                isLoginModalOpen={isLoginModalOpen}
-                setIsLoginModalOpen={setIsLoginModalOpen}
-                isSignUpModalOpen={isSignUpModalOpen}
-                setIsSignUpModalOpen={setIsSignUpModalOpen}
-                setIsLogin={setIsLogin}
-            />
-
         </>
     );
 }

@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Base64;
 import java.util.Date;
+import java.util.UUID;
 
 import javax.crypto.SecretKey;
 import javax.servlet.http.HttpServletRequest;
@@ -65,6 +66,16 @@ public class JwtProvider {
 	public static String createAccessToken(Users users) {
 		return createAccessToken(users.getUserId());
 	}
+	
+	public static String createRefreshToken(String userId) {
+        Date now = new Date();
+		return Jwts.builder()
+					.issuedAt(new Date())
+					.issuer("spring server")
+					.expiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
+					.signWith(getSigningKey(), Jwts.SIG.HS256)
+					.compact();
+    }
 
 	/* 토큰 해석 메소드 - 토큰을 해석하여 저장된 userId 를 획득한다 */
 	public static String getUserIdFromToken(String token) { // throws CustomException {
@@ -85,7 +96,7 @@ public class JwtProvider {
 	}
 
 	/* 유효성 확인(해독된 jwt) */
-	public static boolean isVaildToken(String token) {
+	public static boolean isValidToken(String token) {
 
 		//return 은 유효여부 (true/false)를 반환하거나
 		//상태별 상태코드로 구분해서 반환하거나 정해서 처리
@@ -113,20 +124,20 @@ public class JwtProvider {
 	/**
 	 * Refresh Token 생성
 	 */
-	public static String createRefreshToken() {
-		return Jwts.builder()
-				.issuedAt(new Date())
-				.issuer("spring server")
-				.expiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
-				.signWith(getSigningKey(), Jwts.SIG.HS256)
-				.compact();
-	}
+//	public static String createRefreshToken() {
+//		return Jwts.builder()
+//				.issuedAt(new Date())
+//				.issuer("spring server")
+//				.expiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION))
+//				.signWith(getSigningKey(), Jwts.SIG.HS256)
+//				.compact();
+//	}
 
 	/**
 	 * Refresh Token을 이용한 새로운 Access Token 발급
 	 */
 	public static String refreshAccessToken(String refreshToken, String userId) {
-		if (isVaildToken(refreshToken)) {
+		if (isValidToken(refreshToken)) {
 			return createAccessToken(userId);
 		}
 		//throw new RuntimeException("유효하지 않은 Refresh Token");
