@@ -29,10 +29,11 @@ export default function Auth({ isLoginModalOpen, setIsLoginModalOpen, isSignUpMo
                     setIsLoginModalOpen(true);
                 }}
             />
-
+{/* 
             {userInfo && Object.keys(userInfo).length > 0 && (
                 <MyPage userInfo={userInfo} setUserInfo={setUserInfo} setIsLogin={setIsLogin} />
-            )}
+            )} */}
+            
         </>
     );
 }

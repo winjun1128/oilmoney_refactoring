@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import SideBar from './page/SideBar';
 import Auth from './page/auth/Auth';
 import MyPage from './page/mypage/MyPage';
+import LoginRequired from './page/auth/LoginRequired';
 
 
 function App() {
@@ -26,11 +27,17 @@ function App() {
         setIsLogin={setIsLogin}
         setUserInfo={setUserInfo}
       />
-      <MyPage
-        setIsLoginModalOpen={setIsLoginModalOpen}
-        userInfo={userInfo}
-        setUserInfo={setUserInfo}
-      />
+
+      {isLogin ? (
+        <MyPage
+          userInfo={userInfo}
+          setUserInfo={setUserInfo}
+          setIsLoginModalOpen={setIsLoginModalOpen}
+        />) : (
+        <LoginRequired setIsLoginModalOpen={setIsLoginModalOpen}
+        />)
+      }
+
     </div>
   );
 }
