@@ -20,7 +20,7 @@ export default function MyPageSideBar({ isLogin, setIsLoginModalOpen }) {
     const itemsTop = [
         { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소", onClick: () => navigate("/") },
         { icon: <FontAwesomeIcon icon={faChargingStation} style={{ fontSize: "24px" }} />, label: "충전소", onClick: () => navigate("/") },
-        { icon: <FontAwesomeIcon icon={faShare} style={{ fontSize: "24px" }} />, label: "목적지", onClick: () => window.dispatchEvent(new CustomEvent("ui:toggleFilters")) },
+        { icon: <FontAwesomeIcon icon={faShare} style={{ fontSize: "24px" }} />, label: "목적지", onClick: () => navigate("/route") },
         { icon: <FontAwesomeIcon icon={faChartSimple} style={{ fontSize: "24px" }} />, label: "유가정보" },
     ];
 
