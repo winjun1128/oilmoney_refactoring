@@ -12,7 +12,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Page />} />
         <Route path="/route" element={<RouteMapPage />} />
-        {/* <Route path="/mypage" element={<MyPageWrapper />} /> */}
+        <Route path="/mypage" element={<MyPageWrapper />} />
       </Routes>
     </BrowserRouter>
   );

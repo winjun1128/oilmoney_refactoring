@@ -3,6 +3,10 @@ import "./RouteMap.css";
 import { useEffect, useRef, useState } from "react";
 import proj4 from "proj4";
 
+/** 원점(홈) 저장 키 & 카카오 스타마커 이미지 */
+const HOME_KEY = "route.home.coord.v1";
+const KAKAO_STAR_IMG = "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png";
+
 /** ✅ 카카오 Developers "JavaScript 키" (REST 키 아님) */
 const KAKAO_JS_KEY = "01a51f847b68dacc1745dde38509991d";
 
@@ -199,6 +203,17 @@ const getMarkerImage = (type, kakao, starred = false, scale = 1) => {
   const key = `${type}${starred ? "-fav" : ""}@${scale}`;
   if (markerImgCache[key]) return markerImgCache[key];
 
+    // ⭐️ 원점(홈)은 카카오 제공 star 마커를 항상 사용
+  if (type === "home") {
+    const img = new kakao.maps.MarkerImage(
+      KAKAO_STAR_IMG,
+      new kakao.maps.Size(24 * scale, 35 * scale),
+      { offset: new kakao.maps.Point(12 * scale, 35 * scale) }
+    );
+    markerImgCache[key] = img;
+    return img;
+  }
+
   const fill =
     type === "ev" ? "#2b8af7" :
     type === "oil" ? "#ff7f27" :
@@ -263,6 +278,45 @@ export default function RouteMap() {
   const mapRef = useRef(null);
   const polyRef = useRef(null);
   const viaRef = useRef(null);
+
+    // ⭐️ 홈(원점)
+  const homeMarkerRef = useRef(null);
+  const homeLabelRef = useRef(null);
+  const [homeCoord, setHomeCoord] = useState(() => {
+    try {
+      const s = localStorage.getItem(HOME_KEY);
+      if (!s) return { lat: 36.807313, lng: 127.147169 }; // 기본: 휴먼교육센터
+      const o = JSON.parse(s);
+      if (Number.isFinite(o?.lat) && Number.isFinite(o?.lng)) return { lat: o.lat, lng: o.lng };
+      return { lat: 36.807313, lng: 127.147169 };
+    } catch { return { lat: 36.807313, lng: 127.147169 }; }
+  });
+    // ⭐️ 홈(원점) 마커를 갱신해서 항상 지도에 보이게
+  const drawHomeMarker = ({ lat, lng }) => {
+    const { kakao } = window;
+    if (!mapRef.current || !kakao?.maps) return;
+    if (homeMarkerRef.current) { homeMarkerRef.current.setMap(null); homeMarkerRef.current = null; }
+    if (homeLabelRef.current)  { homeLabelRef.current.setMap(null);  homeLabelRef.current  = null; }
+    const pos = new kakao.maps.LatLng(lat, lng);
+    homeMarkerRef.current = new kakao.maps.Marker({
+      map: mapRef.current,
+      position: pos,
+      image: getMarkerImage("home", kakao, false, 1),
+      zIndex: 60,
+      title: "원점",
+    });
+    homeLabelRef.current = makeNameOverlay(kakao, { name: "원점", lat, lng });
+    homeLabelRef.current.setMap(mapRef.current);
+  };
+
+  // 저장+그리기
+  const saveHome = (lat, lng) => {
+    const v = { lat: Number(lat), lng: Number(lng) };
+    setHomeCoord(v);
+    try { localStorage.setItem(HOME_KEY, JSON.stringify(v)); } catch {}
+    drawHomeMarker(v);
+  };
+
 
   const routeCtxRef = useRef(null);
   const allMarkersRef = useRef([]); // {marker, overlay, type, cat, lat, lng, data}
@@ -420,7 +474,7 @@ export default function RouteMap() {
   }, [isFilterOpen]);
 
   // 지도 클릭 모드
-  const [clickMode, setClickMode] = useState("origin"); // 'origin' | 'dest'
+  const [clickMode, setClickMode] = useState("origin"); // 'origin' | 'dest' | 'home'
   const clickModeRef = useRef(clickMode);
   useEffect(() => { clickModeRef.current = clickMode; }, [clickMode]);
 
@@ -538,10 +592,12 @@ const onModalDragEnd = () => {
       if (!kakao?.maps || !container) return;
 
       const map = new kakao.maps.Map(container, {
-        center: new kakao.maps.LatLng(36.807313, 127.147169),
+        center: new kakao.maps.LatLng(homeCoord.lat, homeCoord.lng),
         level: 7,
       });
       mapRef.current = map;
+      // ⭐️ 홈(원점) 바로 표시
+      drawHomeMarker(homeCoord);
 
       // services 준비
       geocoderRef.current = new kakao.maps.services.Geocoder();
@@ -763,6 +819,23 @@ const onModalDragEnd = () => {
       console.error(e);
     }
   };
+  // 원점 초기화 (로컬스토리지 삭제 + 기본 좌표 복귀)
+const handleResetHome = () => {
+  try { localStorage.removeItem(HOME_KEY); } catch {}
+  const [defLng, defLat] = PRESET["휴먼교육센터"] ?? [127.147169, 36.807313];
+  const def = { lat: defLat, lng: defLng };
+
+  setHomeCoord(def);        // 상태 업데이트
+  drawHomeMarker(def);      // 지도상의 홈 마커 갱신
+
+  if (mapRef.current && window.kakao?.maps) {
+    mapRef.current.setCenter(new window.kakao.maps.LatLng(def.lat, def.lng));
+    mapRef.current.setLevel(7);
+  }
+
+  setSummary("원점이 기본 좌표로 초기화되었습니다.");
+};
+
 
   const havKm = (lat1, lon1, lat2, lon2) => {
     const R = 6371;
@@ -1245,6 +1318,13 @@ const drawDetourForPoint = async (p) => {
     // 좌표 → 주소/장소 라벨
     const label = await coordToLabel(lat, lng);
 
+        // ⭐️ 홈(원점) 지정 모드
+   if (mode === "home") {
+      saveHome(lat, lng);
+      setSummary("원점이 저장되었습니다.");
+      return;
+    }
+
     if (mode === "origin") {
       clearRouteOnly();
       setOriginInput(label); // ✅ 좌표 대신 장소/주소명 바인딩
@@ -1580,6 +1660,40 @@ const drawDetourForPoint = async (p) => {
               <div className="btn-row">
                 <button className="btn" onClick={handleFocusOrigin}>출발지 포커스</button>
                 <button className="btn" onClick={handleGoHome} title="휴먼교육센터로 이동">지도초기화</button>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    if (!mapRef.current) return;
+                    mapRef.current.setCenter(new window.kakao.maps.LatLng(homeCoord.lat, homeCoord.lng));
+                  }}
+                >
+                 원점 포커스
+               </button>
+               <button
+                 className="btn"
+                 onClick={async () => {
+                   // 원점을 출발지로 즉시 세팅
+                   replaceOriginPin({ lat: homeCoord.lat, lng: homeCoord.lng });
+                   setOriginInput(await coordToLabel(homeCoord.lat, homeCoord.lng));
+                   routeCtxRef.current = {
+                     origin: [homeCoord.lng, homeCoord.lat],
+                     dest: null, baseMeters: 0, baseSeconds: 0, path: null, destFixed: false,
+                   };
+                   setSummary(`출발지(원점) 설정됨 · 가까운 추천 ${nearestCountRef.current}개 표시`);
+                   setDetourSummary("");
+                   applyFiltersToMarkers();
+                 }}
+               >
+                 원점=출발
+               </button>
+                {/* ✅ 여기 추가 */}
+                <button
+                  className="btn"
+                  onClick={handleResetHome}
+                  title="저장된 원점을 지우고 기본 좌표(휴먼교육센터)로 복귀합니다"
+                >
+                  원점 초기화
+                </button>
               </div>
             </div>
 
@@ -1610,6 +1724,14 @@ const drawDetourForPoint = async (p) => {
                   title="지도 클릭으로 도착지 지정"
                 >
                   지도클릭=도착
+                </button>
+                <button
+                  className={`btn btn-toggle ${clickMode === "home" ? "on" : ""}`}
+                  onClick={() => setClickMode("home")}
+                  disabled={!isMapEdit}
+                  title="지도 클릭으로 원점 저장"
+                >
+                  지도클릭=원점
                 </button>
               </div>
               <div className="small-note">편집 ON일 때만 모드 버튼이 활성화됩니다.</div>

@@ -5,7 +5,7 @@ import ChargeFilterPanel from "./ChargeFilterPanel";
 import OilMap from "./OilMap";
 import axios from "axios";
 
-export default function Page({isLogin, setIsLoginModalOpen}) {
+export default function Page() {
     const [activeFilter, setActiveFilter] = useState(null);
     const [stations, setStations] = useState([]); // ✅ 주유소 검색 결과
 
@@ -42,7 +42,7 @@ export default function Page({isLogin, setIsLoginModalOpen}) {
 
     return (
         <div style={{ display: "flex", height: "100vh" }}>
-            <SideBar onFilterChange={setActiveFilter} isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen}/>
+            <SideBar onFilterChange={setActiveFilter}/>
             <div style={{ flex: 1, position: "relative" }}>
                 <OilMap stations={stations} handleLocationSearch={handleLocationSearch} isFilterMode={activeFilter === "oil" || activeFilter === "charge"}/>
 
