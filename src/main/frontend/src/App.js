@@ -1,17 +1,20 @@
-import logo from './logo.svg';
-import './App.css';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import MyPageWrapper from "./page/mypage/MyPageWrapper.js";
 import Page from './page/Page';
 import RouteMapPage from './page/RouteMapPage';
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 
+
 function App() {
+<<<<<<< HEAD
   
   return(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Page />} />
         <Route path="/route" element={<RouteMapPage />} />
+        <Route path="/mypage" element={<MyPageWrapper />} />
       </Routes>
     </BrowserRouter>
   );

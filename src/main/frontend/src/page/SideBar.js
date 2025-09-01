@@ -1,11 +1,23 @@
-import React from "react";
 import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple} from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom"; 
 
-export default function SideBar({ onFilterChange }) {
+export default function SideBar({ onFilterChange,isLogin, setIsLoginModalOpen }) {
     const navigate = useNavigate();   // ✅ 훅 선언
+
+    console.log("SideBar props:", { isLogin, setIsLoginModalOpen });
+
+    const handleMyInfoClick = () => {
+        const token = localStorage.getItem("token");
+        console.log("토큰:", token);
+        console.log("setIsLoginModalOpen:", setIsLoginModalOpen);
+        if (!!token) {
+            navigate("/mypage");
+        } else {
+            setIsLoginModalOpen(true);
+        }
+    };
     const itemsTop = [
         { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소",action: () => onFilterChange(prev => prev === "oil" ? null : "oil") },
         { icon: <FontAwesomeIcon icon={faChargingStation} style={{ fontSize: "24px" }} />, label: "충전소" ,action: () => onFilterChange(prev => prev === "charge" ? null : "charge")},
@@ -14,95 +26,95 @@ export default function SideBar({ onFilterChange }) {
     ];
 
     return (
-        <aside
-            style={{
-                position: "fixed",
-                left: 0,
-                top: 0,
-                zIndex: 999,
-                width: 80,
-                height: "100vh",
-                borderRight: "1px solid #e5e7eb",
-                backgroundColor: "#ffffff",
-                display: "flex",
-                flexDirection: "column",
-            }}
-        >
-            {/* ✅ 위쪽 (로고 + 메뉴)  */}
-            <div
+        <>
+            <aside
                 style={{
+                    position: "fixed",
+                    left: 0,
+                    top: 0,
+                    zIndex: 40,
+                    width: 80,
+                    height: "100vh",
+                    borderRight: "1px solid #e5e7eb", // gray-200
+                    backgroundColor: "#ffffff",
                     display: "flex",
-                    width: "100%",
                     flexDirection: "column",
-                    alignItems: "center",
                 }}
             >
+                {/* ─── 위쪽 (로고 + 메뉴) ─── */}
                 <div
                     style={{
-                        width: 80,
-                        height: 80,
-                        flexShrink: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        overflow: "hidden",
-                        marginTop: 10,
-                        marginBottom: 30
-                    }}
-                >
-                    <img
-                        src="/images/logo_square.png"
-                        alt="로고"
-                        style={{
-                            width: "80px",
-                            height: "80px",
-                            objectFit: "contain",
-                            display: "block",
-                        }}
-                    />
-                </div>
-
-                <nav
-                    style={{
-                        marginTop: "0.5rem",
                         display: "flex",
                         width: "100%",
                         flexDirection: "column",
                         alignItems: "center",
-                        gap: "0.5rem",
                     }}
                 >
-                    {/* 토글추가 */}
-                    {itemsTop.map((it, idx) => (
-                        <DockButton key={idx} label={it.label} onClick={it.action}>
-                            {it.icon}
-                        </DockButton>
-                    ))}
-                </nav>
-            </div>
+                    <div
+                        style={{
+                            width: 80,
+                            height: 80,
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            overflow: "hidden",
+                            marginTop: 10,
+                            marginBottom: 30
+                        }}
+                    >
+                        <img
+                            src="/images/logo_square.png"
+                            alt="로고"
+                            style={{
+                                width: "80px",
+                                height: "80px",
+                                objectFit: "contain",
+                                display: "block",
+                            }}
+                        />
+                    </div>
 
-            {/* ✅ 아래쪽 (내정보: mt-auto로 바닥에 고정) */}
-            <div
-                style={{
-                    marginTop: "auto",
-                    width: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                }}
-            >
-                <DockButton label="내정보">
-                    <User style={{ width: "1.75rem", height: "1.75rem" }} />
-                </DockButton>
-            </div>
-        </aside>
+                    <nav
+                        style={{
+                            marginTop: "0.5rem",
+                            display: "flex",
+                            width: "100%",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                        }}
+                    >
+                        {itemsTop.map((it, idx) => (
+                            <DockButton key={idx} label={it.label}>
+                                {it.icon}
+                            </DockButton>
+                        ))}
+                    </nav>
+                </div>
+
+                {/* ─── 아래쪽 (내정보: mt-auto로 바닥에 고정) ─── */}
+                <div
+                    style={{
+                        marginTop: "auto",
+                        width: "100%",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                    }}
+                >
+                    <DockButton label="내정보" onClick={handleMyInfoClick}>
+                        <User style={{ width: "1.75rem", height: "1.75rem" }} />
+                    </DockButton>
+                </div>
+            </aside>
+        </>
     );
 }
 
-function DockButton({ children, label,onClick = () => {} }) {
+function DockButton({ children, label, onClick }) {
     return (
-        <button
-            onClick={onClick} 
+        <button onClick={onClick}
             style={{
                 display: "flex",
                 flexDirection: "column",

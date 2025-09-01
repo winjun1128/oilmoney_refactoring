@@ -1,0 +1,148 @@
+.mypage-container {
+    margin: 10px;
+    display: flex;
+    /* height: 100vh; */
+}
+
+.mypage-left {
+    min-width: 300px;
+    height: 875px;
+    box-shadow: 3px 1px 8px 0 rgba(0, 0, 0, 0.07);
+}
+
+.mypage-left-profile {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-top: 40px;
+    gap: 5px;
+}
+
+.mypage-profile-img {
+    width: 140px;
+    cursor: pointer;
+    margin-top: 15px;
+    margin-bottom: 14px;
+}
+
+.mypage-left-profile>span {
+    font-size: 20px;
+}
+
+.mypage-left-menu {
+    margin-top: 100px;
+    display: flex;
+    flex-direction: column;
+    margin-left: 25px;
+    gap: 20px;
+    font-size: 19px;
+    color: rgb(34, 34, 34);
+}
+
+.mypage-left-menu>span {
+    cursor: pointer;
+}
+
+.mypage-left-footer {
+    margin-top: 330px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    font-size: 15px;
+    color: #9b9b9b;
+    position: fixed;
+    bottom: 40px;
+    left: 160px;
+}
+
+.mypage-left-footer>span {
+    cursor: pointer;
+}
+
+.mypage-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.mypage-modal-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 12px;
+    max-width: 300px;
+    text-align: center;
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.mypage-modal-input{
+    height: 28px;
+    border: 1px solid black;
+    border-radius: 5px;
+    
+}
+
+.mypage-modal-btns{
+    margin-top: 10px;
+    margin-left: 150px;
+}
+
+.mypage-modal-btn {
+    width: 50px;
+    height: 30px;
+    margin: 3px;
+    border-radius: 10px;
+    border: 3px solid rgb(0, 0, 0);
+    background-color: rgb(204, 230, 255);
+    border-style: none;
+}
+
+.mypage-modal-btn:hover {
+    background-color: rgb(191, 224, 255);
+    cursor: pointer;
+}
+
+/* EditInfo css */
+.edit-info-container{
+    margin: 40px;
+    border: 1px solid black;
+    min-width: 700px;
+    border-radius: 15px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.edit-title{
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+}
+
+.edit-title-text{
+    font-size: 25px;
+    font-weight: bold;
+}
+
+.edit-buttons{
+    display: flex;
+    gap: 10px;
+}
+.edit-button{
+    max-height: 30px;
+    
+}
+
+.edit-contents{
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 20px;
+}

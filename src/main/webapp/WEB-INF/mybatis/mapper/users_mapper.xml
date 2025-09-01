@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<!DOCTYPE mapper PUBLIC
+		   "-//mybatis.org//DTD Mapper 3.0//EN" 
+		   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="users_mapper">
+	
+	<!-- 회원가입 -->
+	<insert id="insertUser" parameterType="Users">
+		insert into t_users(id, user_id, pw, email, name)
+		values (seq_users.NEXTVAL, #{userId}, #{pw}, #{email}, #{name})
+	</insert>
+	
+	<!-- 아이디 중복 확인 -->
+	<select id="countByUserId" parameterType="string" resultType="int">
+		select count(*) from t_users where user_id = #{userId}
+	</select>
+	
+	<!-- 이메일 인증 -->
+	<insert id="insertEmailCode" parameterType="EmailCode">
+		merge into t_email_verification t
+		using(select #{email} AS email, #{code} AS code from dual) s
+		on (t.email = s.email)
+		when matched then
+			update set t.code = s.code, t.created_at= SYSDATE
+		when not matched then
+			insert (email, code, created_at) values (s.email, s.code, SYSDATE)
+	</insert>
+	
+	<!-- 인증번호 확인 -->
+	<select id="getCodeByEmail" parameterType="string" resultType="string">
+		select code from t_email_verification where email = #{email}
+	</select>
+	
+	<!-- 사용자 정보 조회 -->
+	<select id="getUserInfo" parameterType="string" resultType="Users">
+		select 
+			user_id AS userId, pw, name, email, phone_num AS phoneNum, addr
+		from t_users where user_id = #{userId}
+	</select>
+	
+	<!-- 사용자 정보 수정 -->
+	<update id="updateUserInfo">
+		update t_users
+		<set>
+			email = #{email}, phone_num = #{phoneNum}, addr = #{addr}
+			<if test="newPw != null and newPw != ''">
+				, pw = #{newPw}
+			</if>
+		</set>
+		where user_id = #{userId}
+	</update>
+	
+	<!-- 로그인 -->
+	<select id="loginUser" parameterType="map" resultType="Users">
+		select 
+			user_id AS userId, pw, name, email, phone_num AS phoneNum, addr
+		from t_users where user_id = #{userId} and pw = #{pw}
+	</select>
+	
+	<!-- 회원탈퇴 -->
+	<delete id="deleteUser" parameterType="string">
+		delete from t_users where user_id = #{userId}
+	</delete>
+	
+</mapper>

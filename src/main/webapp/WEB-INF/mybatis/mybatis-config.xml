@@ -12,10 +12,11 @@
 	<typeAliases>	
 		<typeAlias type="com.app.dto.route.GasStation" alias="GasStation"/>
 		<typeAlias type="com.app.dto.route.EvCharge" alias="EvCharge"/>
-		<!-- <typeAlias type="com.app.dto.room.Room" alias="Room"/> -->
 		<typeAlias type="com.app.dto.ChargeDTO" alias="ChargeDTO"/>
 		<typeAlias type="com.app.dto.OilSearchDTO" alias="OilSearchDTO"/>
 		<typeAlias type="com.app.dto.StationDTO" alias="StationDTO"/>
+		<typeAlias type="com.app.dto.users.Users" alias="Users"/>
+		<typeAlias type="com.app.dto.users.EmailCode" alias="EmailCode"/>	
 	</typeAliases>
 		
 		

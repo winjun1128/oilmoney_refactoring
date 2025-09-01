@@ -1,0 +1,139 @@
+#login-logo {
+    width: 190px;
+    margin-bottom: 18px;
+}
+
+.auth-modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.auth-modal-content {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 10px;
+    min-width: 300px;
+    max-width: 330px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    text-align: center;
+    position: relative;
+}
+
+.auth-input {
+    border: 1px solid rgb(180, 180, 180);
+    width: 230px;
+    height: 20px;
+    margin: 5px;
+    padding: 7px;
+    font-size: 15px;
+    border-radius: 5px;
+
+}
+
+.auth-button {
+    margin-top: 12px;
+    width: 246px;
+    height: 35px;
+    font-size: 15px;
+    border: 1px solid rgb(191, 224, 255);
+    background-color: rgb(204, 230, 255);
+    border-radius: 3px;
+}
+
+.auth-button:hover {
+    background-color: rgb(191, 224, 255);
+    cursor: pointer;
+}
+
+.auth-login-text {
+    margin: 15px 0 13px 0;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #727272;
+    padding: 0 20px;
+}
+
+.auth-login-text::before,
+.auth-login-text::after {
+    content: "";
+    flex: 1;
+    border-bottom: 1px solid #9191917e;
+}
+
+.auth-login-text::before {
+    margin-right: 10px;
+}
+
+.auth-login-text::after {
+    margin-left: 10px;
+}
+
+.auth-sns-icons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin: 10px 0;
+}
+
+.auth-sns-icons>img {
+    width: 40px;
+    cursor: pointer;
+}
+
+.login-signup {
+    font-size: 13px;
+    cursor: pointer;
+    margin-top: 18px;
+    color: rgb(145, 145, 145);
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+}
+
+.auth-confirm-button {
+    height: 27px;
+    border-style: none;
+    background-color: rgb(200, 228, 255);
+    border-radius: 5px;
+    position: absolute;
+    z-index: 100;
+    margin-top: 9px;
+    font-size: 13px;
+    right: 76px;
+}
+
+.auth-confirm-button:hover {
+    background-color: rgb(194, 226, 255);
+    cursor: pointer;
+}
+
+/* 인증번호 입력 */
+.auth-timer{
+    color: red;
+    position: absolute;
+    margin-top: 15px;
+}
+
+/* 이용약관 */
+.auth-agreement-section{
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    font-size: 14px;
+    margin: 20px 0 5px 40px;
+    color: #161616;
+}
+
+#auth-agree-all{
+    font-size: 15px;
+}
