@@ -91,7 +91,7 @@ export default function RouteSideBar() {
                     alignItems: "center",
                 }}
             >
-                <DockButton label="내정보">
+                <DockButton label="내정보" onClick={() => navigate("/mypage")}>
                     <User style={{ width: "1.75rem", height: "1.75rem" }} />
                 </DockButton>
             </div>
