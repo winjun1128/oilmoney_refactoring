@@ -5,7 +5,7 @@ import ChargeFilterPanel from "./ChargeFilterPanel";
 import OilMap from "./OilMap";
 import axios from "axios";
 
-export default function Page() {
+export default function Page({isLogin, setIsLoginModalOpen}) {
     const [activeFilter, setActiveFilter] = useState(null);
     const [stations, setStations] = useState([]); // ✅ 주유소 검색 결과
 
