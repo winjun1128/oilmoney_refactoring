@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="fav_mapper">
+
+  <resultMap id="FavMap" type="com.app.dto.route.Fav">
+    <id     column="ID"       property="id"/>
+    <result column="USER_ID"  property="userId"/>
+    <result column="FAV_KEY"  property="favKey"/>
+    <result column="TYPE"     property="type"/>
+  </resultMap>
+
+  <select id="findByUserId" parameterType="string" resultMap="FavMap">
+    SELECT ID, USER_ID, FAV_KEY, TYPE
+    FROM FAV
+    WHERE USER_ID = #{userId}
+    ORDER BY ID DESC
+  </select>
+
+  <insert id="insert" parameterType="com.app.dto.route.Fav">
+    <selectKey resultType="long" keyProperty="id" order="BEFORE">
+      SELECT FAV_SEQ.NEXTVAL FROM DUAL
+    </selectKey>
+    INSERT INTO FAV (ID, USER_ID, FAV_KEY, TYPE)
+    VALUES (#{id}, #{userId}, #{favKey}, #{type})
+  </insert>
+
+  <insert id="upsert" parameterType="com.app.dto.route.Fav">
+    MERGE INTO FAV f
+    USING (SELECT #{userId} AS USER_ID, #{favKey} AS FAV_KEY FROM DUAL) s
+    ON (f.USER_ID = s.USER_ID AND f.FAV_KEY = s.FAV_KEY)
+    WHEN NOT MATCHED THEN
+      INSERT (ID, USER_ID, FAV_KEY, TYPE)
+      VALUES (FAV_SEQ.NEXTVAL, #{userId}, #{favKey}, #{type})
+  </insert>
+
+  <delete id="delete">
+    DELETE FROM FAV
+    WHERE USER_ID = #{userId}
+      AND FAV_KEY = #{favKey}
+  </delete>
+</mapper>
+

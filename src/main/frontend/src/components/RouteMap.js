@@ -311,7 +311,7 @@ export default function RouteMap() {
 
   // 즐겨찾기 동작
   const FAV_KEY = "route.favorites.v1";
-  const getToken = () => localStorage.getItem("access_token");
+  const getToken = () => localStorage.getItem("token");
   const [favSet, setFavSet] = useState(() => {
     try {
       const arr = JSON.parse(localStorage.getItem(FAV_KEY) || "[]");

@@ -38,6 +38,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import javax.servlet.http.HttpServletRequest;
+
 @RestController
 @RequestMapping("/api/route")
 @RequiredArgsConstructor
@@ -76,6 +78,16 @@ public class EvOilProxyController {
     boolean looksEncoded = raw.contains("%2B") || raw.contains("%2F") || raw.contains("%3D");
     return looksEncoded ? raw : UriUtils.encode(raw, StandardCharsets.UTF_8);
   }
+  
+//  @GetMapping("/favs")
+//  public Map<String,Object> getFavs(HttpServletRequest request) {
+//    String token = JwtProvider.extractToken(request);
+//    if (token == null || !JwtProvider.isVaildToken(token)) { /* 401 처리 */ }
+//    String userId = JwtProvider.getUserIdFromToken(token);   // 발급 시 쓴 클레임명에 맞게 구현
+//    var items = favs.findByUser(userId);
+//    return Map.of("items", items);
+//  }
+
 
   /* ───────────────── EV: XML → JSON 변환해서 반환 ───────────────── */
 
