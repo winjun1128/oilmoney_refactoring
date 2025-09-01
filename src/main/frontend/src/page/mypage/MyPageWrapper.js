@@ -5,20 +5,24 @@ import Auth from "../auth/Auth";
 import LoginRequired from "../auth/LoginRequired";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import MyPageSideBar from "./MyPageSideBar";
 
 export default function MyPageWrapper() {
+    const navigate = useNavigate();
+
     const token = localStorage.getItem("token");
+
     const [isLogin, setIsLogin] = useState(!!token);
     const [userInfo, setUserInfo] = useState({});
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
 
-    const navigate = useNavigate();
-
-    // 새로고침 시 토큰 체크 및 유저 정보 fetch
     useEffect(() => {
         if (!token) {
             setIsLogin(false);
+            //alert("로그인이 필요합니다.");
+            setIsLoginModalOpen(true);
+
             return;
         }
 
@@ -31,14 +35,18 @@ export default function MyPageWrapper() {
                 console.log(err);
                 setIsLogin(false);
                 localStorage.removeItem("token");
-                navigate("/");
+                alert("로그인이 필요합니다.");
+                setIsLoginModalOpen(true);
+
             });
     }, [token, navigate]);
 
 
     return (
-        <div>
-            <SideBar isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />
+        <div style={{ display: "flex", height: "100vh" }}>
+            <div style={{ width: "80px", background: "#f3f4f6", borderRight: "1px solid black" }}>
+                <MyPageSideBar isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />
+            </div>
 
             <Auth
                 isLoginModalOpen={isLoginModalOpen}
