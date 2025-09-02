@@ -491,11 +491,233 @@ export default function RouteMap() {
 
   // 모달
   const [modalOpen, setModalOpen] = useState(false);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false); // ★ 리뷰 전용 모달
   const [modalMode, setModalMode] = useState("ev"); // 'ev' | 'oil'
   const [modalStation, setModalStation] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState("");
   const [modalList, setModalList] = useState([]);
+
+  ////리뷰
+  // ★ 리뷰 state 위쪽 근처에 추가
+const CLIENT_ID_KEY = "route.reviews.clientId.v1";
+const getClientId = () => {
+  let id = localStorage.getItem(CLIENT_ID_KEY);
+  if (!id) {
+    id = (crypto?.randomUUID?.() || (Date.now().toString(36)+Math.random().toString(16).slice(2)));
+    localStorage.setItem(CLIENT_ID_KEY, id);
+  }
+  return id;
+};
+
+// ✅ 로그인 여부(토큰) 추적
+const [isAuthed, setIsAuthed] = useState(!!getToken());
+useEffect(() => {
+  const sync = () => setIsAuthed(!!getToken());
+  window.addEventListener("focus", sync);
+  window.addEventListener("storage", sync); // 다른 탭에서 로그인/로그아웃 시
+  return () => { window.removeEventListener("focus", sync); window.removeEventListener("storage", sync); };
+}, []);
+
+
+
+  // ── [모달 state 아래에 추가] ──────────────────────────────
+const [rvLoading, setRvLoading]   = useState(false);
+const [rvError, setRvError]       = useState("");
+const [rvItems, setRvItems]       = useState([]);   // [{id, user, rating, text, ts}]
+const [rvAvg, setRvAvg]           = useState(0);
+const [rvCount, setRvCount]       = useState(0);
+const [rvPage, setRvPage]         = useState(1);
+const [rvHasMore, setRvHasMore]   = useState(false);
+
+const [rvFormOpen, setRvFormOpen] = useState(false);
+const [rvText, setRvText]         = useState("");
+const [rvRating, setRvRating]     = useState(0);
+
+// 리뷰 state 근처에 추가
+const [rvEditingId, setRvEditingId]   = useState(null);
+const [rvEditText, setRvEditText]     = useState("");
+const [rvEditRating, setRvEditRating] = useState(0);
+
+const putReview = async ({ id, key, rating, text }) => {
+  const token = getToken();
+  if (!token) throw new Error("로그인 후 수정할 수 있습니다.");
+  const r = await fetch(`/api/route/reviews/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ rating, text }),
+  });
+  if (!r.ok) throw new Error("리뷰 수정 실패");
+  return await r.json();
+};
+
+const deleteReview = async ({ id, key }) => {
+  const token = getToken();
+  if (!token) throw new Error("로그인 후 삭제할 수 있습니다.");
+  const r = await fetch(`/api/route/reviews/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) throw new Error("리뷰 삭제 실패");
+  return { ok: true };
+};
+
+const startEdit = (it) => {
+  if (!getToken()) { alert("로그인 후 수정할 수 있습니다."); return; }
+  setRvEditingId(it.id);
+  setRvEditText(it.text);
+  setRvEditRating(Number(it.rating) || 0);
+};
+
+const handleUpdateReview = async () => {
+  const key = reviewKeyOf(modalStation, modalMode);
+  await putReview({ id: rvEditingId, key, rating: rvEditRating, text: rvEditText.trim() });
+  setRvEditingId(null);
+  await reloadReviews({ resetPage: true });
+};
+
+const handleDeleteReview = async (id) => {
+  if (!getToken()) { alert("로그인 후 삭제할 수 있습니다."); return; }
+  if (!window.confirm("리뷰를 삭제할까요?")) return;
+  const key = reviewKeyOf(modalStation, modalMode);
+  await deleteReview({ id, key });
+  await reloadReviews({ resetPage: true });
+};
+
+
+// 별점 표시용
+const Stars = ({ value = 0, size = 16, onChange }) => {
+  const stars = [];
+  for (let i = 1; i <= 5; i++) {
+    const filled = i <= Math.round(value);
+    stars.push(
+      <span
+        key={i}
+        onClick={onChange ? () => onChange(i) : undefined}
+        style={{
+          cursor: onChange ? "pointer" : "default",
+          fontSize: size, color: filled ? "#f39c12" : "#ddd",
+          userSelect: "none", marginRight: 2,
+        }}
+        aria-label={`${i}점`}
+        role={onChange ? "button" : "img"}
+      >
+        ★
+      </span>
+    );
+  }
+  return <>{stars}</>;
+};
+
+// 리뷰 키(=즐겨찾기 키 재사용)
+const reviewKeyOf = (station, mode = modalMode) => favKeyOf(station, mode);
+
+// 서버/로컬 폴백 유틸
+const REV_LS_KEY = "route.reviews.v1";
+const readLocalReviews = (key) => {
+  try {
+    const m = JSON.parse(localStorage.getItem(REV_LS_KEY) || "{}");
+    return Array.isArray(m[key]) ? m[key] : [];
+  } catch { return []; }
+};
+const writeLocalReview = (key, item) => {
+  try {
+    const m = JSON.parse(localStorage.getItem(REV_LS_KEY) || "{}");
+    m[key] = [item, ...(m[key] || [])];
+    localStorage.setItem(REV_LS_KEY, JSON.stringify(m));
+  } catch {}
+};
+
+// 기존 readLocalReviews / writeLocalReview 아래에 추가
+const updateLocalReview = (key, id, { rating, text }) => {
+  try {
+    const m = JSON.parse(localStorage.getItem(REV_LS_KEY) || "{}");
+    const arr = Array.isArray(m[key]) ? m[key] : [];
+    m[key] = arr.map(it => it.id === id ? { ...it, rating, text } : it);
+    localStorage.setItem(REV_LS_KEY, JSON.stringify(m));
+  } catch {}
+};
+
+const removeLocalReview = (key, id) => {
+  try {
+    const m = JSON.parse(localStorage.getItem(REV_LS_KEY) || "{}");
+    const arr = Array.isArray(m[key]) ? m[key] : [];
+    m[key] = arr.filter(it => it.id !== id);
+    localStorage.setItem(REV_LS_KEY, JSON.stringify(m));
+  } catch {}
+};
+
+
+const fetchReviews = async ({ key, page = 1, size = 5 }) => {
+  const token = getToken();
+  const me = getClientId();
+  try {
+    // 서버 조회(비로그인도 clientId 쿼리로 시도)
+    const qs = new URLSearchParams({
+      key, page: String(page), size: String(size), clientId: me,
+    });
+    const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+    const r = await fetch(`/api/route/reviews?${qs.toString()}`, { headers });
+    if (r.ok) return await r.json(); // { items, hasMore, avg, count, mine 포함 가능 }
+
+    // 실패 시 로컬 폴백
+    const all = readLocalReviews(key);
+    const items = all.slice((page - 1) * size, page * size)
+                     .map(it => ({ ...it, mine: false })); // ★ 비로그인 편집 불가이므로 mine=false
+    const count = all.length;
+    const avg = count ? (all.reduce((s, x) => s + (x.rating || 0), 0) / count) : 0;
+    return { items, hasMore: page * size < count, avg, count };
+  } catch {
+    // 동일 폴백
+    const all = readLocalReviews(key);
+    const items = all.slice((page - 1) * size, page * size)
+                     .map(it => ({ ...it, mine: false }));
+    const count = all.length;
+    const avg = count ? (all.reduce((s, x) => s + (x.rating || 0), 0) / count) : 0;
+    return { items, hasMore: page * size < count, avg, count };
+  }
+};
+
+
+const postReview = async ({ key, rating, text }) => {
+  const token = getToken();
+  if (!token) throw new Error("로그인 후 작성할 수 있습니다.");
+  const now = new Date();
+  const payload = {
+    key, rating, text,
+    ts: now.toISOString().slice(0, 16).replace("T", " "),
+    clientId: getClientId(),
+  };
+  const r = await fetch(`/api/route/reviews`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+  if (!r.ok) throw new Error("리뷰 저장 실패");
+  return await r.json(); // { item }
+};
+
+
+
+const reloadReviews = async ({ resetPage = true } = {}) => {
+  const key = reviewKeyOf(modalStation, modalMode);
+  if (!key) return;
+  const page = resetPage ? 1 : rvPage;
+  setRvLoading(true); setRvError("");
+  try {
+    const res = await fetchReviews({ key, page, size: 5 });
+    setRvPage(page);
+    setRvItems(resetPage ? res.items : [...rvItems, ...res.items]);
+    setRvHasMore(!!res.hasMore);
+    setRvAvg(res.avg || 0);
+    setRvCount(res.count || (resetPage ? res.items.length : rvItems.length + res.items.length));
+  } catch (e) {
+    setRvError(e.message || "리뷰를 불러오지 못했습니다.");
+  } finally {
+    setRvLoading(false);
+  }
+};
+////
 
   // ✅ 추천 개수
   const [nearestCount, setNearestCount] = useState(5);
@@ -538,7 +760,41 @@ export default function RouteMap() {
 
 
   // ───────── 모달 드래그 ─────────
-const [modalDelta, setModalDelta] = useState({ dx: 0, dy: 0 });
+ const [modalDelta, setModalDelta] = useState({ dx: 0, dy: 0 });
+ const [rvModalDelta, setRvModalDelta] = useState({ dx: 0, dy: 0 }); // ★ 리뷰 모달 드래그
+ const rvDragRef = useRef({ dragging: false, startX: 0, startY: 0, baseDx: 0, baseDy: 0 });
+ useEffect(() => { if (reviewModalOpen) setRvModalDelta({ dx: 0, dy: 0 }); }, [reviewModalOpen]);
+
+ const onRvDragStart = (e) => {
+   const pt = e.touches ? e.touches[0] : e;
+   rvDragRef.current = {
+     dragging: true,
+     startX: pt.clientX, startY: pt.clientY,
+     baseDx: rvModalDelta.dx, baseDy: rvModalDelta.dy,
+   };
+   document.body.style.userSelect = "none";
+   window.addEventListener("mousemove", onRvDragMove);
+   window.addEventListener("mouseup", onRvDragEnd);
+   window.addEventListener("touchmove", onRvDragMove, { passive: false });
+   window.addEventListener("touchend", onRvDragEnd);
+ };
+ const onRvDragMove = (e) => {
+   if (!rvDragRef.current.dragging) return;
+   const pt = e.touches ? e.touches[0] : e;
+   e.preventDefault();
+   const dx = pt.clientX - rvDragRef.current.startX;
+   const dy = pt.clientY - rvDragRef.current.startY;
+   setRvModalDelta({ dx: rvDragRef.current.baseDx + dx, dy: rvDragRef.current.baseDy + dy });
+ };
+ const onRvDragEnd = () => {
+   rvDragRef.current.dragging = false;
+   document.body.style.userSelect = "";
+   window.removeEventListener("mousemove", onRvDragMove);
+   window.removeEventListener("mouseup", onRvDragEnd);
+   window.removeEventListener("touchmove", onRvDragMove);
+   window.removeEventListener("touchend", onRvDragEnd);
+ };
+ 
 const dragRef = useRef({ dragging: false, startX: 0, startY: 0, baseDx: 0, baseDy: 0 });
 
 // 모달이 열릴 때마다 위치 초기화
@@ -811,7 +1067,8 @@ const onModalDragEnd = () => {
         return;
       }
       resetAllToInitial();
-      const [lng, lat] = PRESET["휴먼교육센터"] ?? [127.147169, 36.807313];
+      // ✅ 저장된 원점으로 카메라 이동 (없으면 기본값)
+      const { lat, lng } = homeCoord || { lat: 36.807313, lng: 127.147169 };
       mapRef.current.setLevel(7);
       mapRef.current.setCenter(new window.kakao.maps.LatLng(lat, lng));
       setTimeout(() => applyFiltersToMarkers(), 0);
@@ -1206,6 +1463,8 @@ const handleResetHome = () => {
     } finally {
       setModalLoading(false);
     }
+    // openStationModal(...) 끝 try/finally 아래 or 마지막에 추가:
+  await reloadReviews({ resetPage: true });
   };
 
   const openOilModal = async (gs) => {
@@ -1227,7 +1486,33 @@ const handleResetHome = () => {
     } finally {
       setModalLoading(false);
     }
+    // openOilModal(...) 끝 try/finally 아래 or 마지막에 추가:
+    await reloadReviews({ resetPage: true });
   };
+
+  ////
+  const handleSaveReview = async () => {
+  if (!rvText.trim() || rvRating <= 0) {
+    alert("리뷰 내용과 별점을 입력하세요.");
+    return;
+  }
+  if (!getToken()) {
+    alert("로그인 후 작성할 수 있습니다.");
+    return;
+  }
+  const key = reviewKeyOf(modalStation, modalMode);
+  try {
+    setRvLoading(true);
+    await postReview({ key, rating: rvRating, text: rvText.trim() });
+    setRvText(""); setRvRating(0); setRvFormOpen(false);
+    await reloadReviews({ resetPage: true });
+  } catch (e) {
+    alert(e.message || "리뷰 저장 실패");
+  } finally {
+    setRvLoading(false);
+  }
+};
+
 
   // ✅ 마커 클릭 시:
 // destFixed === false → 도착지로 계속 갱신(파란선)
@@ -1501,11 +1786,11 @@ const drawDetourForPoint = async (p) => {
   };
 
   // ESC로 모달 닫기
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") setModalOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+ useEffect(() => {
+   const onKey = (e) => { if (e.key === "Escape") { setReviewModalOpen(false); setModalOpen(false); } };
+   window.addEventListener("keydown", onKey);
+   return () => window.removeEventListener("keydown", onKey);
+ }, []);
 
   /* ───────── 카테고리 콤보 변경 ───────── */
   const onChangeCategory = (val) => {
@@ -1539,6 +1824,195 @@ const drawDetourForPoint = async (p) => {
       <div className="label-row__control">{children}</div>
     </div>
   );
+
+// return 위쪽 어딘가(동일 파일 내부)에 추가
+
+const ModalInfo = () => (
+  <div style={{ marginTop: 12 }}>
+    {modalLoading && <div>불러오는 중...</div>}
+    {!modalLoading && modalError && (
+      <div style={{ color: "#c0392b" }}>오류: {modalError}</div>
+    )}
+    {!modalLoading && !modalError && (
+      modalMode === "ev" ? (
+        modalList.length === 0 ? (
+          <div>표시할 충전기 정보가 없습니다.</div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>충전기ID</th>
+                <th style={thStyle}>상태</th>
+                <th style={thStyle}>타입</th>
+                <th style={thStyle}>출력(kW)</th>
+                <th style={thStyle}>업데이트</th>
+              </tr>
+            </thead>
+            <tbody>
+              {modalList.map((c, i) => (
+                <tr key={`${c.statId || "no"}-${c.chgerId}-${i}`}>
+                  <td style={tdStyle}>{c.chgerId}</td>
+                  <td style={tdStyle}>
+                    <span style={statusBadgeStyle(c.status)}>{statusText(c.status)}</span>
+                  </td>
+                  <td style={tdStyle}>{chargerTypeName(c.type) || "-"}</td>
+                  <td style={tdStyle}>{c.powerKw ?? "-"}</td>
+                  <td style={tdStyle}>{c.lastTs || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
+      ) : (
+        modalList.length === 0 ? (
+          <div>표시할 유가 정보가 없습니다.</div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>유종</th>
+                <th style={thStyle}>가격(원/L)</th>
+                <th style={thStyle}>기준일시</th>
+              </tr>
+            </thead>
+            <tbody>
+              {modalList.map((p, i) => (
+                <tr key={`${p.product}-${i}`}>
+                  <td style={tdStyle}>{productName(p.product) || "-"}</td>
+                  <td style={tdStyle}>
+                    {Number.isFinite(p.price) ? p.price.toLocaleString() : "-"}
+                  </td>
+                  <td style={tdStyle}>{p.ts || "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
+      )
+    )}
+  </div>
+);
+
+const ReviewsSection = () => (
+  <div style={{ marginTop: 16, borderTop: "1px solid #eee", paddingTop: 12 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <strong style={{ fontSize: 16 }}>리뷰</strong>
+        <div aria-label={`평균 별점 ${rvAvg.toFixed(1)} / 5`}>
+          <Stars value={rvAvg} />
+        </div>
+        <span style={{ color: "#666", fontSize: 13 }}>
+          {rvCount ? `${rvAvg.toFixed(1)} / 5 · ${rvCount}개` : "아직 리뷰가 없습니다"}
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+         <button
+          className="btn"
+          onClick={() => (isAuthed ? setRvFormOpen((v) => !v) : alert("로그인 후 작성할 수 있습니다."))}
+          disabled={!isAuthed}
+          title={isAuthed ? "리뷰 작성" : "로그인 필요"}
+        >
+          {rvFormOpen ? "작성 취소" : "리뷰 작성"}
+        </button>
+        <button className="btn btn-ghost" disabled title="준비 중">키워드 선택</button>
+      </div>
+    </div>
+    {!isAuthed && (
+      <div style={{ marginBottom: 8, color: "#888", fontSize: 13 }}>
+        ✋ 로그인해야 리뷰 작성/수정/삭제가 가능합니다.
+      </div>
+    )}
+
+    {rvFormOpen && isAuthed && (
+      <div style={{ border: "1px solid #eee", borderRadius: 8, padding: 12, marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <span style={{ width: 60, color: "#666" }}>별점</span>
+          <Stars value={rvRating} onChange={setRvRating} />
+          <input
+            type="number" min={0} max={5} step={0.5}
+            value={rvRating}
+            onChange={(e) => setRvRating(Number(e.target.value))}
+            style={{ width: 72 }}
+            aria-label="별점(0~5)"
+          />
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <textarea
+            placeholder="리뷰 내용을 입력하세요"
+            value={rvText}
+            onChange={(e) => setRvText(e.target.value)}
+            style={{ flex: 1, height: 90, resize: "vertical" }}
+          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button className="btn btn-primary" onClick={handleSaveReview} disabled={rvLoading}>
+              저장
+            </button>
+            <button className="btn btn-ghost" onClick={() => setRvFormOpen(false)}>
+              취소
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {rvLoading && rvItems.length === 0 && <div>불러오는 중...</div>}
+    {rvError && <div style={{ color: "#c0392b" }}>오류: {rvError}</div>}
+
+   {rvItems.map((it) => (
+  <div key={it.id} style={{ padding: "10px 0", borderTop: "1px solid #f4f4f4" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Stars value={it.rating} size={14} />
+        <strong style={{ fontSize: 14 }}>{it.user || "익명"}</strong>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ color: "#888", fontSize: 12 }}>{it.ts}</span>
+        {isAuthed && it.mine && (
+          <>
+            <button className="btn btn-ghost" onClick={() => startEdit(it)} style={{ padding: "2px 8px" }}>수정</button>
+            <button className="btn btn-ghost" onClick={() => handleDeleteReview(it.id)} style={{ padding: "2px 8px" }}>삭제</button>
+          </>
+        )}
+      </div>
+    </div>
+
+    {rvEditingId === it.id ? (
+      <div style={{ marginTop: 8, border: "1px solid #eee", borderRadius: 8, padding: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <span style={{ width: 60, color: "#666" }}>별점</span>
+          <Stars value={rvEditRating} onChange={setRvEditRating} />
+          <input type="number" min={0} max={5} step={0.5} value={rvEditRating}
+                 onChange={(e) => setRvEditRating(Number(e.target.value))} style={{ width: 72 }} />
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <textarea value={rvEditText} onChange={(e) => setRvEditText(e.target.value)}
+                    style={{ flex: 1, height: 80, resize: "vertical" }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button className="btn btn-primary" onClick={handleUpdateReview} disabled={rvLoading}>저장</button>
+            <button className="btn btn-ghost" onClick={() => setRvEditingId(null)}>취소</button>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{it.text}</p>
+    )}
+  </div>
+))}
+
+
+    {rvHasMore && (
+      <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
+        <button
+          className="btn"
+          onClick={async () => { setRvPage((p) => p + 1); await reloadReviews({ resetPage: false }); }}
+          disabled={rvLoading}
+        >
+          더보기
+        </button>
+      </div>
+    )}
+  </div>
+);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
@@ -1817,6 +2291,14 @@ const drawDetourForPoint = async (p) => {
                   {isFavStation(modalStation) ? "★ 즐겨찾기 해제" : "☆ 즐겨찾기"}
                 </button>
 
+               <button
+                className="btn"
+                onClick={async (e) => { e.preventDefault(); setReviewModalOpen(true); await reloadReviews({ resetPage: true }); }}
+                title="기본정보 + 리뷰 모달 열기"
+              >
+                리뷰 보기
+              </button>
+
                 <button
                   onClick={() => setModalOpen(false)}
                   style={{ border: "none", background: "transparent", fontSize: 22, lineHeight: 1, cursor: "pointer" }}
@@ -1856,68 +2338,100 @@ const drawDetourForPoint = async (p) => {
               </>
             )}
 
-            <div style={{ marginTop: 12 }}>
-              {modalLoading && <div>불러오는 중...</div>}
-              {!modalLoading && modalError && <div style={{ color: "#c0392b" }}>오류: {modalError}</div>}
-              {!modalLoading && !modalError && (
-                modalMode === "ev" ? (
-                  modalList.length === 0 ? (
-                    <div>표시할 충전기 정보가 없습니다.</div>
-                  ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-                      <thead>
-                        <tr>
-                          <th style={thStyle}>충전기ID</th>
-                          <th style={thStyle}>상태</th>
-                          <th style={thStyle}>타입</th>
-                          <th style={thStyle}>출력(kW)</th>
-                          <th style={thStyle}>업데이트</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {modalList.map((c, i) => (
-                          <tr key={`${c.statId || "no"}-${c.chgerId}-${i}`}>
-                            <td style={tdStyle}>{c.chgerId}</td>
-                            <td style={tdStyle}>
-                              <span style={statusBadgeStyle(c.status)}>{statusText(c.status)}</span>
-                            </td>
-                            <td style={tdStyle}>{chargerTypeName(c.type) || "-"}</td>
-                            <td style={tdStyle}>{c.powerKw ?? "-"}</td>
-                            <td style={tdStyle}>{c.lastTs || "-"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )
-                ) : (
-                  modalList.length === 0 ? (
-                    <div>표시할 유가 정보가 없습니다.</div>
-                  ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-                      <thead>
-                        <tr>
-                          <th style={thStyle}>유종</th>
-                          <th style={thStyle}>가격(원/L)</th>
-                          <th style={thStyle}>기준일시</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {modalList.map((p, i) => (
-                          <tr key={`${p.product}-${i}`}>
-                            <td style={tdStyle}>{productName(p.product) || "-"}</td>
-                            <td style={tdStyle}>{Number.isFinite(p.price) ? p.price.toLocaleString() : "-"}</td>
-                            <td style={tdStyle}>{p.ts || "-"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )
-                )
-              )}
-            </div>
+           
+
+           {/* 가격/상태 표 먼저 */}
+           <ModalInfo />
+
+            {/* ───────── 리뷰 & 별점 ───────── */}
+  
+
           </div>
         </div>
       )}
+
+      {reviewModalOpen && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={() => setReviewModalOpen(false)}
+        style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,.55)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10000,
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "min(720px, 92vw)", maxHeight: "80vh", overflow: "auto",
+            background: "#fff", borderRadius: 12, boxShadow: "0 10px 30px rgba(0,0,0,.25)",
+            padding: 20, transform: `translate(${rvModalDelta.dx}px, ${rvModalDelta.dy}px)`,
+            touchAction: "none",
+          }}
+        >
+          {/* 헤더(드래그 핸들 + 닫기) */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+            <div
+              style={{ flex: 1, cursor: "move" }}
+              onMouseDown={onRvDragStart}
+              onTouchStart={onRvDragStart}
+            >
+              <h2 style={{ margin: 0, fontSize: 20 }}>
+                {modalMode === "ev" ? "EV" : "주유소/LPG"}
+                {modalStation?.name ? ` — ${modalStation.name}` : ""} <span style={{ fontWeight: 400, color: "#666" }}>(리뷰)</span>
+              </h2>
+              {modalStation?.addr && (
+                <div style={{ marginTop: 4, color: "#666", fontSize: 13 }}>
+                  주소: {modalStation.addr}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setReviewModalOpen(false)}
+              style={{ border: "none", background: "transparent", fontSize: 22, lineHeight: 1, cursor: "pointer" }}
+              aria-label="닫기" title="닫기"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* 기본정보 요약 */}
+          {modalMode === "ev" ? (
+            <div style={{ marginTop: 6, color: "#444", fontSize: 13, lineHeight: 1.7 }}>
+              <div>이용시간: {modalStation?.usetime || "-"}</div>
+              <div>설치층: {modalStation?.floornum || "-"} / 층종류: {floorTypeName(modalStation?.floortype)}</div>
+              <div>운영기관: {modalStation?.businm || "-"}</div>
+              <div>문의: {modalStation?.busicall || "-"}</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ marginTop: 2, color: "#666", fontSize: 13 }}>
+                브랜드: {brandName(modalStation?.brand)}
+                {modalStation?.self ? ` · 셀프: ${modalStation.self}` : ""}
+                {modalStation?.tel ? ` · Tel: ${modalStation.tel}` : ""}
+                {modalStation?.uni ? ` · UNI_CD: ${modalStation.uni}` : ""}
+                {modalStation?.brandGroup ? ` · 브랜드그룹: ${modalStation.brandGroup}` : ""}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <YnChip label="편의점" val={modalStation?.cvsYn} />
+                <YnChip label="세차" val={modalStation?.carWashYn} />
+                <YnChip label="정비" val={modalStation?.maintYn} />
+                <YnChip label="한국석유관리원 인증" val={modalStation?.kpetroYn} />
+                <YnChip label="LPG" val={modalStation?.lpgYn} />
+                <YnChip label="24시간" val={modalStation?.open24hYn} />
+              </div>
+            </>
+          )}
+
+          {/* 표 먼저 */}
+           <ModalInfo />
+
+          {/* 리뷰 섹션 */}
+          <ReviewsSection />
+        </div>
+      </div>
+      )}
+
     </div>
   );
 }
