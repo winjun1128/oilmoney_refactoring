@@ -5,7 +5,7 @@ import java.util.List;
 import com.app.dto.route.Review;
 
 public interface ReviewService {
-	 public long create(String reviewKey, String userId, String userName, String clientId, double rating, String text);
+	 public long create(String reviewKey, String userId,double rating, String text);
 	 public boolean update(long id, String userId, double rating, String text);
 	 public boolean delete(long id, String userId);
 	 public PagedResult list(String key, String userIdOrNull, int page, int size);

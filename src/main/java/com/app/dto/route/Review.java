@@ -9,8 +9,8 @@ public class Review {
     private Long id;
     private String reviewKey; // "oil:UNI" or "ev:STATID|STATID"
     private String userId;
-    private String userName;
-    private String clientId;
+//    private String userName;
+//    private String clientId;
     private Double rating;    // 0.0~5.0
     private String text;
     private OffsetDateTime createdAt;

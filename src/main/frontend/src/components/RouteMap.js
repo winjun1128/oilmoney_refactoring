@@ -365,7 +365,7 @@ export default function RouteMap() {
 
   // 즐겨찾기 동작
   const FAV_KEY = "route.favorites.v1";
-  const getToken = () => localStorage.getItem("token");
+  const getToken = () => localStorage.getItem("token")||"";
   const [favSet, setFavSet] = useState(() => {
     try {
       const arr = JSON.parse(localStorage.getItem(FAV_KEY) || "[]");
@@ -499,18 +499,67 @@ export default function RouteMap() {
   const [modalList, setModalList] = useState([]);
 
   ////리뷰
-  // 응답이 JSON인지(또는 204) 강제 체크
+  // DB/ISO/문자 다양한 형태를 안전하게 "YYYY-MM-DD HH:mm" 으로
+const fmtTs = (v) => {
+  if (!v) return "";
+  const s = String(v).trim();
+  // ISO가 아니면 공백을 T로 바꿔서 파싱 시도
+  const tryDate = new Date(s.includes("T") ? s : s.replace(" ", "T"));
+  if (!isNaN(tryDate.getTime())) {
+    // 로컬 표기: 2자리 연,월,일,시,분
+    const pad = (n) => String(n).padStart(2, "0");
+    const y = tryDate.getFullYear();
+    const m = pad(tryDate.getMonth() + 1);
+    const d = pad(tryDate.getDate());
+    const hh = pad(tryDate.getHours());
+    const mm = pad(tryDate.getMinutes());
+    return `${y}-${m}-${d} ${hh}:${mm}`;
+  }
+  // 파싱이 애매하면 앞 16자만 잘라서 노출
+  return s.replace("T", " ").slice(0, 16);
+};
+
+// createdAt과 updatedAt이 '사실상 동일'인지(초 단위 이내) 판정
+const wasEdited = (createdAt, updatedAt) => {
+  if (!createdAt || !updatedAt) return false;
+  const c = new Date(String(createdAt).replace(" ", "T")).getTime();
+  const u = new Date(String(updatedAt).replace(" ", "T")).getTime();
+  if (isNaN(c) || isNaN(u)) return String(createdAt) !== String(updatedAt);
+  return Math.abs(u - c) > 1000; // 1초 초과 차이면 수정으로 간주
+};
+
+  // utils (RouteMap.jsx 상단 아무데나)
+const parseJwt = (t="") => {
+  try {
+    const b64 = t.split(".")[1]?.replace(/-/g, "+").replace(/_/g, "/") || "";
+    return JSON.parse(atob(b64)) || {};
+  } catch { return {}; }
+};
+
+const isTokenAlive = (t) => {
+  if (!t) return false;
+  const { exp } = parseJwt(t);
+  // exp가 없으면(서버 설정에 따라) 일단 true 취급, 있으면 만료 체크
+  return typeof exp === "number" ? Date.now() < exp * 1000 : true;
+};
+
+// requireJson 에 401 처리 추가 (이미 있는 함수에 아래 블록만 넣기)
 const requireJson = async (r) => {
+  if (r.status === 401 || r.status === 403) {
+    try { localStorage.removeItem("token"); } catch {}
+    setIsAuthed(false);
+    throw new Error("로그인이 만료되었습니다. 다시 로그인해주세요.");
+  }
   if (!r.ok) throw new Error(`요청 실패 (${r.status})`);
-  if (r.status === 204) return null; // No Content도 성공으로 취급
+  if (r.status === 204) return null;
   const ct = r.headers.get("content-type") || "";
   if (!ct.includes("application/json")) {
     const t = await r.text().catch(() => "");
-    // HTML(로그인 페이지 등)로 오면 여기서 중단
     throw new Error("서버가 JSON을 반환하지 않았습니다. 로그인 만료 또는 API 라우트 확인 필요.");
   }
   return r.json();
 };
+
 
 
   // 유틸 하나 추가
@@ -549,14 +598,23 @@ const getClientId = () => {
   return id;
 };
 
-// ✅ 로그인 여부(토큰) 추적
-const [isAuthed, setIsAuthed] = useState(!!getToken());
+// 기존: const [isAuthed, setIsAuthed] = useState(!!getToken());
+// 교체
+const [isAuthed, setIsAuthed] = useState(() => isTokenAlive(getToken()));
+
 useEffect(() => {
-  const sync = () => setIsAuthed(!!getToken());
-  window.addEventListener("focus", sync);
-  window.addEventListener("storage", sync); // 다른 탭에서 로그인/로그아웃 시
+  const sync = () => {
+    const t = getToken();
+    const ok = isTokenAlive(t);
+    setIsAuthed(ok);
+    if (!ok && t) { try { localStorage.removeItem("token"); } catch {} }
+  };
+  window.addEventListener("focus",  sync);
+  window.addEventListener("storage", sync);
+  sync(); // 첫 렌더 직후 한 번 검증
   return () => { window.removeEventListener("focus", sync); window.removeEventListener("storage", sync); };
 }, []);
+
 
 
 
@@ -571,6 +629,12 @@ const [rvHasMore, setRvHasMore]   = useState(false);
 
 const [rvFormOpen, setRvFormOpen] = useState(false);
 // const [rvText, setRvText]         = useState("");
+
+// 인증이 끊기면 작성 폼 자동 닫기
+useEffect(() => {
+  if (!isAuthed) setRvFormOpen(false);
+}, [isAuthed]);
+
 const [rvRating, setRvRating]     = useState(0);
 
 // 리뷰 state 근처에 추가
@@ -752,9 +816,16 @@ const reloadReviews = async ({ resetPage = true, page } = {}) => {
 
   try {
     const res = await fetchReviews({ key, page: pageToLoad, size: 5 });
+    const norm = (arr = []) =>
+      arr.map((it) => ({
+        ...it,
+        user: it.user ?? it.userName ?? "",         // 표시에 쓸 이름
+        createdAt: it.createdAt ?? it.ts ?? "",     // 생성시각
+        updatedAt: it.updatedAt ?? "",  // 수정시각
+      }));
+    setRvPage(pageToLoad);
+    setRvItems((prev) => resetPage ? norm(res.items) : [...prev, ...norm(res.items)]);
 
-    setRvPage(pageToLoad); // 실제로 로드한 페이지로 동기화
-    setRvItems(prev => resetPage ? res.items : [...prev, ...res.items]); // ← 함수형 업데이트
     setRvHasMore(Boolean(res.hasMore) && (res.items?.length ?? 0) > 0);
     setRvAvg(res.avg || 0);
     setRvCount(prev =>
@@ -1954,27 +2025,27 @@ const ReviewsSection = () => (
         <div aria-label={`평균 별점 ${rvAvg.toFixed(1)} / 5`}>
           <Stars value={rvAvg} />
         </div>
-        <span style={{ color: "#666", fontSize: 13 }}>
-          {rvCount ? `${rvAvg.toFixed(1)} / 5 · ${rvCount}개` : "아직 리뷰가 없습니다"}
-        </span>
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-         <button
-          className="btn"
-          onClick={() => (isAuthed ? setRvFormOpen((v) => !v) : alert("로그인 후 작성할 수 있습니다."))}
-          disabled={!isAuthed}
-          title={isAuthed ? "리뷰 작성" : "로그인 필요"}
-        >
-          {rvFormOpen ? "작성 취소" : "리뷰 작성"}
-        </button>
+         {isAuthed && (
+          <button
+            className="btn"
+            onClick={() => setRvFormOpen((v) => !v)}
+            title="리뷰 작성"
+          >
+            {rvFormOpen ? "작성 취소" : "리뷰 작성"}
+          </button>
+         )}
         <button className="btn btn-ghost" disabled title="준비 중">키워드 선택</button>
       </div>
-    </div>
+   
     {!isAuthed && (
       <div style={{ marginBottom: 8, color: "#888", fontSize: 13 }}>
         ✋ 로그인해야 리뷰 작성/수정/삭제가 가능합니다.
       </div>
     )}
+
+    </div>
 
     {rvFormOpen && isAuthed && (
       <div style={{ border: "1px solid #eee", borderRadius: 8, padding: 12, marginBottom: 12 }}>
@@ -2011,49 +2082,62 @@ const ReviewsSection = () => (
     {rvLoading && rvItems.length === 0 && <div>불러오는 중...</div>}
     {rvError && <div style={{ color: "#c0392b" }}>오류: {rvError}</div>}
 
-   {rvItems.map((it) => (
-  <div key={it.id} style={{ padding: "10px 0", borderTop: "1px solid #f4f4f4" }}>
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Stars value={it.rating} size={14} />
-        <strong style={{ fontSize: 14 }}>{it.user || "익명"}</strong>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ color: "#888", fontSize: 12 }}>{it.ts}</span>
-        {isAuthed && it.mine && (
-          <>
-            <button className="btn btn-ghost" onClick={() => startEdit(it)} style={{ padding: "2px 8px" }}>수정</button>
-            <button className="btn btn-ghost" onClick={() => handleDeleteReview(it.id)} style={{ padding: "2px 8px" }}>삭제</button>
-          </>
-        )}
-      </div>
-    </div>
-
-    {rvEditingId === it.id ? (
-      <div style={{ marginTop: 8, border: "1px solid #eee", borderRadius: 8, padding: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-          <span style={{ width: 60, color: "#666" }}>별점</span>
-          <Stars value={rvEditRating} onChange={setRvEditRating} />
-          <input type="number" min={0} max={5} step={0.5} value={rvEditRating}
-                 onChange={(e) => setRvEditRating(Number(e.target.value))} style={{ width: 72 }} />
+   {rvItems.map((it) => {
+    const created = it.createdAt || it.ts;
+        const updated = it.updatedAt;
+  return (
+    <div key={it.id} style={{ padding: "10px 0", borderTop: "1px solid #f4f4f4" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Stars value={it.rating} size={14} />
+          <strong style={{ fontSize: 14 }}>{it.user || "익명"}</strong>
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
-        <textarea
-          ref={rvEditTextRef}
-          defaultValue={it.text}   // ← 초기값만 주고 이후엔 DOM이 관리
-          style={{ flex: 1, height: 80, resize: "vertical" }}
-        />
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button className="btn btn-primary" onClick={handleUpdateReview} disabled={rvLoading}>저장</button>
-            <button className="btn btn-ghost" onClick={() => setRvEditingId(null)}>취소</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          
+        <span style={{ color:"#888", fontSize:12 }}>
+          작성 {fmtTs(created)}
+          {wasEdited(created,updated) && (
+            <em style={{ color:"#999", fontStyle:"normal" }}>
+              · 수정 {fmtTs(updated)}
+            </em>
+          )}
+        </span>
+
+          {isAuthed && it.mine && (
+            <>
+              <button className="btn btn-ghost" onClick={() => startEdit(it)} style={{ padding: "2px 8px" }}>수정</button>
+              <button className="btn btn-ghost" onClick={() => handleDeleteReview(it.id)} style={{ padding: "2px 8px" }}>삭제</button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {rvEditingId === it.id ? (
+        <div style={{ marginTop: 8, border: "1px solid #eee", borderRadius: 8, padding: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <span style={{ width: 60, color: "#666" }}>별점</span>
+            <Stars value={rvEditRating} onChange={setRvEditRating} />
+            <input type="number" min={0} max={5} step={0.5} value={rvEditRating}
+                  onChange={(e) => setRvEditRating(Number(e.target.value))} style={{ width: 72 }} />
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+          <textarea
+            ref={rvEditTextRef}
+            defaultValue={it.text}   // ← 초기값만 주고 이후엔 DOM이 관리
+            style={{ flex: 1, height: 80, resize: "vertical" }}
+          />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button className="btn btn-primary" onClick={handleUpdateReview} disabled={rvLoading}>저장</button>
+              <button className="btn btn-ghost" onClick={() => setRvEditingId(null)}>취소</button>
+            </div>
           </div>
         </div>
-      </div>
-    ) : (
-      <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{it.text}</p>
-    )}
-  </div>
-))}
+      ) : (
+        <p style={{ margin: "6px 0 0", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>{it.text}</p>
+      )}
+    </div>
+  );
+})}
 
 
   {rvHasMore && (

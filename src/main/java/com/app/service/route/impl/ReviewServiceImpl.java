@@ -19,12 +19,10 @@ public class ReviewServiceImpl implements ReviewService {
 
 	@Override
 	@Transactional
-	public long create(String reviewKey, String userId, String userName, String clientId, double rating, String text) {
+	public long create(String reviewKey, String userId, double rating, String text) {
 		 Review r = new Review();
 	        r.setReviewKey(reviewKey);
 	        r.setUserId(userId);
-	        r.setUserName(userName);
-	        r.setClientId(clientId); // 기록용
 	        r.setRating(rating);
 	        r.setText(text);
 	        // created/updated 는 DB default/trigger 사용

@@ -8,23 +8,32 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping(value = "/api/route/reviews", produces = MediaType.APPLICATION_JSON_VALUE)
 public class RouteReviewController {
+	
+	private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+	private String fmt(OffsetDateTime dt) {
+	    return dt == null ? null : dt.format(FMT);
+	}
 
     @Autowired
     ReviewService reviewService;
 
-    // GET /api/route/reviews?key=...&page=1&size=5&clientId=...
+    // GET /api/route/reviews?key=...&page=1&size=5
     @GetMapping
     public ResponseEntity<?> list(
             @RequestParam("key") String key,
             @RequestParam(value = "page", defaultValue = "1") int page,
             @RequestParam(value = "size", defaultValue = "5") int size,
-            @RequestParam(value = "clientId", required = false) String clientId, // (선택) 비로그인 식별자 로깅 용도
             HttpServletRequest request
     ) {
         String token = JwtProvider.extractToken(request);
@@ -32,17 +41,24 @@ public class RouteReviewController {
 
         ReviewService.PagedResult res = reviewService.list(key, userIdOrNull, page, size);
 
-        // 프론트 포맷에 맞춰 가공 (createdAt => ts, mine은 SQL에서 계산해둠)
         List<Map<String, Object>> items = res.items.stream().map(r -> {
             Map<String, Object> m = new HashMap<>();
             m.put("id", r.getId());
-            m.put("user", r.getUserName() != null ? r.getUserName() : "익명");
+
+            // ✅ 익명 대신 DB의 USER_ID를 표기로 사용
+            m.put("user", r.getUserId() != null ? r.getUserId() : "익명");
+
             m.put("rating", r.getRating());
             m.put("text", r.getText());
-            m.put("ts", r.getCreatedAt() != null
-                    ? r.getCreatedAt().toString().replace('T', ' ').substring(0, 16)
-                    : "");
-            // ★ 리뷰 작성자와 JWT의 sub 비교로 mine 판정
+
+             // ✅ 두 값을 각각 내려준다 (문자열/ISO 그대로 내려도 OK)
+            m.put("createdAt", fmt(r.getCreatedAt()));
+            m.put("updatedAt", fmt(r.getUpdatedAt()));
+             // (선택) 하위호환이 필요하면 유지
+             // var baseTs = (r.getUpdatedAt() != null) ? r.getUpdatedAt() : r.getCreatedAt();
+             // m.put("ts", fmt(baseTs));
+             
+            // mine은 그대로
             m.put("mine", Objects.equals(r.getUserId(), userIdOrNull));
             return m;
         }).collect(Collectors.toList());
@@ -64,12 +80,8 @@ public class RouteReviewController {
             return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
         }
 
-        // 표시 이름은 요청 바디에서 받되, 없으면 '익명'
-        String userName = (req.userName != null && !req.userName.trim().isEmpty())
-                ? req.userName
-                : "익명";
-
-        long id = reviewService.create(req.key, userId, userName, req.clientId, req.rating, req.text);
+        // ⬇️ USER_NAME/CLIENT_ID 제거한 create 시그니처로 호출
+        long id = reviewService.create(req.key, userId, req.rating, req.text);
         return ResponseEntity.ok(Map.of("item", Map.of("id", id)));
     }
 
@@ -84,7 +96,7 @@ public class RouteReviewController {
             return ResponseEntity.status(401).body(Map.of("error", "unauthorized"));
         }
 
-        boolean ok = reviewService.update(id, userId, req.rating, req.text);
+        boolean ok = reviewService.update(id, userId, req.rating, req.text); // UPDATED_AT은 SQL에서 SYSTIMESTAMP로 갱신
         return ok
                 ? ResponseEntity.ok(Map.of("ok", true))
                 : ResponseEntity.status(403).body(Map.of("ok", false));
@@ -107,11 +119,10 @@ public class RouteReviewController {
 
     /* ====== DTOs ====== */
     public static class CreateReq {
-        public String key;      // reviewKey (예: "oil:UNI" / "ev:SID|SID")
-        public double rating;   // 0.0 ~ 5.0
+        public String key;     // reviewKey (예: "oil:UNI" / "ev:SID|SID")
+        public double rating;  // 0.0 ~ 5.0
         public String text;
-        public String clientId; // 기록 용 (비로그인 클라 식별)
-        public String userName; // 선택: 프론트 표기용(없으면 '익명')
+        // ⚠️ userName, clientId 제거
     }
     public static class UpdateReq {
         public double rating;
