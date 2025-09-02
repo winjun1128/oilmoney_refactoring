@@ -17,7 +17,7 @@ function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo
                 setIsLogin(true);
                 setUserInfo(res.data.userInfo);
                 onClose();
-                alert("로그인 성공!");
+                //alert("로그인 성공!");
             } else {
                 alert(res.data.message);
             }

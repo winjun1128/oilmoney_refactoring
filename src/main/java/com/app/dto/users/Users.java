@@ -16,4 +16,5 @@ public class Users {
 	String phoneNum;
 	String addr;
 	String state;
+	String profileUrl;
 }

@@ -59,6 +59,7 @@ public class UsersDAOImpl implements UsersDAO {
 		newInfo.put("phoneNum", users.getPhoneNum());
 		newInfo.put("addr", users.getAddr());
 		newInfo.put("newPw", newPw);
+		newInfo.put("profileUrl", users.getProfileUrl());
 		
 		int result = sqlSessionTemplate.update("users_mapper.updateUserInfo", newInfo);
 		System.out.println("[DAO] 사용자 정보 수정 : " + users + ", 결과 : " + result);
@@ -80,6 +81,13 @@ public class UsersDAOImpl implements UsersDAO {
 	public int deleteUser(String userId) {
 		int result = sqlSessionTemplate.delete("users_mapper.deleteUser", userId);
 	    System.out.println("[DAO] 회원탈퇴 : " + userId + ", 결과 : " + result);
+	    return result;
+	}
+
+	@Override
+	public int countFavByUserId(String userId) {
+		int result = sqlSessionTemplate.selectOne("users_mapper.countFavByUserId", userId);
+	    System.out.println("[DAO] 즐겨찾기 : " + userId + ", 갯수 : " + result);
 	    return result;
 	}
 

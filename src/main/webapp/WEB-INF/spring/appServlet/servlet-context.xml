@@ -27,6 +27,14 @@ http://www.springframework.org/schema/context/spring-context.xsd">
 		<beans:property name="prefix" value="/WEB-INF/views/"></beans:property>
 		<beans:property name="suffix" value=".jsp"></beans:property>
 	</beans:bean>
+	
+	<!-- 프로필 사진 업로드 -->
+	<beans:bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+        <beans:property name="maxUploadSize" value="10485760"/>
+    </beans:bean>
+    
+    <resources mapping="/uploads/profile/**" location="/resources/images/mypage/"/>
+    
 	<resources location="/resources/" mapping="/**"></resources>
 
 	<annotation-driven>

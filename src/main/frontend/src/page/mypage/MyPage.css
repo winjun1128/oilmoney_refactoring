@@ -1,7 +1,6 @@
 .mypage-container {
     margin: 10px;
     display: flex;
-    /* height: 100vh; */
 }
 
 .mypage-left {
@@ -20,7 +19,9 @@
 }
 
 .mypage-profile-img {
-    width: 140px;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
     cursor: pointer;
     margin-top: 15px;
     margin-bottom: 14px;
@@ -35,13 +36,36 @@
     display: flex;
     flex-direction: column;
     margin-left: 25px;
-    gap: 20px;
-    font-size: 19px;
+    gap: 23px;
     color: rgb(34, 34, 34);
+    position: fixed;
 }
 
-.mypage-left-menu>span {
+.mypage-left-menu img {
+    width: 30px;
+}
+
+.mypage-left-menu span {
     cursor: pointer;
+}
+
+.mypage-menu-tabs {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.mypage-menu-tab {
+    display: flex;
+    align-items: center;
+    gap: 100px;
+    font-size: 20px;
+    color: #252525;
+}
+
+.mypage-count {
+    position: fixed;
+    right: 5px;
 }
 
 .mypage-left-footer {
@@ -82,14 +106,14 @@
     box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-.mypage-modal-input{
+.mypage-modal-input {
     height: 28px;
     border: 1px solid black;
     border-radius: 5px;
-    
+
 }
 
-.mypage-modal-btns{
+.mypage-modal-btns {
     margin-top: 10px;
     margin-left: 150px;
 }
@@ -110,39 +134,79 @@
 }
 
 /* EditInfo css */
-.edit-info-container{
+.edit-info-container {
     margin: 40px;
-    border: 1px solid black;
+    border: 3px solid rgb(191, 224, 255);
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
     min-width: 700px;
     border-radius: 15px;
-    padding: 20px;
     display: flex;
     flex-direction: column;
+    
 }
 
-.edit-title{
+.edit-title {
     display: flex;
     justify-content: space-between;
-    margin-top: 5px;
+    background-color: rgb(226, 241, 255);
+    border-radius: 13px 13px 0 0;
+    padding: 15px;
 }
 
-.edit-title-text{
+.edit-title-text {
     font-size: 25px;
     font-weight: bold;
 }
 
-.edit-buttons{
+.edit-buttons {
     display: flex;
     gap: 10px;
 }
-.edit-button{
+
+.edit-button {
     max-height: 30px;
-    
+    margin-top: 3px;
+    width: 45px;
+    border: 1px solid rgb(204, 230, 255);
+    border-radius: 10px;
+    background-color: rgb(204, 230, 255);
 }
 
-.edit-contents{
+.edit-button:hover {
+    background-color: rgb(191, 224, 255);
+    cursor: pointer;
+}
+
+#edit-info {
+    font-size: 13px;
+    margin-left: 5px;
+    color: #9b9b9b;
+}
+
+.edit-contents-box{
+    display: flex;
+    gap: 80px;
+}
+
+.edit-contents {
     display: flex;
     flex-direction: column;
     gap: 5px;
-    margin-top: 20px;
+    padding: 15px;
+    font-size: 17px;
+}
+
+.edit-contents input {
+    height: 18px;
+    border-radius: 7px;
+    border: 1.7px solid rgba(100, 100, 100, 0.76);
+    padding: 3px;
+}
+
+.edit-profile{
+
+}
+
+.edit-profile p{
+    font-size: 17px;
 }

@@ -35,7 +35,7 @@
 	<!-- 사용자 정보 조회 -->
 	<select id="getUserInfo" parameterType="string" resultType="Users">
 		select 
-			user_id AS userId, pw, name, email, phone_num AS phoneNum, addr
+			user_id AS userId, pw, name, email, phone_num AS phoneNum, addr, profile_url AS profileUrl
 		from t_users where user_id = #{userId}
 	</select>
 	
@@ -46,6 +46,9 @@
 			email = #{email}, phone_num = #{phoneNum}, addr = #{addr}
 			<if test="newPw != null and newPw != ''">
 				, pw = #{newPw}
+			</if>
+			<if test="profileUrl != null and profileUrl != ''">
+				, profile_url = #{profileUrl}
 			</if>
 		</set>
 		where user_id = #{userId}
@@ -62,5 +65,13 @@
 	<delete id="deleteUser" parameterType="string">
 		delete from t_users where user_id = #{userId}
 	</delete>
+	
+	<!-- 등록 차량 수 -->
+	
+	<!-- 즐겨찾기 -->
+	<select id="countFavByUserId" parameterType="string" resultType="int">
+		select count(*) from fav where user_id = #{userId}
+	</select>
+	
 	
 </mapper>

@@ -1,5 +1,7 @@
 package com.app.dao.users;
 
+import org.apache.ibatis.annotations.Param;
+
 import com.app.dto.users.EmailCode;
 import com.app.dto.users.Users;
 
@@ -15,4 +17,6 @@ public interface UsersDAO {
 	Users login(String userId, String pw);
 	
 	int deleteUser(String userId);
+	
+	int countFavByUserId(@Param("userId") String userId);
 }
