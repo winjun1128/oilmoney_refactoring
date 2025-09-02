@@ -3,6 +3,7 @@ package com.app.controller.route;
 import com.app.service.route.ReviewService;
 import com.app.util.JwtProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,7 +12,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/route/reviews")
+@RequestMapping(value = "/api/route/reviews", produces = MediaType.APPLICATION_JSON_VALUE)
 public class RouteReviewController {
 
     @Autowired
@@ -41,7 +42,8 @@ public class RouteReviewController {
             m.put("ts", r.getCreatedAt() != null
                     ? r.getCreatedAt().toString().replace('T', ' ').substring(0, 16)
                     : "");
-            m.put("mine", Boolean.TRUE.equals(r.getMine()));
+            // ★ 리뷰 작성자와 JWT의 sub 비교로 mine 판정
+            m.put("mine", Objects.equals(r.getUserId(), userIdOrNull));
             return m;
         }).collect(Collectors.toList());
 

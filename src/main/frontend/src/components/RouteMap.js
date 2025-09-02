@@ -499,6 +499,45 @@ export default function RouteMap() {
   const [modalList, setModalList] = useState([]);
 
   ////리뷰
+  // 응답이 JSON인지(또는 204) 강제 체크
+const requireJson = async (r) => {
+  if (!r.ok) throw new Error(`요청 실패 (${r.status})`);
+  if (r.status === 204) return null; // No Content도 성공으로 취급
+  const ct = r.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) {
+    const t = await r.text().catch(() => "");
+    // HTML(로그인 페이지 등)로 오면 여기서 중단
+    throw new Error("서버가 JSON을 반환하지 않았습니다. 로그인 만료 또는 API 라우트 확인 필요.");
+  }
+  return r.json();
+};
+
+
+  // 유틸 하나 추가
+  const isLocalReviewId = (id) => String(id || "").startsWith("local:");
+
+  const rvTextRef = useRef(null);
+  const rvEditTextRef = useRef(null);
+
+// 저장 시 현재 입력된 텍스트를 DOM에서 직접 읽음
+  const text = rvTextRef.current?.value?.trim() ?? "";
+  // 공용 IME 핸들러 팩토리
+const imeRef = useRef(false);
+const imeHandlers = (setter) => ({
+  onChange: (e) => { if (!imeRef.current) setter(e.target.value); },
+  onCompositionStart: () => { imeRef.current = true; },
+  onCompositionEnd: (e) => { imeRef.current = false; setter(e.target.value); },
+});
+  // 응답이 진짜 JSON인지 확인
+  const isJsonResponse = (r) => (r.headers.get("content-type") || "").includes("application/json");
+
+  const rvComposing = useRef(false);
+
+  const isTypingRef = useRef(false);
+
+// 포커스/블러 훅
+const onStartTyping = () => { isTypingRef.current = true; };
+const onStopTyping  = () => { isTypingRef.current = false; };
   // ★ 리뷰 state 위쪽 근처에 추가
 const CLIENT_ID_KEY = "route.reviews.clientId.v1";
 const getClientId = () => {
@@ -531,7 +570,7 @@ const [rvPage, setRvPage]         = useState(1);
 const [rvHasMore, setRvHasMore]   = useState(false);
 
 const [rvFormOpen, setRvFormOpen] = useState(false);
-const [rvText, setRvText]         = useState("");
+// const [rvText, setRvText]         = useState("");
 const [rvRating, setRvRating]     = useState(0);
 
 // 리뷰 state 근처에 추가
@@ -540,48 +579,69 @@ const [rvEditText, setRvEditText]     = useState("");
 const [rvEditRating, setRvEditRating] = useState(0);
 
 const putReview = async ({ id, key, rating, text }) => {
+  if (isLocalReviewId(id)) {
+    // 로컬 리뷰는 더 이상 지원하지 않음: 그냥 막아버림
+    throw new Error("오프라인(로컬) 리뷰는 수정할 수 없습니다. 로그인 후 작성해주세요.");
+  }
   const token = getToken();
   if (!token) throw new Error("로그인 후 수정할 수 있습니다.");
+
   const r = await fetch(`/api/route/reviews/${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ rating, text }),
   });
-  if (!r.ok) throw new Error("리뷰 수정 실패");
-  return await r.json();
+  return await requireJson(r); // JSON 또는 204만 성공으로 처리
 };
 
+
 const deleteReview = async ({ id, key }) => {
+  if (isLocalReviewId(id)) {
+    throw new Error("오프라인(로컬) 리뷰는 삭제할 수 없습니다. 로그인 후 작성해주세요.");
+  }
   const token = getToken();
   if (!token) throw new Error("로그인 후 삭제할 수 있습니다.");
+
   const r = await fetch(`/api/route/reviews/${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!r.ok) throw new Error("리뷰 삭제 실패");
+  await requireJson(r);
   return { ok: true };
 };
+
 
 const startEdit = (it) => {
   if (!getToken()) { alert("로그인 후 수정할 수 있습니다."); return; }
   setRvEditingId(it.id);
-  setRvEditText(it.text);
   setRvEditRating(Number(it.rating) || 0);
 };
 
 const handleUpdateReview = async () => {
-  const key = reviewKeyOf(modalStation, modalMode);
-  await putReview({ id: rvEditingId, key, rating: rvEditRating, text: rvEditText.trim() });
-  setRvEditingId(null);
-  await reloadReviews({ resetPage: true });
+  try {
+    const key = reviewKeyOf(modalStation, modalMode);
+    const newText = rvEditTextRef.current?.value?.trim() || "";
+    await putReview({ id: rvEditingId, key, rating: rvEditRating, text: newText });
+    setRvEditingId(null);
+    await reloadReviews({ resetPage: true });
+  } catch (e) {
+    alert(e.message || "리뷰 수정 실패");
+  }
 };
 
 const handleDeleteReview = async (id) => {
-  if (!getToken()) { alert("로그인 후 삭제할 수 있습니다."); return; }
-  if (!window.confirm("리뷰를 삭제할까요?")) return;
-  const key = reviewKeyOf(modalStation, modalMode);
-  await deleteReview({ id, key });
-  await reloadReviews({ resetPage: true });
+  try {
+    if (!getToken() && !isLocalReviewId(id)) {  // 로컬은 토큰 없어도 삭제 가능
+      alert("로그인 후 삭제할 수 있습니다.");
+      return;
+    }
+    if (!window.confirm("리뷰를 삭제할까요?")) return;
+    const key = reviewKeyOf(modalStation, modalMode);
+    await deleteReview({ id, key });
+    await reloadReviews({ resetPage: true });
+  } catch (e) {
+    alert(e.message || "리뷰 삭제 실패");
+  }
 };
 
 
@@ -651,41 +711,24 @@ const removeLocalReview = (key, id) => {
 const fetchReviews = async ({ key, page = 1, size = 5 }) => {
   const token = getToken();
   const me = getClientId();
-  try {
-    // 서버 조회(비로그인도 clientId 쿼리로 시도)
-    const qs = new URLSearchParams({
-      key, page: String(page), size: String(size), clientId: me,
-    });
-    const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-    const r = await fetch(`/api/route/reviews?${qs.toString()}`, { headers });
-    if (r.ok) return await r.json(); // { items, hasMore, avg, count, mine 포함 가능 }
+  const qs = new URLSearchParams({ key, page: String(page), size: String(size), clientId: me });
+  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
 
-    // 실패 시 로컬 폴백
-    const all = readLocalReviews(key);
-    const items = all.slice((page - 1) * size, page * size)
-                     .map(it => ({ ...it, mine: false })); // ★ 비로그인 편집 불가이므로 mine=false
-    const count = all.length;
-    const avg = count ? (all.reduce((s, x) => s + (x.rating || 0), 0) / count) : 0;
-    return { items, hasMore: page * size < count, avg, count };
-  } catch {
-    // 동일 폴백
-    const all = readLocalReviews(key);
-    const items = all.slice((page - 1) * size, page * size)
-                     .map(it => ({ ...it, mine: false }));
-    const count = all.length;
-    const avg = count ? (all.reduce((s, x) => s + (x.rating || 0), 0) / count) : 0;
-    return { items, hasMore: page * size < count, avg, count };
-  }
+  const r = await fetch(`/api/route/reviews?${qs.toString()}`, { headers });
+  const json = await requireJson(r);
+  // 서버가 반드시 { items, hasMore, avg, count } 형태를 주도록 가정
+  return json;
 };
+
+
 
 
 const postReview = async ({ key, rating, text }) => {
   const token = getToken();
   if (!token) throw new Error("로그인 후 작성할 수 있습니다.");
-  const now = new Date();
   const payload = {
     key, rating, text,
-    ts: now.toISOString().slice(0, 16).replace("T", " "),
+    ts: new Date().toISOString().slice(0,16).replace("T"," "),
     clientId: getClientId(),
   };
   const r = await fetch(`/api/route/reviews`, {
@@ -693,13 +736,14 @@ const postReview = async ({ key, rating, text }) => {
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
   });
-  if (!r.ok) throw new Error("리뷰 저장 실패");
-  return await r.json(); // { item }
+  return await requireJson(r); // { item } 만 허용, 아니면 throw
 };
 
 
 
+
 const reloadReviews = async ({ resetPage = true } = {}) => {
+  if (isTypingRef.current && !resetPage) return; // 타이핑 중 더보기 등의 추가 로드 억제
   const key = reviewKeyOf(modalStation, modalMode);
   if (!key) return;
   const page = resetPage ? 1 : rvPage;
@@ -1492,7 +1536,8 @@ const handleResetHome = () => {
 
   ////
   const handleSaveReview = async () => {
-  if (!rvText.trim() || rvRating <= 0) {
+    const text = rvTextRef.current?.value?.trim() || "";
+  if (!text || rvRating <= 0) {
     alert("리뷰 내용과 별점을 입력하세요.");
     return;
   }
@@ -1503,8 +1548,10 @@ const handleResetHome = () => {
   const key = reviewKeyOf(modalStation, modalMode);
   try {
     setRvLoading(true);
-    await postReview({ key, rating: rvRating, text: rvText.trim() });
-    setRvText(""); setRvRating(0); setRvFormOpen(false);
+    await postReview({ key, rating: rvRating, text });
+    if (rvTextRef.current) rvTextRef.current.value = ""; // 입력창 비우기
+    setRvRating(0);
+    setRvFormOpen(false);
     await reloadReviews({ resetPage: true });
   } catch (e) {
     alert(e.message || "리뷰 저장 실패");
@@ -1938,11 +1985,11 @@ const ReviewsSection = () => (
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <textarea
-            placeholder="리뷰 내용을 입력하세요"
-            value={rvText}
-            onChange={(e) => setRvText(e.target.value)}
-            style={{ flex: 1, height: 90, resize: "vertical" }}
-          />
+           ref={rvTextRef}
+           defaultValue=""          // 초기값만 지정, 이후 값 관리는 DOM
+           onFocus={onStartTyping}
+           onBlur={onStopTyping}
+         />
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <button className="btn btn-primary" onClick={handleSaveReview} disabled={rvLoading}>
               저장
@@ -1985,8 +2032,11 @@ const ReviewsSection = () => (
                  onChange={(e) => setRvEditRating(Number(e.target.value))} style={{ width: 72 }} />
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <textarea value={rvEditText} onChange={(e) => setRvEditText(e.target.value)}
-                    style={{ flex: 1, height: 80, resize: "vertical" }} />
+        <textarea
+          ref={rvEditTextRef}
+          defaultValue={it.text}   // ← 초기값만 주고 이후엔 DOM이 관리
+          style={{ flex: 1, height: 80, resize: "vertical" }}
+        />
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <button className="btn btn-primary" onClick={handleUpdateReview} disabled={rvLoading}>저장</button>
             <button className="btn btn-ghost" onClick={() => setRvEditingId(null)}>취소</button>
