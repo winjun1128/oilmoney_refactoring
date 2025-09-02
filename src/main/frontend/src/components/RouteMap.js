@@ -742,25 +742,31 @@ const postReview = async ({ key, rating, text }) => {
 
 
 
-const reloadReviews = async ({ resetPage = true } = {}) => {
-  if (isTypingRef.current && !resetPage) return; // 타이핑 중 더보기 등의 추가 로드 억제
+// 기존: const reloadReviews = async ({ resetPage = true } = {}) => {
+const reloadReviews = async ({ resetPage = true, page } = {}) => {
   const key = reviewKeyOf(modalStation, modalMode);
   if (!key) return;
-  const page = resetPage ? 1 : rvPage;
+
+  const pageToLoad = resetPage ? 1 : (page ?? rvPage + 1); // ← 확실히 어떤 페이지를 읽을지 결정
   setRvLoading(true); setRvError("");
+
   try {
-    const res = await fetchReviews({ key, page, size: 5 });
-    setRvPage(page);
-    setRvItems(resetPage ? res.items : [...rvItems, ...res.items]);
-    setRvHasMore(!!res.hasMore);
+    const res = await fetchReviews({ key, page: pageToLoad, size: 5 });
+
+    setRvPage(pageToLoad); // 실제로 로드한 페이지로 동기화
+    setRvItems(prev => resetPage ? res.items : [...prev, ...res.items]); // ← 함수형 업데이트
+    setRvHasMore(Boolean(res.hasMore) && (res.items?.length ?? 0) > 0);
     setRvAvg(res.avg || 0);
-    setRvCount(res.count || (resetPage ? res.items.length : rvItems.length + res.items.length));
+    setRvCount(prev =>
+      res.count ?? (resetPage ? (res.items?.length ?? 0) : prev + (res.items?.length ?? 0))
+    );
   } catch (e) {
     setRvError(e.message || "리뷰를 불러오지 못했습니다.");
   } finally {
     setRvLoading(false);
   }
 };
+
 ////
 
   // ✅ 추천 개수
@@ -2050,17 +2056,22 @@ const ReviewsSection = () => (
 ))}
 
 
-    {rvHasMore && (
-      <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
-        <button
-          className="btn"
-          onClick={async () => { setRvPage((p) => p + 1); await reloadReviews({ resetPage: false }); }}
-          disabled={rvLoading}
-        >
-          더보기
-        </button>
-      </div>
-    )}
+  {rvHasMore && (
+  <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
+    <button
+      className="btn"
+      onClick={() => {
+        if (rvLoading) return;
+        const next = rvPage + 1;
+        reloadReviews({ resetPage: false, page: next }); // ← 명시적으로 next 전달
+      }}
+      disabled={rvLoading}
+    >
+      더보기
+    </button>
+  </div>
+  )}
+
   </div>
 );
 
