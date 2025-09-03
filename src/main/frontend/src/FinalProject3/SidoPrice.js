@@ -2,12 +2,11 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import FlipNumbers from 'react-flip-numbers';
-import RegionSelector from "./RegionSelector";
 
-export default function SidoPrice() {
-    const [selectedIndex, setSelectedIndex] = useState(0);
+
+export default function SidoPrice({ selectedSidoName, setSelectedSidoName, selectedFuel }) {
+    const [selectedIndex, setSelectedIndex] = useState(7);
     const [oilData, setOilData] = useState([]);
-    const [selectedSidoName, setSelectedSidoName] = useState("서울");
 
     const pins = [
         { name: "서울", top: "70px", left: "135px" },
@@ -48,13 +47,42 @@ export default function SidoPrice() {
 
     const handlePinClick = (index) => {
         setSelectedIndex(index);
-        setSelectedSidoName(pins[index].name);
+        setSelectedSidoName(pins[index].name); // 상위 상태 업데이트
     };
 
+    // 🔹 selectedFuel을 사용한 필터링
+    const filteredData = oilData.filter(item =>
+        item.SIDONM === selectedSidoName &&
+        ((selectedFuel === "휘발유" && item.PRODCD === "B027") ||
+            (selectedFuel === "고급휘발유" && item.PRODCD === "B034") ||
+            (selectedFuel === "경유" && item.PRODCD === "D047") ||
+            (selectedFuel === "LPG" && item.PRODCD === "K015"))
+    );
+
     return (
-        <div className="sido_container" style={{ display: "flex" }}>
             <div className="map_box" style={{ padding: '10px', width: '32%' }}>
-                <h2>시도별 평균유가</h2>
+                <div className="LocalPriceBox" style={{ marginTop: 12 }}>
+                    <h2>{selectedSidoName} {selectedFuel} 평균유가</h2>
+                    {filteredData.length > 0 && (
+                        <ul style={{ listStyle: 'none', padding: 0, border: '1px solid black' }}>
+                            {filteredData.map((item, index) => (
+                                <li key={index} style={{ display: 'flex', marginBottom: '10px', padding: '10px', borderRadius: '20px' }}>
+                                    <div style={{ display: 'flex' }}>
+                                        {selectedFuel} : <FlipNumbers
+                                            height={20}
+                                            width={10}
+                                            color="black"
+                                            background="white"
+                                            play
+                                            numbers={item.PRICE.toString()}
+                                        /> 원
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+                <h2>지역별 평균유가</h2>
                 <hr />
                 <div
                     className="main_map"
@@ -92,47 +120,5 @@ export default function SidoPrice() {
                 </div>
             </div>
 
-            <div className="LocalPriceBox" style={{ marginTop: 12 }}>
-                {oilData.filter(item => item.SIDONM === selectedSidoName).length > 0 && (
-                    <ul style={{ listStyle: 'none', padding: 0, border: '1px solid black' }}>
-                        {oilData
-                            .filter(item =>
-                                item.SIDONM === selectedSidoName && ["B034", "B027", "D047", "K015"].includes(item.PRODCD)
-                            )
-                            .map((item, index) => {
-                                let fuelName = "";
-                                switch (item.PRODCD) {
-                                    case "B027": fuelName = "휘발유"; break;
-                                    case "B034": fuelName = "고급휘발유"; break;
-                                    case "D047": fuelName = "경유"; break;
-                                    case "K015": fuelName = "LPG"; break;
-                                    default: fuelName = item.PRODNM;
-                                }
-
-                                return (
-                                    <li key={index} style={{
-                                        display: 'flex',
-                                        marginBottom: '10px',
-                                        padding: '10px',
-                                        borderRadius: '20px'
-                                    }}>
-                                        <div style={{ display: 'flex' }}>
-                                            {fuelName} : <FlipNumbers
-                                                height={20}
-                                                width={10}
-                                                color="black"
-                                                background="white"
-                                                play
-                                                numbers={item.PRICE.toString()}
-                                            /> 원
-                                        </div>
-                                    </li>
-                                );
-                            })}
-                    </ul>
-                )}
-                <RegionSelector sidoName={selectedSidoName} />
-            </div>
-        </div>
     );
 }
