@@ -2,10 +2,13 @@ package com.app.controller.route;
 
 import com.app.Repository.impl.EVInfoImpl;
 import com.app.Repository.impl.EVStatus;
+import com.app.Repository.impl.OilAvgPrice;
 import com.app.Repository.impl.OilInfo;
 import com.app.Repository.impl.OilPrice;
 import com.app.Repository.parse.UniExtractor;
+import com.app.dao.route.gas.GasStationDAO;
 import com.app.dto.route.Charger;
+import com.app.dto.route.GasStation;
 import com.app.service.route.EvChargeService;
 import com.app.service.route.GasStationService;
 import com.app.service.route.impl.GasStationServiceImpl;
@@ -28,6 +31,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
 
 import java.nio.charset.StandardCharsets;
+import java.time.format.DateTimeFormatter;
 // import java.time.Duration;                      // ❌ 사용 안 함
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,6 +48,11 @@ import javax.servlet.http.HttpServletRequest;
 @RequestMapping("/api/route")
 @RequiredArgsConstructor
 public class EvOilProxyController {
+	
+	DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+	
+	@Autowired
+	GasStationDAO gasStationDAO;
 	
 	@Autowired
 	EvChargeService evChargeService;
@@ -354,84 +363,245 @@ public class EvOilProxyController {
   }
 
   //사용못함 트래픽 넘음 1500개 밖에 안되서
-  @GetMapping(value="/oil/price/all", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<Map<String, Object>> oilPrice() throws Exception {
-    ObjectMapper om = new ObjectMapper();
+//  @GetMapping(value="/oil/price/all", produces = MediaType.APPLICATION_JSON_VALUE)
+//  public ResponseEntity<Map<String, Object>> oilPrice() throws Exception {
+//    ObjectMapper om = new ObjectMapper();
+//
+//    // 1) UNI_CD 목록
+//    String infoBody = OilInfo.getOilInfo();
+//    List<String> uniList = gasStationService.selectAllUniCd();
+//
+//    // 2) 모든 주유소의 아이템을 누적할 리스트
+//    List<Map<String, Object>> aggregatedItems = new ArrayList<>();
+//
+//    // 3) 주유소별 가격 API 호출 → items만 모아서 누적
+//    for (String uni : uniList) {
+//      try {
+//        String body = OilPrice.getOilPrice(uni);
+//
+//        // 안전하게 탐색하기 위해 JsonNode 사용
+//        JsonNode root = om.readTree(body);
+//        JsonNode itemsNode = root.path("response").path("body").path("items");
+//
+//        if (itemsNode.isArray()) {
+//          for (JsonNode it : itemsNode) {
+//            if (it.isObject() && it.get("UNI_CD") == null) {
+//              ((ObjectNode) it).put("UNI_CD", uni);
+//            }
+//            aggregatedItems.add(om.convertValue(it, new TypeReference<Map<String,Object>>(){ }));
+//          }
+//        }
+//        else if (itemsNode.has("item")) {
+//          JsonNode itemNode = itemsNode.get("item");
+//          if (itemNode.isArray()) {
+//            for (JsonNode it : itemNode) {
+//              if (it.isObject() && it.get("UNI_CD") == null) {
+//                ((ObjectNode) it).put("UNI_CD", uni);
+//              }
+//              aggregatedItems.add(om.convertValue(it, new TypeReference<Map<String,Object>>(){ }));
+//            }
+//          } else if (itemNode.isObject()) {
+//            if (itemNode.get("UNI_CD") == null) {
+//              ((ObjectNode) itemNode).put("UNI_CD", uni);
+//            }
+//            aggregatedItems.add(om.convertValue(itemNode, new TypeReference<Map<String,Object>>(){ }));
+//          }
+//        }
+//        else if (itemsNode.isObject()) {
+//          ObjectNode obj = (ObjectNode) itemsNode;
+//          if (obj.get("UNI_CD") == null) obj.put("UNI_CD", uni);
+//          aggregatedItems.add(om.convertValue(obj, new TypeReference<Map<String,Object>>(){ }));
+//        } else {
+//          Map<String,Object> whole = om.readValue(body, new TypeReference<Map<String,Object>>(){});
+//          whole.put("UNI_CD", uni);
+//          aggregatedItems.add(whole);
+//        }
+//      } catch (Exception e) {
+//        // 실패한 UNI_CD는 스킵 (로그만 남김)
+//        // log.warn("OilPrice 호출/파싱 실패 uni={}", uni, e);
+//      }
+//    }
+//
+//    Map<String, Object> header = new LinkedHashMap<>();
+//    header.put("resultCode", "00");
+//    header.put("resultMsg", "AGGREGATED SUCCESS");
+//
+//    Map<String, Object> body = new LinkedHashMap<>();
+//    body.put("pageNo", 1);
+//    body.put("numOfRows", aggregatedItems.size());
+//    body.put("totalCount", aggregatedItems.size());
+//    body.put("items", aggregatedItems);
+//
+//    Map<String, Object> response = new LinkedHashMap<>();
+//    response.put("header", header);
+//    response.put("body", body);
+//
+//    Map<String, Object> outer = new LinkedHashMap<>();
+//    outer.put("response", response);
+//
+//    return ResponseEntity.ok(outer);
+//  }
+  
+//  @GetMapping(value="/oil/price/all", produces = MediaType.APPLICATION_JSON_VALUE)
+//  public ResponseEntity<Map<String,Object>> oilPriceAllFromDb() {
+//    var rows = gasStationDAO.selectAllWithAnyPrice();
+//
+//    List<Map<String,Object>> items = new ArrayList<>();
+//    for (var r : rows) {
+//    	String ts = (r.getPriceUpdatedAt() == null)
+//    		    ? null
+//    		    : r.getPriceUpdatedAt().format(FMT);   // ✅ 끝
+//      if (r.getPriceGasoline()!=null) items.add(Map.of("UNI_CD", r.getUniCd(),"PRODCD","B027","PRICE", r.getPriceGasoline(),"BASE_DT",ts));
+//      if (r.getPriceDiesel()!=null)   items.add(Map.of("UNI_CD", r.getUniCd(),"PRODCD","D047","PRICE", r.getPriceDiesel(),"BASE_DT",ts));
+//      if (r.getPricePremium()!=null)  items.add(Map.of("UNI_CD", r.getUniCd(),"PRODCD","B034","PRICE", r.getPricePremium(),"BASE_DT",ts));
+//      if (r.getPriceKerosene()!=null) items.add(Map.of("UNI_CD", r.getUniCd(),"PRODCD","C004","PRICE", r.getPriceKerosene(),"BASE_DT",ts));
+//      if (r.getPriceLpg()!=null)      items.add(Map.of("UNI_CD", r.getUniCd(),"PRODCD","K015","PRICE", r.getPriceLpg(),"BASE_DT",ts));
+//    }
+//    return ResponseEntity.ok(Map.of("response", Map.of("body", Map.of("items", items))));
+//  }
+//EvOilProxyController.java
 
-    // 1) UNI_CD 목록
-    String infoBody = OilInfo.getOilInfo();
-    List<String> uniList = gasStationService.selectAllUniCd();
+@GetMapping(value="/oil/price/all", produces = MediaType.APPLICATION_JSON_VALUE)
+public ResponseEntity<Map<String,Object>> oilPriceAllFromDb() {
+ // 1) DB에서 충남(sido=05) 지점 전체 조회
+ List<GasStation> list = gasStationDAO.selectAll("05", "");
 
-    // 2) 모든 주유소의 아이템을 누적할 리스트
-    List<Map<String, Object>> aggregatedItems = new ArrayList<>();
+ // 2) 등장하는 시군코드만 추려서 평균가를 한 번씩만 조회/캐싱
+ Set<String> siguns = list.stream()
+     .map(GasStation::getSigunCd)
+     .filter(s -> s != null && !s.isBlank())
+     .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
 
-    // 3) 주유소별 가격 API 호출 → items만 모아서 누적
-    for (String uni : uniList) {
-      try {
-        String body = OilPrice.getOilPrice(uni);
+ Map<String, Map<String, Integer>> avgBySigun = new java.util.HashMap<>();
+ for (String sigun : siguns) {
+   try {
+     // prodcd=null → 전 계종 평균가 반환 (B027/D047/B034/C004/K015)
+     String body = OilAvgPrice.getAvgSigunPrice("05", sigun, null, true);
+     Map<String, Integer> perProd = parseAvgPerProd(body);  // 👈 아래 헬퍼
+     avgBySigun.put(sigun, perProd);
+   } catch (Exception e) {
+     // 실패 시 빈 맵으로 채워두고 넘어감(그 시군 평균은 없음)
+     avgBySigun.put(sigun, java.util.Collections.emptyMap());
+   }
+ }
 
-        // 안전하게 탐색하기 위해 JsonNode 사용
-        JsonNode root = om.readTree(body);
-        JsonNode itemsNode = root.path("response").path("body").path("items");
+ // 3) 응답 items 구성: 각 지점별로 {PRICES, AVG, DIFF} 패키징
+ List<Map<String,Object>> items = new java.util.ArrayList<>();
+ for (GasStation g : list) {
+   Map<String, Integer> prices = new java.util.LinkedHashMap<>();
+   putIfNotNull(prices, "B027", g.getPriceGasoline()); // 휘발유
+   putIfNotNull(prices, "D047", g.getPriceDiesel());   // 경유
+   putIfNotNull(prices, "B034", g.getPricePremium());  // 고급유
+   putIfNotNull(prices, "C004", g.getPriceKerosene()); // 등유
+   putIfNotNull(prices, "K015", g.getPriceLpg());      // LPG
 
-        if (itemsNode.isArray()) {
-          for (JsonNode it : itemsNode) {
-            if (it.isObject() && it.get("UNI_CD") == null) {
-              ((ObjectNode) it).put("UNI_CD", uni);
-            }
-            aggregatedItems.add(om.convertValue(it, new TypeReference<Map<String,Object>>(){ }));
-          }
-        }
-        else if (itemsNode.has("item")) {
-          JsonNode itemNode = itemsNode.get("item");
-          if (itemNode.isArray()) {
-            for (JsonNode it : itemNode) {
-              if (it.isObject() && it.get("UNI_CD") == null) {
-                ((ObjectNode) it).put("UNI_CD", uni);
-              }
-              aggregatedItems.add(om.convertValue(it, new TypeReference<Map<String,Object>>(){ }));
-            }
-          } else if (itemNode.isObject()) {
-            if (itemNode.get("UNI_CD") == null) {
-              ((ObjectNode) itemNode).put("UNI_CD", uni);
-            }
-            aggregatedItems.add(om.convertValue(itemNode, new TypeReference<Map<String,Object>>(){ }));
-          }
-        }
-        else if (itemsNode.isObject()) {
-          ObjectNode obj = (ObjectNode) itemsNode;
-          if (obj.get("UNI_CD") == null) obj.put("UNI_CD", uni);
-          aggregatedItems.add(om.convertValue(obj, new TypeReference<Map<String,Object>>(){ }));
-        } else {
-          Map<String,Object> whole = om.readValue(body, new TypeReference<Map<String,Object>>(){});
-          whole.put("UNI_CD", uni);
-          aggregatedItems.add(whole);
-        }
-      } catch (Exception e) {
-        // 실패한 UNI_CD는 스킵 (로그만 남김)
-        // log.warn("OilPrice 호출/파싱 실패 uni={}", uni, e);
-      }
-    }
+   Map<String, Integer> avg = avgBySigun.getOrDefault(g.getSigunCd(),
+       java.util.Collections.emptyMap());
 
-    Map<String, Object> header = new LinkedHashMap<>();
-    header.put("resultCode", "00");
-    header.put("resultMsg", "AGGREGATED SUCCESS");
+   Map<String, Integer> diff = new java.util.LinkedHashMap<>();
+   // union(지점가 키 ∪ 평균가 키) 기준으로 DIFF 채움
+   java.util.Set<String> keys = new java.util.LinkedHashSet<>();
+   keys.addAll(prices.keySet());
+   keys.addAll(avg.keySet());
+   for (String k : keys) {
+     Integer p = prices.get(k), a = avg.get(k);
+     if (p != null && a != null) diff.put(k, p - a);   // 지점-평균
+   }
 
-    Map<String, Object> body = new LinkedHashMap<>();
-    body.put("pageNo", 1);
-    body.put("numOfRows", aggregatedItems.size());
-    body.put("totalCount", aggregatedItems.size());
-    body.put("items", aggregatedItems);
+   Map<String, Object> row = new java.util.LinkedHashMap<>();
+   row.put("UNI_CD", g.getUniCd());
+   row.put("NAME", g.getName());
+   row.put("BRAND", g.getBrand());
+   row.put("SIGUN_CD", g.getSigunCd());
+   row.put("LON", g.getLon());
+   row.put("LAT", g.getLat());
+   row.put("PRICES", prices); // {B027: 1655, D047: 1518, ...}
+   row.put("AVG",    avg);    // {B027: 1660, D047: 1525, ...}
+   row.put("DIFF",   diff);   // {B027: -5,   D047: -7,   ...}
+   row.put("UPDATED_AT",
+       g.getPriceUpdatedAt() == null ? null : g.getPriceUpdatedAt().format(FMT));
 
-    Map<String, Object> response = new LinkedHashMap<>();
-    response.put("header", header);
-    response.put("body", body);
+   items.add(row);
+ }
 
-    Map<String, Object> outer = new LinkedHashMap<>();
-    outer.put("response", response);
+ Map<String,Object> payload =
+     Map.of("response", Map.of("body", Map.of("items", items)));
+ return ResponseEntity.ok(payload);
+}
 
-    return ResponseEntity.ok(outer);
-  }
+/* ───── 헬퍼들 ───── */
+
+private void putIfNotNull(Map<String,Integer> m, String k, Integer v) {
+ if (v != null) m.put(k, v);
+}
+
+/** avgSigunPrice.do 응답 → {PRODCD → PRICE} 맵으로 파싱 */
+private Map<String, Integer> parseAvgPerProd(String body) {
+ Map<String, Integer> out = new java.util.LinkedHashMap<>();
+ try {
+   JsonNode root = om.readTree(body);
+
+   // 보통: {"RESULT":{"OIL":[{"SIGUNCD":"0506","PRODCD":"B027","PRICE":1660,...}, ...]}}
+   JsonNode arr = root.path("RESULT").path("OIL");
+   if (arr.isMissingNode() || arr.isNull()) {
+     // fallback(혹시 다른 래핑)
+     JsonNode tmp = root.path("response").path("body").path("items");
+     arr = tmp.has("item") ? tmp.get("item") : tmp;
+   }
+
+   if (arr.isArray()) {
+	   for (JsonNode it : arr) {
+	     String prod = text(it, "PRODCD", "prodcd");
+	     Integer price = null;
+	     JsonNode p = it.get("PRICE");
+	     if (p != null && !p.isNull()) {
+	       if (p.isNumber()) {
+	         price = (int) Math.round(p.asDouble());
+	       } else {
+	         price = toInt(p.asText(null)); // "1656.80" 같은 문자열 대비
+	       }
+	     }
+	     if (prod != null && price != null) out.put(prod, price);
+	   }
+	 } else if (arr.isObject()) {
+	   String prod = text(arr, "PRODCD", "prodcd");
+	   Integer price = null;
+	   JsonNode p = arr.get("PRICE");
+	   if (p != null && !p.isNull()) {
+	     price = p.isNumber() ? (int) Math.round(p.asDouble()) : toInt(p.asText(null));
+	   }
+	   if (prod != null && price != null) out.put(prod, price);
+	 }
+   
+ } catch (Exception ignore) {}
+ return out;
+}
+
+private static Integer toInt(String s) {
+	  if (s == null) return null;
+	  s = s.replace(",", "").trim();
+	  if (s.isEmpty() || "null".equalsIgnoreCase(s)) return null;
+	  try {
+	    // 소수점 허용 → 반올림해서 원 단위 정수로
+	    double d = Double.parseDouble(s);
+	    return (int) Math.round(d);
+	  } catch (Exception e) {
+	    return null;
+	  }
+	}
+
+private static String text(JsonNode n, String... ks) {
+ for (String k : ks) {
+   JsonNode v = n.path(k);
+   if (!v.isMissingNode() && !v.isNull()) {
+     String s = v.asText().trim();
+     if (!s.isEmpty() && !"null".equalsIgnoreCase(s)) return s;
+   }
+ }
+ return null;
+}
+
+
 
   @GetMapping(value="/oil/nearby", produces = MediaType.APPLICATION_JSON_VALUE)
   public Map<?,?> oilNearby(@RequestParam double lon,

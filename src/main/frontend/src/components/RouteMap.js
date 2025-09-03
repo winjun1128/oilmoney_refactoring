@@ -215,9 +215,11 @@ const getMarkerImage = (type, kakao, starred = false, scale = 1) => {
   }
 
   const fill =
-    type === "ev" ? "#2b8af7" :
-    type === "oil" ? "#ff7f27" :
-    type === "lpg" ? "#616161" :
+   type === "ev"         ? "#2b8af7" :
+   type === "oil-cheap"  ? "#2ecc71" :   // 싸다(초록)
+   type === "oil-exp"    ? "#e74c3c" :   // 비싸다(빨강)
+   type === "oil"        ? "#ff7f27" :   // 보통(주황)
+   type === "lpg"        ? "#616161" :
     type === "origin" ? "#7b1fa2" :
     type === "dest" ? "#2e7d32" : "#999";
 
@@ -362,6 +364,37 @@ export default function RouteMap() {
 
     activeMarkerRef.current = { marker, type, starred, overlay };
   };
+  // 유가 동작
+  // 파일 상단 유틸 근처에 추가
+const fmtWon = (v) => {
+  const n = Number(String(v ?? "").replace(/,/g, "").trim());
+  return Number.isFinite(n) ? n.toLocaleString() : "-";
+};
+  // ── [API] 추가
+ const fetchOilWithAverage = async () => {
+   const res = await fetch(`/api/route/oil/price/all`);
+   if (!res.ok) throw new Error(`/oil/price/all 오류: ${res.status}`);
+   return res.json();
+ };
+
+ const normalizeOilAvgMap = (json) => {
+   const raw = json?.response?.body?.items ?? [];
+   const arr = Array.isArray(raw) ? raw : [raw];
+   const map = new Map();
+   for (const o of arr) {
+     const uni = String(o.UNI_CD || o.uni || "");
+     if (!uni) continue;
+     map.set(uni, {
+       prices: o.PRICES || {},
+       avg:    o.AVG    || {},
+       diff:   o.DIFF   || {},
+       updatedAt: o.UPDATED_AT || null,
+       sigunCd:   o.SIGUN_CD   || null,
+     });
+   }
+   return map;
+ };
+
 
   // 즐겨찾기 동작
   const FAV_KEY = "route.favorites.v1";
@@ -996,17 +1029,33 @@ const onModalDragEnd = () => {
 
       try {
         setLoading(true);
-        const [evInfoJson, oilJson] = await Promise.all([
+        const [evInfoJson, oilJson, oilAvgJson] = await Promise.all([
           fetchEvInfo(),
-          fetchOilInfoAll(),
+          fetchOilInfoAll(),     // 위치/브랜드/LPG 여부 등
+          fetchOilWithAverage(), // PRICES/AVG/DIFF
         ]);
 
         const evAll = normalizeEvInfoItems(evInfoJson);
         const evSites = aggregateEvSites(evAll);
         const oilAll = normalizeOilInfoItems(oilJson);
+        const avgMap = normalizeOilAvgMap(oilAvgJson);
+
+        // 지점 리스트에 평균/차이/가격을 merge
+      const oilEnriched = oilAll.map((gs) => {
+        const extra = avgMap.get(gs.uni) || {};
+        return {
+          ...gs,
+          prices:   extra.prices   || {},
+          avg:      extra.avg      || {},   // ← 기본 {}
+          diff:     extra.diff     || {},   // ← 기본 {}
+          updatedAt: extra.updatedAt ?? null,
+          sigunCd:   extra.sigunCd   ?? null,
+        };
+      });
+
 
         drawEvMarkers(evSites);
-        drawOilMarkers(oilAll);
+        drawOilMarkers(oilEnriched);     // ← merge된 걸 넘김
 
         applyFiltersToMarkers();
       } catch (e) {
@@ -1406,11 +1455,19 @@ const handleResetHome = () => {
     list.forEach((gs) => {
       const isLpg = /^(Y|1|T|TRUE)$/i.test(String(gs.lpgYn ?? ""));
       const cat = isLpg ? "lpg" : "oil";
+      // B027(휘발유) 우선, 없으면 D047(경유)로 판정
+       const d = parseNum(gs?.diff?.B027 ?? gs?.diff?.D047);
+       let markerType = cat;
+       if (cat === "oil" && Number.isFinite(d)) {
+         if (d < 0) markerType = "oil-cheap";
+         else if (d > 0) markerType = "oil-exp";
+       }
+
       const favKey = favKeyOf(gs, "oil");
       const starred0 = !!(favKey && favSetRef.current?.has(favKey));
 
       const { marker, overlay } = addLabeledMarker({
-        map: mapRef.current, kakao, type: cat,
+        map: mapRef.current, kakao, type: markerType,
         lat: gs.lat, lng: gs.lng,
         name: gs.name || (cat === "lpg" ? "LPG" : "주유소"),
         labelAlways: LABEL_ALWAYS,
@@ -1419,12 +1476,12 @@ const handleResetHome = () => {
 
       kakao.maps.event.addListener(marker, "click", () => {
         const starredNow = !!(favKey && favSetRef.current?.has(favKey));
-        setActiveMarker({ marker, type: cat, starred: starredNow, overlay });
+        setActiveMarker({ marker, type: markerType, starred: starredNow, overlay });
         openOilModal(gs);
         drawDetourForPoint(gs);
       });
 
-      allMarkersRef.current.push({ marker, overlay, type: cat, cat, lat: gs.lat, lng: gs.lng, data: gs, favKey });
+      allMarkersRef.current.push({ marker, overlay, type: markerType, cat, lat: gs.lat, lng: gs.lng, data: gs, favKey });
     });
   };
 
@@ -2466,6 +2523,8 @@ const ReviewsSection = () => (
             {modalMode === "oil" && (
               <>
                 <div style={{ marginTop: 2, color: "#666", fontSize: 13 }}>
+                  <div>※ 시군 평균(휘발유): {fmtWon(modalStation?.avg?.B027)}</div>
+                  <div>※ 차이(휘발유): {fmtWon(modalStation?.diff?.B027)} 원</div>
                   브랜드: {brandName(modalStation?.brand)}
                   {modalStation?.self ? ` · 셀프: ${modalStation.self}` : ""}
                   {modalStation?.tel ? ` · Tel: ${modalStation.tel}` : ""}
