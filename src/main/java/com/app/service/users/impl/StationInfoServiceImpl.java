@@ -22,4 +22,11 @@ public class StationInfoServiceImpl implements StationInfoService {
         return result;
 	}
 
+	@Override
+	public List<StationInfo> getReviewsList(String userId) {
+		List<StationInfo> result = stationInfoDAO.getReviewsList(userId);
+		System.out.println("[Service] 리뷰 조회 : " + userId + ", 결과 수 : " + (result != null ? result.size() : 0));
+        return result;
+	}
+
 }

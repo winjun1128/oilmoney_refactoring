@@ -33,7 +33,7 @@ public class MyPageController {
 
 	@Autowired
 	ServletContext servletContext;
-	
+
 	@Autowired
 	StationInfoService stationInfoService;
 
@@ -63,9 +63,8 @@ public class MyPageController {
 		System.out.println("[Controller] 등록 차량 수 : " + carCount);
 		System.out.println("[Controller] 즐겨찾기 : " + stationInfo);
 		System.out.println("[Controller] 즐겨찾기 갯수 : " + favCount);
-		
+
 		System.out.println("[Controller] 리뷰 갯수 : " + reviewCount);
-		
 
 		Map<String, Object> response = new HashMap<>();
 		response.put("userInfo", users != null ? users : new Users());
@@ -149,19 +148,33 @@ public class MyPageController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("삭제 실패");
 		}
 	}
-	
+
 //	즐겨찾기 목록
 	@PostMapping("/favorites")
 	public ResponseEntity<?> getFavoriteStations(HttpServletRequest request) {
-	    String token = JwtProvider.extractToken(request);
-	    if (token == null || !JwtProvider.isValidToken(token)) {
-	        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(List.of());
-	    }
+		String token = JwtProvider.extractToken(request);
+		if (token == null || !JwtProvider.isValidToken(token)) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(List.of());
+		}
 
-	    String userId = JwtProvider.getUserIdFromToken(token);
-	    List<StationInfo> stationInfo = stationInfoService.getFavStationInfo(userId);
+		String userId = JwtProvider.getUserIdFromToken(token);
+		List<StationInfo> stationInfo = stationInfoService.getFavStationInfo(userId);
 
-	    return ResponseEntity.ok(stationInfo != null ? stationInfo : List.of());
+		return ResponseEntity.ok(stationInfo != null ? stationInfo : List.of());
 	}
-	
+
+//	리뷰 목록
+	@PostMapping("/reviews")
+	public ResponseEntity<?> getReviews(HttpServletRequest request) {
+		String token = JwtProvider.extractToken(request);
+		if (token == null || !JwtProvider.isValidToken(token)) {
+			return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(List.of());
+		}
+
+		String userId = JwtProvider.getUserIdFromToken(token);
+		List<StationInfo> stationInfo = stationInfoService.getReviewsList(userId);
+
+		return ResponseEntity.ok(stationInfo != null ? stationInfo : List.of());
+	}
+
 }

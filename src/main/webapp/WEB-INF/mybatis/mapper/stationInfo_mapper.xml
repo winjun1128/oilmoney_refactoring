@@ -4,26 +4,55 @@
 		   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="stationInfo_mapper">
-	
+
 	<!-- 즐겨찾기 목록 조회 -->
-	<select id="getFavStationInfo" parameterType="String" resultType="StationInfo">
+	<select id="getFavStationInfo" parameterType="String"
+		resultType="StationInfo">
 		<!-- 주유소 즐겨찾기 -->
-        select 
-        	g.UNI_CD AS id, g.NAME AS name, g.ADDR AS addr, g.TEL AS tel, 'oil' AS type
-        from fav f join t_gas_station g
-          on g.UNI_CD = replace(f.FAV_KEY, 'oil:', '')
-        where f.USER_ID = #{userId} 
-          and f.TYPE = 'oil'
+		select
+			g.UNI_CD AS id, g.NAME AS name, g.ADDR AS addr, g.TEL AS tel, 'oil' AS type
+		from fav f join t_gas_station g
+			on g.UNI_CD = replace(f.FAV_KEY, 'oil:', '')
+		where f.USER_ID = #{userId}
+			and f.TYPE = 'oil'
 
-        UNION ALL
+		UNION ALL
 
-        <!-- 충전소 즐겨찾기 -->
-        select
-        	c.STATID AS id, c.STATNM AS name, c.ADDR AS addr, c.BUSICALL AS tel, 'ev' AS type
-        from fav f join t_charge c
-          on c.STATID = replace(f.FAV_KEY, 'ev:', '')
-        where f.USER_ID = #{userId} 
-          and f.TYPE = 'ev'
+		<!-- 충전소 즐겨찾기 -->
+		select
+			c.STATID AS id, c.STATNM AS name, c.ADDR AS addr, c.BUSICALL AS tel, 'ev' AS type
+		from fav f join t_charge c
+			on c.STATID = replace(f.FAV_KEY, 'ev:', '')
+		where f.USER_ID = #{userId}
+			and f.TYPE = 'ev'
 	</select>
-	
+
+	<!-- 리뷰 목록 조회 -->
+	<select id="getReviewsList" parameterType="string"
+		resultType="StationInfo">
+		<!-- 주유소 리뷰 -->
+		SELECT
+			r.REVIEW_KEY, r.USER_ID, r.RATING, r.TEXT, 
+			CAST(r.CREATED_AT AS DATE) AS createdAt, CAST(r.UPDATED_AT AS DATE) AS updatedAt,
+			g.UNI_CD AS id, g.NAME AS name, 
+			g.ADDR AS addr, g.TEL AS tel, 'oil' AS type
+		FROM t_reviews r JOIN t_gas_station g
+			ON g.UNI_CD = REPLACE(r.REVIEW_KEY, 'oil:', '')
+		WHERE r.USER_ID = #{userId}
+			AND r.REVIEW_KEY LIKE 'oil:%'
+
+		UNION ALL
+
+		<!-- 충전소 리뷰 -->
+		SELECT
+			r.REVIEW_KEY, r.USER_ID, r.RATING, r.TEXT, 
+			CAST(r.CREATED_AT AS DATE) AS createdAt, CAST(r.UPDATED_AT AS DATE) AS updatedAt,
+			c.STATID AS id, c.STATNM AS name, 
+			c.ADDR AS addr, c.BUSICALL AS tel, 'ev' AS type
+		FROM t_reviews r JOIN t_charge c
+			ON c.STATID = REPLACE(r.REVIEW_KEY, 'ev:', '')
+		WHERE r.USER_ID = #{userId}
+			AND r.REVIEW_KEY LIKE 'ev:%'
+	</select>
+
 </mapper>

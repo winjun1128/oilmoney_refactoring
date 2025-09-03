@@ -6,4 +6,5 @@ import com.app.dto.users.StationInfo;
 
 public interface StationInfoService {
 	List<StationInfo> getFavStationInfo(String userId);
+	List<StationInfo> getReviewsList(String userId);
 }

@@ -22,4 +22,11 @@ public class StationInfoDAOImpl implements StationInfoDAO {
 		return result;
 	}
 
+	@Override
+	public List<StationInfo> getReviewsList(String userId) {
+		List<StationInfo> result = sqlSessionTemplate.selectList("stationInfo_mapper.getReviewsList", userId);
+		System.out.println("[DAO] 리뷰 조회 : " + userId + ", 결과 수 : " + (result != null ? result.size() : 0));
+		return result;
+	}
+
 }
