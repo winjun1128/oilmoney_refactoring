@@ -3,6 +3,9 @@ import './MyPage.css';
 import EditInfo from "./EditInfo";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import CarRegist from "./CarRegist";
+import ReviewList from "./ReviewList";
+import FavList from "./FavList";
 
 function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
 
@@ -13,7 +16,10 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
     const [deletePw, setDeletePw] = useState("");
     const [deleteModal, setDeleteModal] = useState(false);
 
+    const [cars, setCars] = useState([]);
+    const [carCount, setCarCount] = useState(0);
     const [favCount, setFavCount] = useState(0);
+    const [reviewCount, serReviewCount] = useState(0);
 
     useEffect(() => {
         if (!token) {
@@ -25,7 +31,10 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
         axios.get("/mypage", { headers: { "Authorization": "Bearer " + token } })
             .then(res => {
                 setUserInfo(res.data.userInfo);
+                setCarCount(res.data.carCount)
                 setFavCount(res.data.favCount);
+                serReviewCount(res.data.reviewCount);
+                setCars(res.data.cars || []);
                 setIsLogin(true);
             })
             .catch(err => {
@@ -33,7 +42,6 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
                 setIsLogin(false);
                 localStorage.removeItem("token");
                 setIsLoginModalOpen(true);
-
             });
     }, [token, navigate]);
 
@@ -88,23 +96,23 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
                     <div className="mypage-left-menu">
                         <div className="mypage-menu-tabs">
                             <img src="/images/mypage/car_color.png" alt="차" />
-                            <div>
-                                <span className="mypage-menu-tab">등록 차량 수</span>
-                                <span>{ }</span>
+                            <div className="mypage-menu-tab">
+                                <span>등록 차량 수</span>
+                                <span className="mypage-count">{carCount}</span>
                             </div>
                         </div>
                         <div className="mypage-menu-tabs">
                             <img src="/images/mypage/star_color.png" alt="별" />
                             <div className="mypage-menu-tab">
                                 <span>즐겨찾기</span>
-                                <span>{favCount}</span>
+                                <span className="mypage-count">{favCount}</span>
                             </div>
                         </div>
                         <div className="mypage-menu-tabs">
                             <img src="/images/mypage/pencil_color.png" alt="연필" />
                             <div className="mypage-menu-tab">
                                 <span>내가 쓴 리뷰</span>
-                                <span>{ }</span>
+                                <span className="mypage-count">{reviewCount}</span>
                             </div>
                         </div>
                     </div>
@@ -116,6 +124,9 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
                 <div className="mypage-right">
                     <div>
                         <EditInfo userInfo={userInfo} setUserInfo={setUserInfo} />
+                        <CarRegist cars={cars} setCars={setCars} />
+                        <FavList />
+                        <ReviewList />
                     </div>
                 </div>
             </div>

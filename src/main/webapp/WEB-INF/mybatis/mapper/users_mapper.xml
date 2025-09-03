@@ -66,12 +66,39 @@
 		delete from t_users where user_id = #{userId}
 	</delete>
 	
+	<!-- 내 차 등록 -->
+	<insert id="insertMyCar" parameterType="Car">
+		insert into t_car (car_id, user_id, fuel_type, car_type)
+		values (seq_car.NEXTVAL, #{userId}, #{fuelType}, #{carType})
+	</insert>
+	
+	<!-- 등록 차량 정보 조회 -->
+	<select id="getCarsByUserId" parameterType="string" resultType="Car">
+	    select 
+	    	car_id, user_id, fuel_type, car_type, reg_date
+	    from t_car where user_id = #{userId}
+	    order by reg_date
+	</select>
+	
+	<!-- 등록 차량 삭제 -->
+	<delete id="deleteCar" parameterType="Car">
+	    delete from t_car
+	    where user_id = #{userId} and car_id = #{carId}
+	</delete>
+	
 	<!-- 등록 차량 수 -->
+	<select id="countCarByUserId" parameterType="string" resultType="int">
+		select count(*) from t_car where user_id = #{userId}
+	</select>
 	
 	<!-- 즐겨찾기 -->
 	<select id="countFavByUserId" parameterType="string" resultType="int">
 		select count(*) from fav where user_id = #{userId}
 	</select>
 	
+	<!-- 내가 쓴 리뷰 -->
+	<select id="countReviewsByUserId" parameterType="string" resultType="int">
+		select count(*) from t_reviews where user_id = #{userId}
+	</select>
 	
 </mapper>

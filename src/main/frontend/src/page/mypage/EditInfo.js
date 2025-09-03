@@ -16,24 +16,6 @@ function EditInfo({ userInfo, setUserInfo }) {
     const [profileFile, setProfileFile] = useState(null);
     const [profilePreview, setProfilePreview] = useState(userInfo.profileUrl || "/images/mypage/profile.jpg");
 
-    // const originalData = {
-    //     email: userInfo.email,
-    //     phoneNum: userInfo.phoneNum || "",
-    //     addr: userInfo.addr || "",
-    //     profileFile: userInfo.profileUrl || "/images/mypage/profile.jpg"
-    // };
-
-    // const handleCancel = () => {
-    //     setEmail(originalData.email);
-    //     setPhoneNum(originalData.phoneNum);
-    //     setAddr(originalData.addr);
-    //     setPw("");
-    //     setNewPw("");
-    //     setConfirmPw("");
-    //     setIsEditing(false);
-    //     setProfilePreview(originalData.profilePreview);
-    // }
-
     useEffect(() => {
         setEmail(userInfo.email || "");
         setPhoneNum(userInfo.phoneNum || "");

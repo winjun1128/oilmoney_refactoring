@@ -3,6 +3,7 @@ package com.app.service.users.impl;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import javax.servlet.ServletContext;
 
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.app.dao.users.UsersDAO;
+import com.app.dto.users.Car;
 import com.app.dto.users.EmailCode;
 import com.app.dto.users.Users;
 import com.app.service.users.EmailService;
@@ -71,24 +73,6 @@ public class UsersServiceImpl implements UsersService {
 		return users;
 	}
 
-//	@Override
-//	public boolean updateUserInfo(Users users, String newPw, MultipartFile profile) {
-//		try {
-//			if (profile != null && !profile.isEmpty()) {
-//	            String uploadDir = servletContext.getRealPath("/resources/images/mypage/");
-//	            String filename = users.getUserId() + "_" + System.currentTimeMillis() + "_" + profile.getOriginalFilename();
-//	            Path filePath = Paths.get(uploadDir, filename);
-//	            Files.write(filePath, profile.getBytes());
-//	            users.setProfileUrl("/resources/images/mypage/" + filename); // DB에 저장되는 URL
-//	        }
-//	        int result = usersDAO.updateUserInfo(users, newPw);
-//	        return result > 0;
-//	    } catch (Exception e) {
-//	        e.printStackTrace();
-//	        return false;
-//        }
-//	}
-	
 	@Override
 	public boolean updateUserInfo(Users users, String newPw, MultipartFile profile) {
 	    try {
@@ -162,5 +146,41 @@ public class UsersServiceImpl implements UsersService {
 		System.out.println("[Service] 즐겨찾기 개수 : " + result);
 		return result;
 	}
+
+	@Override
+	public int countReviewsByUserId(String userId) {
+		int result = usersDAO.countReviewsByUserId(userId);
+		System.out.println("[Service] 리뷰 개수 : " + result);
+		return result;
+	}
+
+	@Override
+	public int countCarByUserId(String userId) {
+		int result = usersDAO.countCarByUserId(userId);
+		System.out.println("[Service] 차 개수 : " + result);
+		return result;
+	}
+
+	@Transactional
+	@Override
+	public boolean registerCar(Car car) {
+        int result = usersDAO.insertMyCar(car);
+        System.out.println("[Service] 차량 등록 요청 : " + car);
+        return result > 0;
+	}
+
+	@Override
+	public List<Car> getCarsByUserId(String userId) {
+		List<Car> result = usersDAO.getCarsByUserId(userId);
+		System.out.println("[Service] 등록한 차량 목록 : " + result);
+		return result;
+	}
+
+	@Transactional
+	@Override
+	public boolean deleteCar(Car car) {
+	    return usersDAO.deleteCar(car) > 0; // 삭제 성공하면 true
+	}
+
 
 }

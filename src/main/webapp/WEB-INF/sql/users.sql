@@ -21,3 +21,18 @@ CREATE TABLE t_email_verification (
     code VARCHAR2(10) NOT NULL,
     created_at DATE DEFAULT SYSDATE
 );
+
+create table t_car
+(
+    car_id number primary key,
+    user_id varchar2(50) not null,
+    fuel_type varchar2(20) not null,
+    car_type varchar2(50),
+    reg_date date default sysdate
+);
+
+create sequence seq_car
+start with 1
+increment by 1
+nocache
+nocycle;
