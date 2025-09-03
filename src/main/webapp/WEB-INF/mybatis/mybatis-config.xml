@@ -18,6 +18,7 @@
 		<typeAlias type="com.app.dto.users.Users" alias="Users"/>
 		<typeAlias type="com.app.dto.users.EmailCode" alias="EmailCode"/>	
 		<typeAlias type="com.app.dto.users.Car" alias="Car"/>
+		<typeAlias type="com.app.dto.users.StationInfo" alias="StationInfo"/>
 	</typeAliases>
 		
 		

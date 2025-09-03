@@ -26,6 +26,8 @@ function CarRegist({ cars, setCars }) {
     }, [setCars]);
 
     const handleAddClick = () => {
+        setCarType("");
+        setFuelType("휘발유");
         setIsRegisting(true);
     };
 
@@ -55,12 +57,12 @@ function CarRegist({ cars, setCars }) {
                 }
             });
             const { newCar, carCount } = res.data;
-            setCars([newCar]);
+            setCars(prevCars => [...prevCars, newCar]);
             setCarCount(carCount);
             setCarType("");
             setFuelType("휘발유");
             setIsRegisting(false);
-            alert("등록 성공!");
+            //alert("등록 성공!");
         } catch (error) {
             console.log(error);
             alert("등록 실패!");
@@ -104,8 +106,9 @@ function CarRegist({ cars, setCars }) {
                                             <span>차종: {car.carType || "-"}</span><br></br>
                                             <span>연료: {car.fuelType}</span>
                                         </div>
-                                        <button type="button" onClick={() => handleDelete(index, car)} className='car-delete-btn'><i class="fa-solid fa-xmark"></i></button>
-
+                                        <button type="button" onClick={() => handleDelete(index, car)} className='car-delete-btn'>
+                                            <i className="fa-solid fa-xmark"></i>
+                                        </button>
                                     </div>
                                 ))
                             )}

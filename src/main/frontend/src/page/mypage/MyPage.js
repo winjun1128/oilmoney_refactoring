@@ -20,6 +20,7 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
     const [carCount, setCarCount] = useState(0);
     const [favCount, setFavCount] = useState(0);
     const [reviewCount, serReviewCount] = useState(0);
+    const [favStations, setFavStations] = useState([]);
 
     useEffect(() => {
         if (!token) {
@@ -35,6 +36,7 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
                 setFavCount(res.data.favCount);
                 serReviewCount(res.data.reviewCount);
                 setCars(res.data.cars || []);
+                setFavStations(res.data.stationInfo || []);
                 setIsLogin(true);
             })
             .catch(err => {
@@ -125,7 +127,7 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
                     <div>
                         <EditInfo userInfo={userInfo} setUserInfo={setUserInfo} />
                         <CarRegist cars={cars} setCars={setCars} />
-                        <FavList />
+                        <FavList stations={favStations}/>
                         <ReviewList />
                     </div>
                 </div>
