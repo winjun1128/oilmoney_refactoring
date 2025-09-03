@@ -10,7 +10,7 @@ import java.net.URL;
 public class OilPriceAPI {
 	public static String getOilPrice(String uniId) throws IOException {
 		String base = "https://www.opinet.co.kr/api/detailById.do";
-		StringBuilder urlBuilder = new StringBuilder(base).append("?code=").append("F250819729") // Encoding키 그대로 (재인코딩
+		StringBuilder urlBuilder = new StringBuilder(base).append("?code=").append("F250814713") // Encoding키 그대로 (재인코딩
 																									// 금지)
 				.append("&id=").append(uniId).append("&out=json"); // 소문자
 

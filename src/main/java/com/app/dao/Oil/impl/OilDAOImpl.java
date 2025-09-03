@@ -1,6 +1,7 @@
 package com.app.dao.Oil.impl;
 
 import java.util.List;
+import java.util.Map;
 
 import org.mybatis.spring.SqlSessionTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,11 @@ public class OilDAOImpl implements OilDAO{
 	public List<StationDTO> oilFilter(OilSearchDTO dto) {
 		List<StationDTO> data = sqlSessionTemplate.selectList("station_mapper.oilFilter",dto);
 		return data;
+	}
+
+	@Override
+	public List<StationDTO> findNearby(Map<String, Object> param) {
+		return sqlSessionTemplate.selectList("station_mapper.findNearby", param);
 	}
 
 }
