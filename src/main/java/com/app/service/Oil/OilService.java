@@ -9,4 +9,6 @@ public interface OilService {
 
 	List<StationDTO> oilFilter(OilSearchDTO dto);
 
+	List<StationDTO> findNearby(Double lat, Double lon, Integer radius);
+
 }

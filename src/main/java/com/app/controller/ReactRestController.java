@@ -33,8 +33,13 @@ public class ReactRestController {
 
 	@PostMapping("/api/stations/search")
 	public List<StationDTO> OilSearch(@RequestBody OilSearchDTO dto) {
-		List<StationDTO> data = oilService.oilFilter(dto);
-		return data;
+		if ("nearby".equals(dto.getMode())) {
+	        // 📍 내 주변 주유소 검색
+	        return oilService.findNearby(dto.getLat(), dto.getLon(), dto.getRadius());
+	    } else {
+	        // 📍 기존 필터 기반 검색
+	        return oilService.oilFilter(dto);
+	    }
 	}
 	
 	@PostMapping("/api/charge/search")

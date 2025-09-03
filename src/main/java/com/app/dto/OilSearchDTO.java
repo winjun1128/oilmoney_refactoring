@@ -17,6 +17,11 @@ public class OilSearchDTO {
     private Boolean quality;
     private Boolean twentyFour;
     private Boolean lpg;
+    
+    private String mode;   // "nearby" or "region"
+    private Double lat;    // 위도
+    private Double lon;    // 경도
+    private Integer radius; // km 단위
 
     private List<String> brands; // ["SKG","GSC","SOL"...]
 }
