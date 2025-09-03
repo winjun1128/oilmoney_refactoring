@@ -31,7 +31,7 @@ function FavList() {
                 {stations.length === 0 ? (
                     <span className='mypage-regist-info'>등록된 장소가 없습니다.</span>
                 ) : (
-                    <ul className='fav-list'>
+                    <ul className='mypage-fav-list'>
                         {stations.map((station) => (
                             <li key={station.id} className='fav-item'>
                                 <span className={`fav-type ${station.type}`}>

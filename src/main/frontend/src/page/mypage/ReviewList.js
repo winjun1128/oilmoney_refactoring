@@ -30,7 +30,7 @@ function ReviewList() {
                 {reviews.length === 0 ? (
                     <span className='mypage-regist-info'>등록된 리뷰가 없습니다.</span>
                 ) : (
-                    <ul className="review-list">
+                    <ul className="mypage-fav-list">
                         {reviews.map((review) => (
                             <li key={review.reviewKey} className="review-item">
                                 <span className={`review-type ${review.type}`}>

@@ -96,15 +96,15 @@ function CarRegist({ cars, setCars }) {
                             <span className='edit-title-text'>내 차 등록</span>
                             <button type="button" className='edit-button' onClick={handleAddClick}>추가</button>
                         </div>
-                        <div className='edit-contents'>
+                        <div className='mypage-regist-contents'>
                             {cars.length === 0 ? (
                                 <span className='mypage-regist-info'>등록된 차량이 없습니다.</span>
                             ) : (
                                 cars.map((car, index) => (
                                     <div key={car.carId || index} className='mypage-car-item'>
                                         <div>
-                                            <span>차종: {car.carType || "-"}</span><br></br>
-                                            <span>연료: {car.fuelType}</span>
+                                            <span>차종 : {car.carType || "-"}</span><br></br>
+                                            <span>연료 : {car.fuelType}</span>
                                         </div>
                                         <button type="button" onClick={() => handleDelete(index, car)} className='car-delete-btn'>
                                             <i className="fa-solid fa-xmark"></i>
@@ -126,7 +126,7 @@ function CarRegist({ cars, setCars }) {
                         <div className='edit-contents-box'>
                             <div className='edit-contents'>
                                 <div>
-                                    <label>차종 (선택): </label>
+                                    <label>차종(선택) : </label>
                                     <input
                                         type="text"
                                         value={carType}
@@ -135,7 +135,7 @@ function CarRegist({ cars, setCars }) {
                                     />
                                 </div>
                                 <div>
-                                    <label>연료 종류: </label>
+                                    <label>연료 종류 : </label>
                                     <select value={fuelType} onChange={(e) => setFuelType(e.target.value)} required>
                                         <option value="휘발유">휘발유</option>
                                         <option value="경유">경유</option>
