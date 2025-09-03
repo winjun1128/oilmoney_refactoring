@@ -1,10 +1,19 @@
 package com.app.service.users.impl;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+
+import javax.servlet.ServletContext;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.app.dao.users.UsersDAO;
+import com.app.dto.users.Car;
 import com.app.dto.users.EmailCode;
 import com.app.dto.users.Users;
 import com.app.service.users.EmailService;
@@ -18,6 +27,9 @@ public class UsersServiceImpl implements UsersService {
 
 	@Autowired
 	EmailService emailService;
+	
+	@Autowired
+	ServletContext servletContext;
 
 	@Override
 	public boolean isUserIdAvailable(String userId) {
@@ -45,6 +57,10 @@ public class UsersServiceImpl implements UsersService {
 	@Transactional
 	@Override
 	public boolean insertUser(Users user) {
+		System.out.println("[Service] insertUser 호출 전 : " + user);
+		if(user.getProfileUrl() == null || user.getProfileUrl().isEmpty()){
+	        user.setProfileUrl("/images/mypage/profile.jpg");
+	    }
 		int result = usersDAO.insertUser(user);
 		System.out.println("[Service] 회원가입 : " + user);
 		return result > 0;
@@ -58,11 +74,46 @@ public class UsersServiceImpl implements UsersService {
 	}
 
 	@Override
-	public boolean updateUserInfo(Users users, String newPw) {
-		int result = usersDAO.updateUserInfo(users, newPw);
-		System.out.println("[Service] 사용자 정보 수정 : " + users + ", 비밀번호 변경 여부 : " + (newPw != null && !newPw.isEmpty()));
-		return result > 0;
+	public boolean updateUserInfo(Users users, String newPw, MultipartFile profile) {
+	    try {
+	        System.out.println("[Service] 업데이트 시작: " + users);
+	        String uploadDir = servletContext.getRealPath("/resources/images/mypage/");
+	        // 파일 저장 여부 확인
+	        if (profile != null) {
+	            System.out.println("[Service] 프로필 파일 존재: " + profile.getOriginalFilename());
+	        } else {
+	            System.out.println("[Service] 프로필 파일 없음");
+	        }
+
+	        // 업로드 디렉토리 존재 여부 확인
+	        Path uploadPath = Paths.get(uploadDir);
+	        if (!Files.exists(uploadPath)) {
+	            System.out.println("[Service] uploadDir 없음, 생성 시도: " + uploadDir);
+	            Files.createDirectories(uploadPath);
+	        }
+
+	        // 파일 저장
+	        if (profile != null && !profile.isEmpty()) {
+	            String filename = users.getUserId() + "_" + System.currentTimeMillis() + "_" + profile.getOriginalFilename();
+	            Path filePath = uploadPath.resolve(filename);
+	            Files.write(filePath, profile.getBytes());
+	            users.setProfileUrl("/uploads/profile/" + filename);
+	            System.out.println("[Service] 파일 저장 성공: " + filePath.toString());
+	        }
+
+	        // DAO 업데이트
+	        int result = usersDAO.updateUserInfo(users, newPw);
+	        System.out.println("[Service] DAO 업데이트 결과: " + result);
+
+	        return result > 0;
+	    } catch (Exception e) {
+	        System.out.println("[Service] 예외 발생!");
+	        e.printStackTrace();
+	        return false;
+	    }
 	}
+	
+	
 
 	@Override
 	public Users login(String userId, String pw) {
@@ -88,5 +139,48 @@ public class UsersServiceImpl implements UsersService {
 	    }
 	    return false;
 	}
+
+	@Override
+	public int countFavByUserId(String userId) {
+		int result = usersDAO.countFavByUserId(userId);
+		System.out.println("[Service] 즐겨찾기 개수 : " + result);
+		return result;
+	}
+
+	@Override
+	public int countReviewsByUserId(String userId) {
+		int result = usersDAO.countReviewsByUserId(userId);
+		System.out.println("[Service] 리뷰 개수 : " + result);
+		return result;
+	}
+
+	@Override
+	public int countCarByUserId(String userId) {
+		int result = usersDAO.countCarByUserId(userId);
+		System.out.println("[Service] 차 개수 : " + result);
+		return result;
+	}
+
+	@Transactional
+	@Override
+	public boolean registerCar(Car car) {
+        int result = usersDAO.insertMyCar(car);
+        System.out.println("[Service] 차량 등록 요청 : " + car);
+        return result > 0;
+	}
+
+	@Override
+	public List<Car> getCarsByUserId(String userId) {
+		List<Car> result = usersDAO.getCarsByUserId(userId);
+		System.out.println("[Service] 등록한 차량 목록 : " + result);
+		return result;
+	}
+
+	@Transactional
+	@Override
+	public boolean deleteCar(Car car) {
+	    return usersDAO.deleteCar(car) > 0; // 삭제 성공하면 true
+	}
+
 
 }

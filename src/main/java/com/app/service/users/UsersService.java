@@ -1,5 +1,10 @@
 package com.app.service.users;
 
+import java.util.List;
+
+import org.springframework.web.multipart.MultipartFile;
+
+import com.app.dto.users.Car;
 import com.app.dto.users.Users;
 
 public interface UsersService {
@@ -9,9 +14,17 @@ public interface UsersService {
 	boolean insertUser(Users user);
 	
     Users getUserInfo(String userId);
-    boolean updateUserInfo(Users users, String newPw);
+    boolean updateUserInfo(Users users, String newPw, MultipartFile profile);
     
     Users login(String userId, String pw);
     
     boolean deleteUser(String userId, String pw);
+    
+    int countFavByUserId(String userId);
+    int countReviewsByUserId(String userId);
+    int countCarByUserId(String userId);
+    
+    boolean registerCar(Car car);
+    List<Car> getCarsByUserId(String userId);
+    boolean deleteCar(Car car);
 }

@@ -7,14 +7,10 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class Users {
+public class Car {
+	int carId;
 	String userId;
-	String pw;
-	String email;
-	String name;
-	
-	String phoneNum;
-	String addr;
-	String state;
-	String profileUrl;
+	String fuelType;
+	String carType;
+	String regDate;
 }
