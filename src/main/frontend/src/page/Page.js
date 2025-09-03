@@ -47,22 +47,8 @@ export default function Page() {
                 <OilMap stations={stations} handleLocationSearch={handleLocationSearch} isFilterMode={activeFilter === "oil" || activeFilter === "charge"}/>
 
                 <div style={{ ...panelStyle, transform: activeFilter ? "translateX(0)" : "translateX(-100%)",}}>
-                    <div style={{ display: "flex", justifyContent: "flex-end", padding: "8px" }}>
-                        <button
-                            onClick={() => setActiveFilter(null)}
-                            style={{
-                                background: "none",
-                                border: "none",
-                                fontSize: "20px",
-                                cursor: "pointer",
-                            }}
-                        >
-                            ✕
-                        </button>
-                    </div>
-
-                    {activeFilter === "oil" && <OilFilterPanel handleOilFilterSearch={handleOilFilterSearch} setStations={setStations} />}
-                    {activeFilter === "charge" && <ChargeFilterPanel handleChargeFilterSearch={handleChargeFilterSearch} setStations={setStations} />}
+                    {activeFilter === "oil" && <OilFilterPanel handleOilFilterSearch={handleOilFilterSearch} onClose={() => setActiveFilter(null)} setStations={setStations} />}
+                    {activeFilter === "charge" && <ChargeFilterPanel handleChargeFilterSearch={handleChargeFilterSearch} onClose={() => setActiveFilter(null)} setStations={setStations} />}
                 </div>
             </div>
         </div>

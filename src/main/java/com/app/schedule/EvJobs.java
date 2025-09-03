@@ -19,11 +19,11 @@ public class EvJobs {
     evImportService.importInfoSnapshot();
   }
 
-  // 상태 폴링: 2분마다 / 최근 5분 증분
-  @Scheduled(cron = "0 */2 * * * *")
+  // 상태 폴링: 1시간마다 / 최근 5분 증분
+  @Scheduled(cron = "0 0 * * * *")
   public void pollStatus() throws Exception {
-    int n = evImportService.pollStatusIncrement(5);
-    System.out.println("[EV] status upsert rows = " + n);
+      int n = evImportService.pollStatusIncrement(5);
+      System.out.println("[EV] status upsert rows = " + n);
   }
 
   // 정보 스냅샷 리프레시: 매일 04:00

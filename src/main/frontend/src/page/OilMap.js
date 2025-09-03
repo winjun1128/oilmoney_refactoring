@@ -31,11 +31,11 @@ const getMarkerImage = (type, kakao) => {
 
     const color =
         type === "ev" ? "#2b8af7" :   // 전기차 충전소 (파랑)
-        type === "oil" ? "#ff7f27" :   // 주유소 (주황)
-        type === "lpg" ? "#616161" :   // LPG (회색)
-        type === "origin" ? "#7b1fa2" :   // 출발지 (보라)
-        type === "dest" ? "#2e7d32" :   // 목적지 (초록)
-        "#999";       // 기본 회색
+            type === "oil" ? "#ff7f27" :   // 주유소 (주황)
+                type === "lpg" ? "#616161" :   // LPG (회색)
+                    type === "origin" ? "#7b1fa2" :   // 출발지 (보라)
+                        type === "dest" ? "#2e7d32" :   // 목적지 (초록)
+                            "#999";       // 기본 회색
 
     const src = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(pinSvg(color));
     const img = new kakao.maps.MarkerImage(src, new kakao.maps.Size(21, 30), {
@@ -53,36 +53,33 @@ export default function OilMap({ stations, handleLocationSearch, isFilterMode })
     const myMarkerRef = useRef(null);
     const infoRef = useRef(null);
 
-    // ✅ 처음 로드 시 localStorage 확인 후 검색 실행
-    useEffect(() => {
-        const savedCoord = localStorage.getItem("savedCoord");
-        const savedRadius = localStorage.getItem("savedRadius");
+    // ✅ 처음 로드 시 localStorage 확인 후 지도 중심만 세팅
+useEffect(() => {
+    const savedCoord = localStorage.getItem("savedCoord");
 
-        if (savedCoord) {
-            const coord = JSON.parse(savedCoord);
-            const radius = savedRadius ? Number(savedRadius) : 3;
+    if (savedCoord) {
+        const coord = JSON.parse(savedCoord);
+        setSelectedCoord(coord);
 
-            setSelectedCoord(coord);
-            setRadiusKm(radius);
-
-            // ✅ 지도 중심도 저장된 좌표로 세팅
-            if (mapRef.current) {
-                mapRef.current.setCenter(
-                    new window.kakao.maps.LatLng(coord.lat, coord.lon)
-                );
-                if (myMarkerRef.current) {
-                    myMarkerRef.current.setPosition(
-                        new window.kakao.maps.LatLng(coord.lat, coord.lon)
-                    );
-                }
+        // 지도 중심 세팅
+        if (mapRef.current) {
+            mapRef.current.setCenter(new window.kakao.maps.LatLng(coord.lat, coord.lon));
+            if (myMarkerRef.current) {
+                myMarkerRef.current.setPosition(new window.kakao.maps.LatLng(coord.lat, coord.lon));
             }
-
-            handleLocationSearch(coord, radius);
-        } else {
-            // localStorage 없으면 기본 좌표
-            handleLocationSearch(MY_COORD, radiusKm);
         }
-    }, []);
+    } else {
+        // 저장된 좌표가 없으면 기본 좌표만 세팅
+        if (mapRef.current) {
+            mapRef.current.setCenter(new window.kakao.maps.LatLng(MY_COORD.lat, MY_COORD.lon));
+            if (myMarkerRef.current) {
+                myMarkerRef.current.setPosition(new window.kakao.maps.LatLng(MY_COORD.lat, MY_COORD.lon));
+            }
+        }
+    }
+}, []);
+
+
 
 
     // ✅ 커스텀 줌바
@@ -97,24 +94,6 @@ export default function OilMap({ stations, handleLocationSearch, isFilterMode })
     // ✅ 내위치 변경
     const [adjustMode, setAdjustMode] = useState(false); // 조정 모드 ON/OFF
     const [selectedCoord, setSelectedCoord] = useState(null);   // 저장된 좌표
-
-    // ✅ 반경(km) 선택
-    const [radiusKm, setRadiusKm] = useState(3); // 기본 반경 3km
-
-    // ✅ 거리 계산 함수 (Haversine)
-    const getDistanceKm = (lat1, lon1, lat2, lon2) => {
-        const R = 6371;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) *
-            Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    };
 
     // ✅ 미세/초미세 등급
     const pmGrade = (v, type) => {
@@ -260,10 +239,6 @@ export default function OilMap({ stations, handleLocationSearch, isFilterMode })
 
             // ✅ 현재 중심 좌표
             const centerCoord = selectedCoord ?? MY_COORD;
-            const dist = getDistanceKm(centerCoord.lat, centerCoord.lon, lat, lon);
-
-            // ✅ 반경 밖이면 무시 (단, 필터 모드일 때는 무시하지 않음)
-            if (!isFilterMode && dist > radiusKm) return;
 
             // ✅ 마커 이미지 (충전소: 초록색, 주유소: 기본)
             const markerImage = getMarkerImage(
@@ -408,7 +383,7 @@ export default function OilMap({ stations, handleLocationSearch, isFilterMode })
 
         markersRef.current = newMarkers;
         if (newMarkers.length > 0) mapRef.current.setBounds(bounds);
-    }, [stations, radiusKm]);
+    }, [stations]);
 
     // ✅ 버튼 클릭 → 내 위치로 이동
     const goMyPosition = () => {
@@ -466,53 +441,6 @@ export default function OilMap({ stations, handleLocationSearch, isFilterMode })
                     </svg>
                 </div>
             )}
-
-            {/* ✅ 반경 선택 버튼 그룹 (날씨 카드 아래) */}
-            <div
-                style={{
-                    position: "absolute",
-                    right: 15,
-                    top: 170, // 날씨 카드 바로 아래쪽
-                    zIndex: 50,
-                    display: "flex",
-                    gap: 6,
-                    background: "#fff",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 9999, // pill 스타일
-                    padding: "4px 8px",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-                }}
-            >
-                {[1, 3, 5, 10].map((km) => (
-                    <button
-                        key={km}
-                        onClick={() => {
-                            setRadiusKm(km);
-                            localStorage.setItem("savedRadius", km); // ✅ 반경 저장
-                            if (!isFilterMode) {
-                                // 일반 모드에서는 반경 검색 실행
-                                handleLocationSearch(selectedCoord ?? MY_COORD, km);
-                            } else {
-                                // 필터 모드에서는 단순히 반경 값만 업데이트 (재검색 X)
-                                setRadiusKm(km);
-                            }
-                        }}
-                        style={{
-                            border: "none",
-                            outline: "none",
-                            cursor: "pointer",
-                            padding: "4px 8px",
-                            borderRadius: 9999,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            background: radiusKm === km ? "#2563eb" : "transparent",
-                            color: radiusKm === km ? "#fff" : "#374151",
-                        }}
-                    >
-                        {km}km
-                    </button>
-                ))}
-            </div>
 
             {/* ✅ 좌상단 날씨 카드 */}
             <div
@@ -709,7 +637,7 @@ export default function OilMap({ stations, handleLocationSearch, isFilterMode })
                         fetchWeather(newPos.lat, newPos.lon);
 
                         // ✅ 저장하자마자 주변 주유소 검색 실행
-                        handleLocationSearch(newPos, radiusKm);
+                        handleLocationSearch(newPos);
                     }}
                     style={{
                         position: "absolute",
