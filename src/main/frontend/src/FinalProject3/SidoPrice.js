@@ -1,7 +1,6 @@
 // components/SidoPrice.js
 import { useState, useEffect } from "react";
 import axios from "axios";
-import FlipNumbers from 'react-flip-numbers';
 import './components.css';
 import './SidoPrice.css';
 import { PINS } from './pinsData';

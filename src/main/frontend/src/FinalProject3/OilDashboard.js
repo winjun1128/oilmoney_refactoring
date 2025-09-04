@@ -85,9 +85,9 @@ export default function OilDashboard() {
             </div>
             <div className="dashboard-section-bottom">
                 <SidoPrice
-                    //selectedSidoName={selectedSidoName}
+                    selectedSidoName={selectedSidoName}
                     setSelectedSidoName={setSelectedSidoName}
-                    //selectedFuel={selectedFuel}
+                    selectedFuel={selectedFuel}
                     sidoPriceData={sidoPriceData} // 데이터 전달
                 />
                 <RegionSelector

@@ -30,9 +30,10 @@
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    padding: 15px;
+    padding: 5px 15px;
     background-color: #f0f4f8;
-    border-radius: 8px;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
 }
 
 .price-label {
@@ -60,8 +61,9 @@
 }
 
 .local-price-card {
-    padding: 15px;
-    border-radius: 12px;
+    padding: 0px 15px;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
     background-color: #f0f4f8;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
