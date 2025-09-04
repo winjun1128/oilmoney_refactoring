@@ -3,19 +3,13 @@ import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
+import { handleMyInfoClick } from "../utils/authHelpers";
 
 export default function MyPageSideBar({ isLogin, setIsLoginModalOpen }) {
 
     const navigate = useNavigate();
 
-    const handleMyInfoClick = () => {
-        if (isLogin) {
-            navigate("/mypage");
-        } else {
-            alert("로그인이 필요합니다.");
-            setIsLoginModalOpen(true);
-        }
-    };
+    console.log("setIsLoginModalOpen", setIsLoginModalOpen);
 
     const itemsTop = [
         { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소", onClick: () => navigate("/") },
@@ -102,7 +96,7 @@ export default function MyPageSideBar({ isLogin, setIsLoginModalOpen }) {
                     alignItems: "center",
                 }}
             >
-                <DockButton label="내정보" onClick={handleMyInfoClick}>
+                <DockButton label="내정보" onClick={() => handleMyInfoClick({ setIsLoginModalOpen, navigate })}>
                     <User style={{ width: "1.75rem", height: "1.75rem" }} />
                 </DockButton>
             </div>

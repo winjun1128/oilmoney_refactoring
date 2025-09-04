@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import './Auth.css';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo }) {
+
+    const navigate = useNavigate();
 
     const [userId, setUserId] = useState("");
     const [pw, setPw] = useState("");
@@ -17,7 +20,7 @@ function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo
                 setIsLogin(true);
                 setUserInfo(res.data.userInfo);
                 onClose();
-                //alert("로그인 성공!");
+                navigate("/mypage");
             } else {
                 alert(res.data.message);
             }

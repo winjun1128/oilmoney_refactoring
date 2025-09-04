@@ -91,7 +91,7 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
             <div className="mypage-container">
                 <div className="mypage-left">
                     <div className="mypage-left-profile">
-                        <img src={userInfo.profileUrl ? userInfo.profileUrl : "/images/mypage/profile.jpg"} alt="프로필 사진" className="mypage-profile-img" />
+                        <img src={userInfo?.profileUrl ? userInfo.profileUrl : "/images/mypage/profile.jpg"} alt="프로필 사진" className="mypage-profile-img" />
                         <span>{userInfo.name}</span>
                         <span>{userInfo.email}</span>
                     </div>

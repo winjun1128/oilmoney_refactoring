@@ -3,8 +3,9 @@ import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple} from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom"; 
+import { handleMyInfoClick } from "./utils/authHelpers";
 
-export default function RouteSideBar() {
+export default function RouteSideBar({ isLogin, setIsLoginModalOpen }) {
     const navigate = useNavigate();   // ✅ 훅 선언
     const itemsTop = [
         { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소", onClick: ()=> navigate("/") },
@@ -91,7 +92,7 @@ export default function RouteSideBar() {
                     alignItems: "center",
                 }}
             >
-                <DockButton label="내정보" onClick={() => navigate("/mypage")}>
+                <DockButton label="내정보" onClick={() => handleMyInfoClick({ isLogin, setIsLoginModalOpen, navigate })}>
                     <User style={{ width: "1.75rem", height: "1.75rem" }} />
                 </DockButton>
             </div>
