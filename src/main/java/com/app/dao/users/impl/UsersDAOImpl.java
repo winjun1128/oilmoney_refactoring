@@ -128,6 +128,13 @@ public class UsersDAOImpl implements UsersDAO {
 		return result;
 	}
 
+	@Override
+	public Users getUserByEmail(String email) {
+		Users users = sqlSessionTemplate.selectOne("users_mapper.getUserByEmail", email);
+	    System.out.println("[DAO] 이메일로 사용자 정보 조회 : " + email + ", 사용자 : " + users);
+	    return users;
+	}
+
 	
 
 }

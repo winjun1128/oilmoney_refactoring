@@ -28,4 +28,6 @@ public interface UsersDAO {
 	int insertMyCar(Car car);
 	List<Car> getCarsByUserId(String userId);
 	int deleteCar(Car car);
+	
+	Users getUserByEmail(String email);
 }

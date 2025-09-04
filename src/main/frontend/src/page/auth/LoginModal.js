@@ -2,6 +2,7 @@ import { useState } from 'react';
 import './Auth.css';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { GoogleLogin, useGoogleLogin } from '@react-oauth/google';
 
 function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo }) {
 
@@ -30,6 +31,31 @@ function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo
         }
     };
 
+    const googleLogin = useGoogleLogin({
+        flow: 'implicit',
+        onSuccess: async (tokenResponse) => {
+            console.log("토큰 확인:", tokenResponse);
+            try {
+                const res = await axios.post("/auth/login/oauth2/google", {
+                    token: tokenResponse.access_token
+                });
+                if (res.data.success) {
+                    localStorage.setItem("token", res.data.accessToken);
+                    setIsLogin(true);
+                    setUserInfo(res.data.userInfo);
+                    onClose();
+                    navigate("/mypage");
+                }
+            } catch (error) {
+                console.log(error);
+                alert("구글 로그인 실패");
+            }
+        },
+        onError: () => {
+            alert("구글 로그인 중 오류 발생");
+        },
+    });
+
     if (!isOpen) {
         return null;
     }
@@ -50,7 +76,7 @@ function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo
                     <div className='auth-sns-icons'>
                         <img src='/images/login-icons/naver_icon.png' alt='네이버 로그인'></img>
                         <img src='/images/login-icons/kakao_icon.png' alt='카카오 로그인'></img>
-                        <img src='/images/login-icons/google_icon.png' alt='구글 로그인'></img>
+                        <img src='/images/login-icons/google_icon.png' alt='구글 로그인' onClick={() => googleLogin()}></img>
                         <img src='/images/login-icons/apple_icon.png' alt='애플 로그인'></img>
                     </div>
                 </div>

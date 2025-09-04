@@ -1,6 +1,7 @@
 package com.app.service.users;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,4 +28,6 @@ public interface UsersService {
     boolean registerCar(Car car);
     List<Car> getCarsByUserId(String userId);
     boolean deleteCar(Car car);
+    
+    Map<String, Object> loginWithGoogle(String idToken);
 }

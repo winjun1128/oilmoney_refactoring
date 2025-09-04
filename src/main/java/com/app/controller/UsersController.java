@@ -102,6 +102,19 @@ public class UsersController {
 		}
 		return response;
 	}
+	
+	// sns 로그인
+	@PostMapping("/login/oauth2/google")
+	@ResponseBody
+	public Map<String, Object> googleLogin(@RequestBody Map<String, String> request) {
+	    String idToken = request.get("token");
+	    System.out.println("[Controller] 구글 로그인 요청 토큰: " + idToken);
+
+	    Map<String, Object> response = usersService.loginWithGoogle(idToken);
+	    System.out.println("[Controller] 구글 로그인 결과: " + response);
+	    
+	    return response;
+	}
 
 	// 사용자 정보 반환
 	@GetMapping("/userinfo")

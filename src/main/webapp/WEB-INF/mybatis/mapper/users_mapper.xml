@@ -61,6 +61,11 @@
 		from t_users where user_id = #{userId} and pw = #{pw}
 	</select>
 	
+	<!-- sns 로그인 -->
+	<select id="getUserByEmail" parameterType="string" resultType="Users">
+		select * from t_users where email = #{email}
+	</select>
+	
 	<!-- 회원탈퇴 -->
 	<delete id="deleteUser" parameterType="string">
 		delete from t_users where user_id = #{userId}
