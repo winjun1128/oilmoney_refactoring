@@ -4,6 +4,17 @@ export default function OilFilterPanel({ setStations, handleOilFilterSearch, onC
     const [nearbyMode, setNearbyMode] = useState(false); // ✅ 내 주변 주유소 모드 ON/OFF
     const [radius, setRadius] = useState("");            // ✅ 선택한 반경 km
 
+////평균유가
+   // ── 유종 색상 기준 (여기서 직접 제어)
+  const [basis, setBasis] = useState(() => {
+    try { return localStorage.getItem("route.priceBasis.v1") || "B027"; } catch { return "B027"; }
+  });
+  const sendBasis = (k) => {
+    setBasis(k);
+    try { localStorage.setItem("route.priceBasis.v1", k); } catch {}
+    window.dispatchEvent(new CustomEvent("oil:setPriceBasis", { detail: k }));
+  };
+
     // ✅ 지역 코드 매핑
     const regionCodes = {
         서울: "01",
@@ -151,6 +162,19 @@ export default function OilFilterPanel({ setStations, handleOilFilterSearch, onC
                 </div>
                 <button onClick={onClose} style={{ background: "transparent", border: "none", fontSize: "18px", cursor: "pointer", color: "#374151" }}>✕</button>
             </div>
+
+            {/* ── 유종 색상 기준 ─────────────────────────── */}
+<div style={{ marginBottom: "20px", paddingTop: "12px", borderTop: "1px solid #e5e7eb" }}>
+  <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "#111827", textAlign: "center" }}>
+    유종 색상 기준
+  </h4>
+  <div style={{ display: "flex", gap: 8 }}>
+    <SmallToggle active={basis === "B027"} onClick={() => sendBasis("B027")}>휘발유</SmallToggle>
+    <SmallToggle active={basis === "D047"} onClick={() => sendBasis("D047")}>경유</SmallToggle>
+    <SmallToggle active={basis === "K015"} onClick={() => sendBasis("K015")}>LPG</SmallToggle>
+  </div>
+</div>
+
 
             {/* 콘텐츠 영역 */}
             <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
@@ -305,3 +329,25 @@ export default function OilFilterPanel({ setStations, handleOilFilterSearch, onC
         </div>
     );
 }
+
+function SmallToggle({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1,
+        padding: "8px 10px",
+        borderRadius: 8,
+        border: "1px solid #d1d5db",
+        background: active ? "#eef2ff" : "#fff",
+        color: active ? "#1d4ed8" : "#111827",
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+

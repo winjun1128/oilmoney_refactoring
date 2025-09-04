@@ -362,7 +362,7 @@ const setInfoHtml = (html, anchorMarker, onAfterMount) => {
   const [isFilterOpen, setIsFilterOpen] = useState(true);
 
   // 상단 근처에 추가
-  const ACTIVE_SCALE = 1.35;
+  const ACTIVE_SCALE = 1;
   const baseZ = (t) => (t === "origin" || t === "dest") ? 40 : (t === "ev" ? 35 : (t === "oil" || t === "lpg" ? 30 : 10));
   const activeMarkerRef = useRef(null);
 
@@ -391,6 +391,58 @@ const fmtWon = (v) => {
   const n = Number(String(v ?? "").replace(/,/g, "").trim());
   return Number.isFinite(n) ? n.toLocaleString() : "-";
 };
+
+// 휘발유/경유 평균가 + 차이 패널 (둘 다 없으면 빈 문자열 반환)
+// 휘발유/경유 평균가 + 차이 패널 (LPG 전용 출력도 지원)
+const oilAvgPairPanel = (gs, { lpgOnly = false } = {}) => {
+  const row = (label, avg, diff) => {
+    const hasAvg = Number.isFinite(avg);
+    const hasDiff = Number.isFinite(diff);
+    const sign = hasDiff ? (diff > 0 ? "+" : "") : "";
+    const diffColor = hasDiff ? (diff < 0 ? "#2ecc71" : diff > 0 ? "#e74c3c" : "#999") : "#999";
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0;">
+        <span>${label}</span>
+        <span>
+          ${hasAvg ? `${fmtWon(avg)}원` : "-"}
+          ${hasDiff ? `<em style="color:${diffColor};font-style:normal;margin-left:6px">(${sign}${fmtWon(diff)})</em>` : ""}
+        </span>
+      </div>
+    `;
+  };
+
+  if (lpgOnly) {
+    const avgL  = parseNum(gs?.avg?.K015);
+    const diffL = parseNum(gs?.diff?.K015);
+    if (![avgL, diffL].some(Number.isFinite)) return "";
+    return `
+      <div class="info-avg-pair" style="
+        margin:6px 0 8px; padding:8px 10px; border-radius:8px;
+        background:#fafafa; border:1px solid #eee; font-size:12px;">
+        <div style="font-weight:600;margin-bottom:4px">시·군 평균가 / 차이</div>
+        ${row("🔥 LPG", avgL, diffL)}
+      </div>
+    `;
+  }
+
+  const avgG  = parseNum(gs?.avg?.B027);
+  const diffG = parseNum(gs?.diff?.B027);
+  const avgD  = parseNum(gs?.avg?.D047);
+  const diffD = parseNum(gs?.diff?.D047);
+  if (![avgG, diffG, avgD, diffD].some(Number.isFinite)) return "";
+
+  return `
+    <div class="info-avg-pair" style="
+      margin:6px 0 8px; padding:8px 10px; border-radius:8px;
+      background:#fafafa; border:1px solid #eee; font-size:12px;">
+      <div style="font-weight:600;margin-bottom:4px">시·군 평균가 / 차이</div>
+      ${row("⛽ 휘발유", avgG, diffG)}
+      ${row("🛢 경유",   avgD, diffD)}
+    </div>
+  `;
+};
+
+
   // ── [API] 추가
  const fetchOilWithAverage = async () => {
    const res = await fetch(`/api/route/oil/price/all`);
@@ -977,6 +1029,34 @@ const reloadReviews = async ({ resetPage = true, page } = {}) => {
   // ✅ 추천 개수
   const [nearestCount, setNearestCount] = useState(5);
 
+//// 평균유가
+// --- 새로 추가/수정 ---
+const PRICE_DIFF_THRESH = 30; // 원 단위 임계값
+// ── 유종 색상 기준 (휘발유=B027, 경유=D047, LPG=K015)
+const BASIS_KEY = "route.priceBasis.v1";
+const [priceBasis, setPriceBasis] = useState(() => {
+  try { return localStorage.getItem(BASIS_KEY) || "B027"; } catch { return "B027"; }
+});
+useEffect(() => { try { localStorage.setItem(BASIS_KEY, priceBasis); } catch {} }, [priceBasis]);
+
+// 최신 값을 이벤트 리스너에서도 쓰기 위한 ref
+const priceBasisRef = useRef(priceBasis);
+useEffect(() => { priceBasisRef.current = priceBasis; }, [priceBasis]);
+
+// --- 새로 추가 ---
+const basisLabel = (k) => ({ B027: "휘발유", D047: "경유", K015: "LPG" }[k] || k);
+
+// 유종별 diff로 마커 타입 계산 (싸면 oil-cheap, 비싸면 oil-exp, 아니면 기본 cat)
+const markerTypeByBasis = (gs, cat, basis) => {
+  const d = parseNum(gs?.diff?.[basis]);
+  if (!Number.isFinite(d)) return cat;               // diff 없으면 기본색
+  if (d <= -PRICE_DIFF_THRESH) return "oil-cheap";   // 평균보다 30원 이상 저렴
+  if (d >=  PRICE_DIFF_THRESH) return "oil-exp";     // 평균보다 30원 이상 비쌈
+  return cat;                                        // 그 외: 기본색(oil/lpg)
+};
+
+
+
   // ✅ 카테고리 & 필터
   const [activeCat, setActiveCat] = useState("oil");
   const defaultFilters = () => ({
@@ -1201,6 +1281,27 @@ const onModalDragEnd = () => {
 
     return () => { mounted = false; };
   }, []);
+
+  ////평균유가-마터 아이콘 즉시 갱신
+  useEffect(() => {
+  const { kakao } = window;
+  if (!kakao?.maps) return;
+
+  allMarkersRef.current.forEach((o) => {
+    if (o.cat === "oil" || o.cat === "lpg") {
+      const newType = markerTypeByBasis(o.data, o.cat, priceBasis);
+      const starred = !!(o.favKey && favSetRef.current?.has(o.favKey));
+      const isActive = activeMarkerRef.current?.marker === o.marker;
+      const scale = isActive ? ACTIVE_SCALE : 1;
+
+      o.type = newType; // 내부 타입도 최신으로
+      o.marker.setImage(getMarkerImage(newType, kakao, starred, scale));
+      o.marker.setZIndex(isActive ? 9999 : baseZ(newType));
+    }
+  });
+  // 색상만 바뀌므로 applyFiltersToMarkers()는 필요 없음
+}, [priceBasis]);
+
 
   /* ───────── 공통 유틸 ───────── */
   // Kakao Geocoder Promises
@@ -1564,7 +1665,7 @@ const statIdsOfSite = (site) =>
 
   // 선택 마커 하이라이트 유지
   const starredNow = !!(favKey && favSetRef.current?.has(favKey));
-  setActiveMarker({ marker, type: "ev", starred: starredNow, overlay });
+  //setActiveMarker({ marker, type: "ev", starred: starredNow, overlay });
 
     // A) 우측 상단 즐겨찾기 버튼 HTML
   const favBtnHtml = (on) => `
@@ -1786,12 +1887,8 @@ const statIdsOfSite = (site) =>
     const cat = isLpg ? "lpg" : "oil";
 
     // B027(휘발유) 우선, 없으면 D047(경유)
-    const d = parseNum(gs?.diff?.B027 ?? gs?.diff?.D047);
-    let markerType = cat;
-    if (cat === "oil" && Number.isFinite(d)) {
-      if (d < 0) markerType = "oil-cheap";
-      else if (d > 0) markerType = "oil-exp";
-    }
+    ////선택한 유종 기준으로 색상 결정 (oil/lpg 공통)
+  let markerType = markerTypeByBasis(gs, cat, priceBasisRef.current);
 
     const favKey = favKeyOf(gs, "oil");
     const starred0 = !!(favKey && favSetRef.current?.has(favKey));
@@ -1809,8 +1906,13 @@ const statIdsOfSite = (site) =>
 
       // 선택 마커 하이라이트 유지
       const starredNow = !!(favKey && favSetRef.current?.has(favKey));
-      setActiveMarker({ marker, type: markerType, starred: starredNow, overlay });
+      //setActiveMarker({ marker, type: markerType, starred: starredNow, overlay });
 
+      {
+       const basisNow = priceBasisRef.current;
+       const curType = markerTypeByBasis(gs, cat, basisNow);
+       setActiveMarker({ marker, type: curType, starred: starredNow, overlay });
+      }
       const favBtnHtml = (on) => `
         <button class="fav-btn ${on ? "on" : ""}"
                 ${isLoggedIn() ? "" : "disabled"}
@@ -1848,6 +1950,7 @@ const statIdsOfSite = (site) =>
             ${favBtnHtml(starredNow)}
           </div>
           ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
+         ${oilAvgPairPanel(gs, { lpgOnly: isLpg })}  <!-- ✅ 휘발유/경유 평균 패널 -->
           <div class="price-box">가격 불러오는 중…</div>
           <div class="info-flags">
             ${Object.entries(flags)
@@ -1871,11 +1974,7 @@ const statIdsOfSite = (site) =>
         }
       });
 
-      // 필요할 때만 화면 이동(경로 없고, 현재 bounds 밖일 때)
-      const b = mapRef.current.getBounds?.();
-      if (!routeCtxRef.current?.path && (!b || !b.contain(pos))) {
-        mapRef.current.panTo(pos);
-      }
+     mapRef.current.panTo(pos);
 
       // (B) 가격 로드 후 업데이트
       let oilHtml = "";
@@ -1915,6 +2014,7 @@ const statIdsOfSite = (site) =>
             ${favBtnHtml(nowStar)}
           </div>
           ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
+          ${oilAvgPairPanel(gs, { lpgOnly: isLpg })}  <!-- ✅ 휘발유/경유 평균 패널 -->
           ${oilHtml}
           <div class="info-flags">
             ${Object.entries(flags)
@@ -2705,6 +2805,34 @@ const ReviewsSection = () => (
                 <option value="oil">주유소</option>
                 <option value="lpg">LPG 충전소</option>
               </select>
+
+              <span className="form-label">유종 색상 기준</span>
+  <div className="btn-row compact">
+    <button
+      className={`btn btn-toggle ${priceBasis === "B027" ? "on" : ""}`}
+      onClick={() => setPriceBasis("B027")}
+      title="휘발유 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
+    >
+      휘발유
+    </button>
+    <button
+      className={`btn btn-toggle ${priceBasis === "D047" ? "on" : ""}`}
+      onClick={() => setPriceBasis("D047")}
+      title="경유 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
+    >
+      경유
+    </button>
+    <button
+      className={`btn btn-toggle ${priceBasis === "K015" ? "on" : ""}`}
+      onClick={() => setPriceBasis("K015")}
+      title="LPG 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
+    >
+      LPG
+    </button>
+  </div>
+  <div className="small-note">
+    선택한 유종의 시·군 평균 대비 <b>{PRICE_DIFF_THRESH}원 이상 싸면 초록</b>, <b>{PRICE_DIFF_THRESH}원 이상 비싸면 빨강</b>으로 표시돼요.
+  </div>
             </div>
 
             <LabelRow label="추천 개수">

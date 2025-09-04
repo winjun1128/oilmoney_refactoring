@@ -11,7 +11,7 @@ public class OilPrice {
 	public static String getOilPrice(String uniId) throws IOException {
 	    String base = "https://www.opinet.co.kr/api/detailById.do";
 	    StringBuilder urlBuilder = new StringBuilder(base)
-	        .append("?code=").append("F250903768")
+	        .append("?code=").append("F250903765")
 	        .append("&id=").append(uniId)
 	        .append("&out=json");
 
