@@ -1,0 +1,39 @@
+/* components.css */
+.card-container {
+    padding: 20px;
+    border-radius: 15px;
+    background-color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-title {
+    margin-bottom: 12px;
+    font-size: 1.5rem;
+    color: #333;
+    font-weight: bold;
+}
+
+.list-container {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.list-item {
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    background-color: #f8f9fa;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.price-diff.up { color: #e53e3e; }
+.price-diff.down { color: #38a169; }
+.no-data-message {
+    text-align: center;
+    color: #777;
+    margin-top: 20px;
+}

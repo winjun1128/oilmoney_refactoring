@@ -4,6 +4,9 @@ import Page from './page/Page';
 import RouteMapPage from './page/RouteMapPage';
 import { useState } from "react";
 import Auth from "./page/auth/Auth.js";
+import OilPrice from "./page/OilPrice.js";
+
+
 
 function App() {
 
@@ -28,6 +31,7 @@ function App() {
         <Route path="/route" element={<RouteMapPage isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />} />
         <Route path="/mypage" element={<MyPageWrapper isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen}
           setIsLogin={setIsLogin} />} />
+        <Route path="/oilPrice" element={<OilPrice />} />
       </Routes>
     </BrowserRouter>
   );

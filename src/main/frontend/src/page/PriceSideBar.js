@@ -3,15 +3,14 @@ import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple} from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom"; 
-import { handleMyInfoClick } from "./utils/authHelpers";
 
-export default function SideBar({ onFilterChange,isLogin, setIsLoginModalOpen }) {
+export default function RouteSideBar() {
     const navigate = useNavigate();   // ✅ 훅 선언
     const itemsTop = [
-        { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소",action: () => onFilterChange(prev => prev === "oil" ? null : "oil") },
-        { icon: <FontAwesomeIcon icon={faChargingStation} style={{ fontSize: "24px" }} />, label: "충전소" ,action: () => onFilterChange(prev => prev === "charge" ? null : "charge")},
-        { icon: <FontAwesomeIcon icon={faShare} style={{ fontSize: "24px" }} />, label: "목적지",action: ()=> navigate("/route")},
-        { icon: <FontAwesomeIcon icon={faChartSimple} style={{ fontSize: "24px" }} />, label: "유가정보",action: ()=> navigate("/oilPrice")},
+        { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소", onClick: ()=> navigate("/") },
+        { icon: <FontAwesomeIcon icon={faChargingStation} style={{ fontSize: "24px" }} />, label: "충전소" , onClick: ()=> navigate("/")},
+        { icon: <FontAwesomeIcon icon={faShare} style={{ fontSize: "24px" }} />, label: "목적지",onClick: () => window.dispatchEvent(new CustomEvent("ui:toggleFilters")) },
+        { icon: <FontAwesomeIcon icon={faChartSimple} style={{ fontSize: "24px" }} />, label: "유가정보" ,action: ()=> navigate("/oilPrice")},
     ];
 
     return (
@@ -20,16 +19,16 @@ export default function SideBar({ onFilterChange,isLogin, setIsLoginModalOpen })
                 position: "fixed",
                 left: 0,
                 top: 0,
-                zIndex: 999,
+                zIndex: 40,
                 width: 80,
                 height: "100vh",
-                borderRight: "1px solid #e5e7eb",
+                borderRight: "1px solid #e5e7eb", // gray-200
                 backgroundColor: "#ffffff",
                 display: "flex",
                 flexDirection: "column",
             }}
         >
-            {/* ✅ 위쪽 (로고 + 메뉴)  */}
+            {/* ─── 위쪽 (로고 + 메뉴) ─── */}
             <div
                 style={{
                     display: "flex",
@@ -75,14 +74,14 @@ export default function SideBar({ onFilterChange,isLogin, setIsLoginModalOpen })
                 >
                     {/* 토글추가 */}
                     {itemsTop.map((it, idx) => (
-                        <DockButton key={idx} label={it.label} onClick={it.action}>
+                        <DockButton key={idx} label={it.label} onClick={it.onClick}>
                             {it.icon}
                         </DockButton>
                     ))}
                 </nav>
             </div>
 
-            {/* ✅ 아래쪽 (내정보: mt-auto로 바닥에 고정) */}
+            {/* ─── 아래쪽 (내정보: mt-auto로 바닥에 고정) ─── */}
             <div
                 style={{
                     marginTop: "auto",
@@ -92,18 +91,19 @@ export default function SideBar({ onFilterChange,isLogin, setIsLoginModalOpen })
                     alignItems: "center",
                 }}
             >
-                <DockButton label="내정보" onClick={() => handleMyInfoClick({ isLogin, setIsLoginModalOpen, navigate })}>
+                <DockButton label="내정보" onClick={() => navigate("/mypage")}>
                     <User style={{ width: "1.75rem", height: "1.75rem" }} />
                 </DockButton>
             </div>
         </aside>
     );
 }
-
-function DockButton({ children, label,onClick = () => {} }) {
+//버튼연결
+function DockButton({ children, label,onClick }) {
     return (
         <button
-            onClick={onClick} 
+            type="button"
+            onClick={onClick}   //버튼에 연결
             style={{
                 display: "flex",
                 flexDirection: "column",
