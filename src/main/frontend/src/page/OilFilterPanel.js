@@ -154,6 +154,18 @@ export default function OilFilterPanel({ setStations, handleOilFilterSearch, onC
 
             {/* 콘텐츠 영역 */}
             <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
+                {/* 콘텐츠 영역 - 필터 묶음 전체 비활성화 */}
+<fieldset
+  disabled={nearbyMode}
+  style={{
+    border: 0,
+    padding: 0,
+    margin: 0,
+    opacity: nearbyMode ? 0.55 : 1, // 시각적 디밍
+    transition: "opacity .15s ease"
+  }}
+  aria-disabled={nearbyMode}
+>
                 {/* ✅ 지역 */}
                 <div style={{ marginBottom: "20px" }}>
                     <h4 style={{ fontSize: "13px", fontWeight: "700", marginBottom: "8px", color: "#111827" }}>지역</h4>
@@ -225,7 +237,10 @@ export default function OilFilterPanel({ setStations, handleOilFilterSearch, onC
                             </label>
                         ))}
                     </div>
+                    
                 </div>
+                </fieldset>
+                
 
                 {/* ✅ 내 주변 주유소 */}
                 <div style={{ marginBottom: "20px" }}>

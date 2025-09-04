@@ -2628,7 +2628,7 @@ const ReviewsSection = () => (
           )}
 
           {/* 표 먼저 */}
-           <ModalInfo />
+          <ModalInfo />
 
           {/* 리뷰 섹션 */}
           <ReviewsSection />
