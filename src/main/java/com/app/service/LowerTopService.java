@@ -1,0 +1,68 @@
+package com.app.service;
+
+import java.util.Collections;
+import java.util.List;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import com.app.dto.LowerTop.LowerTopPrice;
+import com.app.dto.LowerTop.LowerTopPriceResult;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+@Slf4j
+@Service
+public class LowerTopService {
+
+	private final String API_KEY = "F250822740";
+
+	// 선택된 시군(area) 코드로 최저가 주유소 가져오기
+	public List<LowerTopPrice> getAndProcessOilPrices(String area, String prodcd) {
+		String apiUrl = "https://www.opinet.co.kr/api/lowTop10.do?out=json"
+				+ "&prodcd=" + prodcd 
+				+ "&area=" + area
+				+ "&cnt=5"
+				+ "&code=" + API_KEY;
+		
+		RestTemplate restTemplate = new RestTemplate();
+		ObjectMapper mapper = new ObjectMapper();
+		System.out.println("1");
+		
+		try {
+			HttpHeaders headers = new HttpHeaders();
+			headers.set("User-Agent", "Mozilla/5.0");
+			HttpEntity<String> entity = new HttpEntity<>("parameters", headers);
+
+			ResponseEntity<String> response = restTemplate.exchange(
+					apiUrl,
+					HttpMethod.GET,
+					entity,
+					String.class
+			);
+			
+			System.out.println("2");
+			
+			if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+				String json = response.getBody();
+				
+				log.info("=== API 응답 === {}", json);
+				System.out.println("3");
+				
+				LowerTopPriceResult result = mapper.readValue(json, LowerTopPriceResult.class);
+				
+				System.out.println("결과값" + result);
+
+				return result.getResult().getOilList();
+			}
+		} catch (Exception e) {
+			log.error("유가 정보 처리 중 오류 발생", prodcd, e);
+		}
+		return Collections.emptyList();
+	}
+}
