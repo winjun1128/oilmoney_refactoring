@@ -12,6 +12,75 @@ const MY_COORD = { lat: 36.8072917, lon: 127.1471611 };
 const MIN_LEVEL = 1;
 const MAX_LEVEL = 12;
 
+const PRICE_DIFF_THRESH = 30;                     // 임계값(원)
+const BASIS_KEY = "route.priceBasis.v1";
+
+
+
+// JSON→Map 정규화 (RouteMap의 함수 그대로)
+const normalizeOilAvgMap = (json) => {
+  const raw = json?.response?.body?.items ?? [];
+  const arr = Array.isArray(raw) ? raw : [raw];
+  const map = new Map();
+  for (const o of arr) {
+    const uni = String(o.UNI_CD || o.uni || "");
+    if (!uni) continue;
+    map.set(uni, {
+      prices: o.PRICES || {},  // 최신 개별가격(있으면)
+      avg:    o.AVG    || {},  // 시·군 평균
+      diff:   o.DIFF   || {},  // (개별가격 - 시·군 평균)
+      updatedAt: o.UPDATED_AT || null,
+      sigunCd:   o.SIGUN_CD   || null,
+    });
+  }
+  return map;
+};
+
+// 유종별로 마커 타입 결정
+const markerTypeByBasis = (station, cat, basis) => {
+  const d = Number((station?.diff || {})[basis]);
+  if (!Number.isFinite(d)) return cat;
+  if (d <= -PRICE_DIFF_THRESH) return "oil-cheap";
+  if (d >=  PRICE_DIFF_THRESH) return "oil-exp";
+  return cat;
+};
+
+// 보기용
+const basisLabel = (k) => ({ B027:"휘발유", D047:"경유", K015:"LPG" }[k] || k);
+const fmtWon = (v) => {
+  const n = Number(String(v ?? "").replace(/,/g,"").trim());
+  return Number.isFinite(n) ? n.toLocaleString() : "-";
+};
+const oilAvgPairPanel = (gs, { lpgOnly=false } = {}) => {
+  const row = (label, avg, diff) => {
+    const hasAvg  = Number.isFinite(avg);
+    const hasDiff = Number.isFinite(diff);
+    const sign = hasDiff ? (diff > 0 ? "+" : "") : "";
+    const diffColor = hasDiff ? (diff < 0 ? "#2ecc71" : diff > 0 ? "#e74c3c" : "#999") : "#999";
+    return `<div style="display:flex;justify-content:space-between;gap:8px;margin:2px 0;">
+      <span>${label}</span>
+      <span>${hasAvg ? `${fmtWon(avg)}원` : "-"}${
+        hasDiff ? `<em style="color:${diffColor};font-style:normal;margin-left:6px">(${sign}${fmtWon(diff)})</em>` : ""
+      }</span></div>`;
+  };
+  if (lpgOnly) {
+    const a = Number(gs?.avg?.K015), d = Number(gs?.diff?.K015);
+    if (![a,d].some(Number.isFinite)) return "";
+    return `<div style="margin:6px 0 8px;padding:8px 10px;border:1px solid #eee;border-radius:8px;background:#fafafa;font-size:12px;">
+      <div style="font-weight:600;margin-bottom:4px">시·군 평균가 / 차이</div>${row("🔥 LPG", a, d)}</div>`;
+  }
+  const ag = Number(gs?.avg?.B027), dg = Number(gs?.diff?.B027);
+  const ad = Number(gs?.avg?.D047), dd = Number(gs?.diff?.D047);
+  if (![ag,dg,ad,dd].some(Number.isFinite)) return "";
+  return `<div style="margin:6px 0 8px;padding:8px 10px;border:1px solid #eee;border-radius:8px;background:#fafafa;font-size:12px;">
+    <div style="font-weight:600;margin-bottom:4px">시·군 평균가 / 차이</div>
+    ${row("⛽ 휘발유", ag, dg)}${row("🛢 경유", ad, dd)}</div>`;
+};
+
+
+
+
+
 /* ✅ 마커 아이콘 */
 const pinSvg = (fill = "#2b8af7", stroke = "#1b6ad1") => `
 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="40" viewBox="0 0 28 40">
@@ -24,13 +93,15 @@ const markerImgCache = {};
 const getMarkerImage = (type, kakao) => {
     const key = String(type);
     if (markerImgCache[key]) return markerImgCache[key];
-
+    //// 평균유가
     const color =
-        type === "ev" ? "#2b8af7" :
-            type === "oil" ? "#ff7f27" :
-                type === "lpg" ? "#616161" :
-                    type === "origin" ? "#7b1fa2" :
-                        type === "dest" ? "#2e7d32" : "#999";
+      type === "ev"        ? "#2b8af7" :
+      type === "oil-cheap" ? "#2ecc71" :  // 평균보다 싼 곳
+      type === "oil-exp"   ? "#e74c3c" :  // 평균보다 비싼 곳
+      type === "oil"       ? "#ff7f27" :
+      type === "lpg"       ? "#616161" :
+      type === "origin"    ? "#7b1fa2" :
+      type === "dest"      ? "#2e7d32" : "#999";
 
     const src = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(pinSvg(color));
     const img = new kakao.maps.MarkerImage(src, new kakao.maps.Size(21, 30), {
@@ -127,6 +198,24 @@ export default function OilMap({ stations, handleLocationSearch }) {
     const [selectedCoord, setSelectedCoord] = useState(null);
 
     const [reviewModal, setReviewModal] = useState({ open: false, mode: null, station: null });
+    // ── 평균유가/차이: RouteMap과 동일 개념
+//const PRICE_DIFF_THRESH = 30;                     // 임계값(원)
+//const BASIS_KEY = "route.priceBasis.v1";
+const [priceBasis, setPriceBasis] = useState(() => {
+  try { return localStorage.getItem(BASIS_KEY) || "B027"; } catch { return "B027"; }
+});
+useEffect(() => { try { localStorage.setItem(BASIS_KEY, priceBasis); } catch {} }, [priceBasis]);
+
+// uni(주유소 고유코드) → {prices, avg, diff, ...}
+const [avgMap, setAvgMap] = useState(new Map());
+const fetchOilWithAverage = async () => {
+  // ✅ 서버 라우트가 다르면 이 URL만 바꾸세요
+  const r = await fetch("/api/route/oil/price/all");
+  if (!r.ok) return;
+  const j = await r.json();
+  setAvgMap(normalizeOilAvgMap(j));
+};
+useEffect(() => { fetchOilWithAverage().catch(()=>{}); }, []);
 
     // ✅ 미세먼지 등급
     const pmGrade = (v, type) => {
@@ -329,6 +418,29 @@ export default function OilMap({ stations, handleLocationSearch }) {
         }));
     };
 
+////평균유가-기준 바뀌면 현재 마커 이미지만 재칠하기
+useEffect(() => {
+  if (!window.kakao || !mapRef.current) return;
+  markersRef.current.forEach((m, idx) => {
+    const s0 = stations?.[idx]; if (!s0) return;
+    const uni = String(s0.stationId ?? s0.uni ?? s0.UNI_CD ?? "");
+    const extra = uni ? (avgMap.get(uni) || {}) : {};
+    const s = { ...s0, uni, avg: extra.avg || {}, diff: extra.diff || {} };
+    const isCharge = !!s.statId;
+    if (isCharge) return; // EV는 그대로
+    const cat = ((s.lpgYN ?? s.LPG_YN) === "Y") ? "lpg" : "oil";
+    const t = markerTypeByBasis(s, cat, priceBasis);
+    m.setImage(getMarkerImage(t, window.kakao));
+  });
+}, [priceBasis, avgMap, stations]);
+
+    ////평균유가-사이드바에서 보낼 커스텀 이벤트 수신
+useEffect(() => {
+  const on = (e) => setPriceBasis(e.detail);
+  window.addEventListener("oil:setPriceBasis", on);
+  return () => window.removeEventListener("oil:setPriceBasis", on);
+}, []);
+
 
     // ✅ 맵 초기화
     useEffect(() => {
@@ -369,6 +481,7 @@ export default function OilMap({ stations, handleLocationSearch }) {
         }
     }, []);
 
+    ////평균유가
     // ✅ 마커 표시
     useEffect(() => {
         if (!window.kakao || !mapRef.current) return;
@@ -380,19 +493,28 @@ export default function OilMap({ stations, handleLocationSearch }) {
         const newMarkers = [];
         const centerCoord = selectedCoord ?? MY_COORD;
 
-        stations.forEach((s) => {
+      stations.forEach((s0) => {
+    // uni 추출(프로젝트에 맞게 보정)
+    const uni = String(s0.stationId ?? s0.uni ?? s0.UNI_CD ?? "");
+    const extra = uni ? (avgMap.get(uni) || {}) : {};
+    const s = { ...s0, uni, prices: extra.prices || {}, avg: extra.avg || {}, diff: extra.diff || {}, updatedAt: extra.updatedAt };
             const lat = Number(s.lat ?? s.LAT);
             const lon = Number(s.lon ?? s.LON ?? s.lng);
             if (Number.isNaN(lat) || Number.isNaN(lon)) return;
 
             const pos = new window.kakao.maps.LatLng(lat, lon);
+
             const isCharge = !!s.statId;
             // const markerImage = getMarkerImage(isCharge ? "ev" : "oil", window.kakao);
             const favKey = favKeyOf(s, isCharge ? "ev" : "oil");
             const isFav = !!(favKey && favSetRef.current?.has(favKey));
             const markerImage = isFav
                 ? getStarMarkerImage(window.kakao)
-                : getMarkerImage(isCharge ? "ev" : "oil", window.kakao);
+                : getMarkerImage(isCharge ? "ev" : oilMarkerType, window.kakao);
+    // 주유/LPG의 기본 분류
+    const cat = ((s.lpgYN ?? s.LPG_YN) === "Y") ? "lpg" : "oil";
+    // 평균 대비 색상 반영
+    const oilMarkerType = markerTypeByBasis(s, cat, priceBasis);
 
             // const marker = new window.kakao.maps.Marker({ position: pos, zIndex: 5, image: markerImage });
             const marker = new window.kakao.maps.Marker({
@@ -577,8 +699,9 @@ export default function OilMap({ stations, handleLocationSearch }) {
         ${on ? "★" : "☆"}
       </button>`;
 
-                    // 1) 가격 로딩 전 화면
-                    const baseHtml = `
+    // 1) 가격 로딩 전 화면
+    const isLpg = (s.lpgYN ?? s.LPG_YN) === "Y";
+    const baseHtml = `
       <div class="info-window">
         <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
           <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
@@ -593,6 +716,7 @@ export default function OilMap({ stations, handleLocationSearch }) {
       </div>
         </div>
         ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
+      ${oilAvgPairPanel(s, { lpgOnly: isLpg })}
         <div class="price-box">가격 불러오는 중…</div>
         <div class="info-flags">
           ${[
@@ -667,6 +791,7 @@ export default function OilMap({ stations, handleLocationSearch }) {
       </div>
         </div>
         ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
+      ${oilAvgPairPanel(s, { lpgOnly: isLpg })}
         ${oilHtml}
         <div class="info-flags">
           ${[

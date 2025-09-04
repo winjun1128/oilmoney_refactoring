@@ -11,7 +11,7 @@ public class OilAvgPrice {
 	// com.app.Repository.impl.OilPrice 안에 추가
 	public static String getAvgSigunPrice(String sidoCd, String sigunCd, String prodcd, boolean debug) throws IOException {
 	    final String BASE = "https://www.opinet.co.kr/api/avgSigunPrice.do";
-	    final String CODE = "F250903768"; // 인코딩키(재인코딩 금지)
+	    final String CODE = "F250819729"; // 인코딩키(재인코딩 금지)
 	    StringBuilder urlBuilder = new StringBuilder(BASE)
 	            .append("?code=").append(CODE)
 	            .append("&out=json")
