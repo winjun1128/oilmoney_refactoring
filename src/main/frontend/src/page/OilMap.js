@@ -40,6 +40,41 @@ const getMarkerImage = (type, kakao) => {
     markerImgCache[key] = img;
     return img;
 };
+
+// ★ 즐겨찾기(및 내 위치) 별 마커 이미지 (캐시)
+const getStarMarkerImage = (kakao) => {
+    if (markerImgCache.star) return markerImgCache.star;
+    const img = new kakao.maps.MarkerImage(
+        "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
+        new kakao.maps.Size(24, 35),
+        { offset: new kakao.maps.Point(12, 35) }
+    );
+    markerImgCache.star = img;
+    return img;
+};
+
+const MY_LOC_ICON_URL = process.env.PUBLIC_URL
+    ? `${process.env.PUBLIC_URL}/images/location3.png`
+    : "/images/location3.png";
+
+const getMyLocationImage = (kakao) => {
+    if (markerImgCache.my) return markerImgCache.my;
+    // 아이콘 표시 크기와 기준점(오프셋) — 원형이면 중앙(22,22)이 자연스럽습니다.
+    const size = new kakao.maps.Size(36, 36);
+    const offset = new kakao.maps.Point(22, 22); // 핀꼬리처럼 아래끝이 좌표면 (22,44)로
+    const img = new kakao.maps.MarkerImage(MY_LOC_ICON_URL, size, { offset });
+    markerImgCache.my = img;
+    return img;
+};
+
+// ★ 즐겨찾기 상태에 따라 마커 이미지/우선순위 바꾸기
+const setMarkerIconByFav = (marker, isCharge, isFav, kakao) => {
+    const img = isFav
+        ? getStarMarkerImage(kakao)
+        : getMarkerImage(isCharge ? "ev" : "oil", kakao);
+    marker.setImage(img);
+    marker.setZIndex(isFav ? 7 : 5);
+};
 //// 즐겨찾기
 // ✅ html escape (파일 하단의 escapeHtml가 이미 있다면, 아래 것으로 교체하고 하단 것은 삭제)
 const escapeHtml = (s) =>
@@ -87,8 +122,11 @@ export default function OilMap({ stations, handleLocationSearch }) {
 
     const [weather, setWeather] = useState(null);
     const [air, setAir] = useState(null);
+
     const [adjustMode, setAdjustMode] = useState(false);
     const [selectedCoord, setSelectedCoord] = useState(null);
+
+    const [reviewModal, setReviewModal] = useState({ open: false, mode: null, station: null });
 
     // ✅ 미세먼지 등급
     const pmGrade = (v, type) => {
@@ -308,11 +346,7 @@ export default function OilMap({ stations, handleLocationSearch }) {
             infoRef.current = new window.kakao.maps.InfoWindow({ zIndex: 10 });
             window.kakao.maps.event.addListener(map, "click", () => infoRef.current.close());
 
-            const markerImage = new window.kakao.maps.MarkerImage(
-                "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png",
-                new window.kakao.maps.Size(24, 35),
-                { offset: new window.kakao.maps.Point(12, 35) }
-            );
+            const markerImage = getMyLocationImage(window.kakao);
 
             myMarkerRef.current = new window.kakao.maps.Marker({
                 position: center,
@@ -353,9 +387,19 @@ export default function OilMap({ stations, handleLocationSearch }) {
 
             const pos = new window.kakao.maps.LatLng(lat, lon);
             const isCharge = !!s.statId;
-            const markerImage = getMarkerImage(isCharge ? "ev" : "oil", window.kakao);
+            // const markerImage = getMarkerImage(isCharge ? "ev" : "oil", window.kakao);
+            const favKey = favKeyOf(s, isCharge ? "ev" : "oil");
+            const isFav = !!(favKey && favSetRef.current?.has(favKey));
+            const markerImage = isFav
+                ? getStarMarkerImage(window.kakao)
+                : getMarkerImage(isCharge ? "ev" : "oil", window.kakao);
 
-            const marker = new window.kakao.maps.Marker({ position: pos, zIndex: 5, image: markerImage });
+            // const marker = new window.kakao.maps.Marker({ position: pos, zIndex: 5, image: markerImage });
+            const marker = new window.kakao.maps.Marker({
+                position: pos,
+                zIndex: isFav ? 7 : 5,
+                image: markerImage
+            });
             marker.setMap(mapRef.current);
             newMarkers.push(marker);
             bounds.extend(pos);
@@ -383,7 +427,10 @@ export default function OilMap({ stations, handleLocationSearch }) {
               ${escapeHtml(s.statNm ?? "충전소")}
             </div>
           </div>
-          ${favBtnHtml(starredNow)}
+          <div style="display:flex;align-items:center;gap:6px">
+        ${favBtnHtml(starredNow)}
+        <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
+      </div>
         </div>
         ${s.addr ? `<div class="info-row">📍 ${escapeHtml(s.addr)}</div>` : ""}
         ${s.useTime ? `<div class="info-row">⏰ ${escapeHtml(s.useTime)}</div>` : ""}
@@ -393,15 +440,25 @@ export default function OilMap({ stations, handleLocationSearch }) {
 
                     setInfoHtml(baseHtml, marker, (root) => {
                         const btn = root.querySelector(".fav-btn");
-                        if (!btn) return;
-                        btn.addEventListener("click", async (e) => {
-                            e.stopPropagation();
-                            if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
-                            await toggleFavForStation(s, mode);
-                            const on = favSetRef.current?.has(favKey);
-                            btn.textContent = on ? "★" : "☆";
-                            btn.classList.toggle("on", on);
-                        });
+                        if (!btn || btn.disabled) { /* 비로그인시 즐겨찾기 비활성 */ }
+                        else {
+                            btn.addEventListener("click", async (e) => {
+                                e.stopPropagation();
+                                await toggleFavForStation(s, "ev");
+                                const on = favSetRef.current?.has(favKeyOf(s, "ev"));
+                                btn.textContent = on ? "★" : "☆";
+                                btn.classList.toggle("on", on);
+                                setMarkerIconByFav(marker, /*isCharge=*/true, on, window.kakao);
+                            });
+                        }
+
+                        const rvBtn = root.querySelector(".review-btn");
+                        if (rvBtn) {
+                            rvBtn.addEventListener("click", (e) => {
+                                e.stopPropagation();
+                                setReviewModal({ open: true, mode: "ev", station: s });
+                            });
+                        }
                     });
 
                     // 2) 상태 비동기 로딩 → 갱신
@@ -451,7 +508,10 @@ export default function OilMap({ stations, handleLocationSearch }) {
                 ${escapeHtml(s.statNm ?? "충전소")}
               </div>
             </div>
-            ${favBtnHtml(nowStar)}
+            <div style="display:flex;align-items:center;gap:6px">
+        ${favBtnHtml(nowStar)}
+        <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
+      </div>
           </div>
           ${s.addr ? `<div class="info-row">📍 ${escapeHtml(s.addr)}</div>` : ""}
           ${s.useTime ? `<div class="info-row">⏰ ${escapeHtml(s.useTime)}</div>` : ""}
@@ -471,15 +531,25 @@ export default function OilMap({ stations, handleLocationSearch }) {
 
                         setInfoHtml(html2, marker, (root) => {
                             const btn = root.querySelector(".fav-btn");
-                            if (!btn) return;
-                            btn.addEventListener("click", async (e) => {
-                                e.stopPropagation();
-                                if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
-                                await toggleFavForStation(s, mode);
-                                const on = favSetRef.current?.has(favKey);
-                                btn.textContent = on ? "★" : "☆";
-                                btn.classList.toggle("on", on);
-                            });
+                            if (!btn || btn.disabled) { /* skip */ }
+                            else {
+                                btn.addEventListener("click", async (e) => {
+                                    e.stopPropagation();
+                                    await toggleFavForStation(s, "ev");
+                                    const on = favSetRef.current?.has(favKeyOf(s, "ev"));
+                                    btn.textContent = on ? "★" : "☆";
+                                    btn.classList.toggle("on", on);
+                                    setMarkerIconByFav(marker, /*isCharge=*/true, on, window.kakao);
+                                });
+                            }
+
+                            const rvBtn = root.querySelector(".review-btn");
+                            if (rvBtn) {
+                                rvBtn.addEventListener("click", (e) => {
+                                    e.stopPropagation();
+                                    setReviewModal({ open: true, mode: "ev", station: s });
+                                });
+                            }
                         });
                     } catch (e) {
                         const fail = `
@@ -517,7 +587,10 @@ export default function OilMap({ stations, handleLocationSearch }) {
             </div>
             ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
           </div>
-          ${favBtnHtml(starredNow)}
+          <div style="display:flex;align-items:center;gap:6px">
+        ${favBtnHtml(starredNow)}
+        <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
+      </div>
         </div>
         ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
         <div class="price-box">가격 불러오는 중…</div>
@@ -536,15 +609,25 @@ export default function OilMap({ stations, handleLocationSearch }) {
 
                     setInfoHtml(baseHtml, marker, (root) => {
                         const btn = root.querySelector(".fav-btn");
-                        if (!btn) return;
-                        btn.addEventListener("click", async (e) => {
-                            e.stopPropagation();
-                            if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
-                            await toggleFavForStation(s, mode);
-                            const on = favSetRef.current?.has(favKey);
-                            btn.textContent = on ? "★" : "☆";
-                            btn.classList.toggle("on", on);
-                        });
+                        if (!btn || btn.disabled) { /* skip */ }
+                        else {
+                            btn.addEventListener("click", async (e) => {
+                                e.stopPropagation();
+                                await toggleFavForStation(s, "oil");
+                                const on = favSetRef.current?.has(favKeyOf(s, "oil"));
+                                btn.textContent = on ? "★" : "☆";
+                                btn.classList.toggle("on", on);
+                                setMarkerIconByFav(marker, /*isCharge=*/false, on, window.kakao);
+                            });
+                        }
+
+                        const rvBtn = root.querySelector(".review-btn");
+                        if (rvBtn) {
+                            rvBtn.addEventListener("click", (e) => {
+                                e.stopPropagation();
+                                setReviewModal({ open: true, mode: "oil", station: s });
+                            });
+                        }
                     });
 
                     // 2) 가격 로딩 → 갱신
@@ -578,7 +661,10 @@ export default function OilMap({ stations, handleLocationSearch }) {
             </div>
             ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
           </div>
-          ${favBtnHtml(nowStar)}
+          <div style="display:flex;align-items:center;gap:6px">
+        ${favBtnHtml(nowStar)}
+        <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
+      </div>
         </div>
         ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
         ${oilHtml}
@@ -597,15 +683,25 @@ export default function OilMap({ stations, handleLocationSearch }) {
 
                     setInfoHtml(html, marker, (root) => {
                         const btn = root.querySelector(".fav-btn");
-                        if (!btn) return;
-                        btn.addEventListener("click", async (e) => {
-                            e.stopPropagation();
-                            if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
-                            await toggleFavForStation(s, mode);
-                            const on = favSetRef.current?.has(favKey);
-                            btn.textContent = on ? "★" : "☆";
-                            btn.classList.toggle("on", on);
-                        });
+                        if (!btn || btn.disabled) { /* skip */ }
+                        else {
+                            btn.addEventListener("click", async (e) => {
+                                e.stopPropagation();
+                                await toggleFavForStation(s, "oil");
+                                const on = favSetRef.current?.has(favKeyOf(s, "oil"));
+                                btn.textContent = on ? "★" : "☆";
+                                btn.classList.toggle("on", on);
+                                setMarkerIconByFav(marker, /*isCharge=*/false, on, window.kakao);
+                            });
+                        }
+
+                        const rvBtn = root.querySelector(".review-btn");
+                        if (rvBtn) {
+                            rvBtn.addEventListener("click", (e) => {
+                                e.stopPropagation();
+                                setReviewModal({ open: true, mode: "oil", station: s });
+                            });
+                        }
                     });
                 }
 
@@ -617,7 +713,7 @@ export default function OilMap({ stations, handleLocationSearch }) {
 
         markersRef.current = newMarkers;
         if (newMarkers.length > 0) mapRef.current.setBounds(bounds);
-    }, [stations]);
+    }, [stations, favSet]);
 
     // ✅ 내 위치 이동
     const goMyPosition = () => {
@@ -713,6 +809,7 @@ export default function OilMap({ stations, handleLocationSearch }) {
                     저장
                 </button>
             )}
+
             {/* ✅ 하단 마커색깔 설명 구역 */}
             <div
                 style={{
@@ -751,15 +848,21 @@ export default function OilMap({ stations, handleLocationSearch }) {
                     <span>평균보다 -30 이하</span>
                 </div>
             </div>
+
+            {/* 리뷰 모달 함수 맨 아래 */}
+            <ReviewModal
+                open={reviewModal.open}
+                mode={reviewModal.mode}
+                station={reviewModal.station}
+                onClose={() => setReviewModal({ open: false, mode: null, station: null })}
+            />
+
         </div>
 
 
     );
 }
 
-function escapeHtml(str) {
-    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-}
 
 function LegendDot({ color }) {
     return (
@@ -776,3 +879,189 @@ function LegendDot({ color }) {
         />
     );
 }
+
+
+
+function ReviewModal({ open, mode, station, onClose }) {
+  const [loading, setLoading] = useState(false);
+  const [items, setItems] = useState([]);
+
+  // 작성 상태
+  const [text, setText] = useState("");
+  const [rating, setRating] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
+
+  const MAX_LEN = 500;
+  const loggedIn = isLoggedIn();
+
+  const getStationId = () =>
+    mode === "oil"
+      ? (station?.stationId ?? station?.uni ?? station?.UNI_CD ?? "")
+      : String(station?.statId ?? station?.STAT_ID ?? "");
+
+  // 목록 불러오기
+  useEffect(() => {
+    if (!open) return;
+    let ignore = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const id = getStationId();
+        const res = await fetch(`/api/reviews?mode=${mode}&id=${encodeURIComponent(id)}`);
+        const json = await res.json();
+        if (!ignore) setItems(Array.isArray(json?.items) ? json.items : (json || []));
+      } catch {
+        if (!ignore) setItems([]);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    })();
+    // 모달 닫히면 폼 초기화
+    return () => { ignore = true; setText(""); setRating(0); setSubmitting(false); };
+  }, [open, mode, station]);
+
+  const submitReview = async (e) => {
+    e?.preventDefault?.();
+    if (!loggedIn) { alert("로그인 후 이용 가능합니다."); return; }
+    const clean = text.trim();
+    if (!clean) { alert("리뷰 내용을 입력해주세요."); return; }
+
+    try {
+      setSubmitting(true);
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({
+          mode,
+          id: getStationId(),
+          text: clean,
+          rating: rating || null,
+        }),
+      });
+      if (!res.ok) throw new Error("리뷰 저장 실패");
+      const created = await res.json();
+
+      const now = new Date().toISOString();
+      setItems(prev => [{
+        id: created?.id ?? Math.random().toString(36).slice(2),
+        nickname: created?.nickname ?? "나",
+        text: created?.text ?? clean,
+        rating: (created?.rating ?? rating) || undefined,
+        createdAt: created?.createdAt ?? now,
+      }, ...prev]);
+
+      setText("");
+      setRating(0);
+    } catch (err) {
+      console.error(err);
+      alert("리뷰 등록에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const onKeyDown = (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") submitReview(e);
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="review-modal__overlay" onClick={onClose}>
+      <div className="review-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="review-modal__header">
+          <div className="review-modal__title">
+            {mode === "oil" ? "주유소" : "충전소"} 리뷰
+          </div>
+          <button className="review-modal__close" onClick={onClose}>×</button>
+        </div>
+
+        <div className="review-modal__sub">
+          <b>{mode === "oil" ? (station?.name ?? station?.NAME) : (station?.statNm ?? station?.STAT_NM)}</b>
+          <span style={{ marginLeft: 8, color: "#6b7280" }}>{mode}</span>
+        </div>
+
+        {/* 작성 영역 */}
+        <section className="review-compose">
+          <div className="compose-title">리뷰 작성</div>
+
+          <div className="review-field">
+            <label className="review-label">평점</label>
+            <div className="rating-stars" aria-label="별점 선택">
+              {[1, 2, 3, 4, 5].map(n => (
+                <button
+                  key={n}
+                  type="button"
+                  className={n <= (rating || 0) ? "on" : ""}
+                  onClick={() => loggedIn && setRating(n)}
+                  disabled={!loggedIn || submitting}
+                  title={`${n}점`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="review-field">
+            <label className="review-label">내용</label>
+            <textarea
+              className="review-textarea"
+              placeholder={loggedIn ? "방문 소감, 가격, 친절도 등을 적어주세요. (Ctrl/Cmd + Enter 등록)" : "로그인 후 작성할 수 있습니다."}
+              maxLength={MAX_LEN}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={onKeyDown}
+              disabled={!loggedIn || submitting}
+            />
+            <div className="review-actions">
+              <span className="review-count">{text.length}/{MAX_LEN}</span>
+              <button
+                className="review-submit"
+                onClick={submitReview}
+                disabled={!loggedIn || submitting || !rating || !text.trim()}
+                title={!loggedIn ? "로그인 필요" : ""}
+              >
+                {submitting ? "등록 중…" : "리뷰 등록"}
+              </button>
+            </div>
+            {!loggedIn && <div className="review-login-hint">로그인 후 리뷰를 작성할 수 있어요.</div>}
+          </div>
+        </section>
+
+        {/* 목록 */}
+        <div className="review-modal__body">
+          {loading ? (
+            <div className="review-modal__empty">불러오는 중…</div>
+          ) : items.length === 0 ? (
+            <div className="review-modal__empty">아직 등록된 리뷰가 없습니다.</div>
+          ) : (
+            <ul className="review-list">
+              {items.map((r, i) => (
+                <li key={r.id ?? i} className="review-item">
+                  <div className="review-item__top">
+                    <div className="review-item__avatar" />
+                    <div className="review-item__meta">
+                      <b className="review-item__nick">{r.nickname ?? "익명"}</b>
+                      <span className="review-item__date">{(r.createdAt ?? "").slice(0, 10)}</span>
+                    </div>
+                    {r.rating ? (
+                      <span className="review-item__rating">
+                        {"★".repeat(r.rating)}{"☆".repeat(5 - r.rating)}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="review-item__text">{r.text ?? r.content ?? ""}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
