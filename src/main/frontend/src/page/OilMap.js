@@ -345,10 +345,66 @@ export default function OilMap({ stations, handleLocationSearch }) {
                     저장
                 </button>
             )}
+            {/* ✅ 하단 마커색깔 설명 구역 */}
+            <div
+                style={{
+                    position: "fixed",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    bottom: 16,
+                    zIndex: 1000,
+                    pointerEvents: "none", // 맵 드래그 방해 X
+                }}
+            >
+                <div
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        background: "rgba(255,255,255,.96)",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 12,
+                        boxShadow: "0 8px 24px rgba(0,0,0,.12)",
+                        padding: "8px 12px",
+                        pointerEvents: "none", // 클릭 불가(설명 전용)
+                        fontSize: 12,
+                        color: "#374151",
+                    }}
+                >
+                    <span style={{ color: "#6b7280", marginRight: 4 }}>가격 마커 안내</span>
+
+                    <LegendDot color="#ef4444" />
+                    <span>평균보다 +30 이상</span>
+
+                    <LegendDot color="#f59e0b" />
+                    <span>±30 구간</span>
+
+                    <LegendDot color="#10b981" />
+                    <span>평균보다 -30 이하</span>
+                </div>
+            </div>
         </div>
+
+
     );
 }
 
 function escapeHtml(str) {
     return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function LegendDot({ color }) {
+    return (
+        <span
+            style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: color,
+                display: "inline-block",
+                boxShadow: `0 0 0 2px #fff, 0 0 0 3px ${color}`,
+                marginRight: 4,
+            }}
+        />
+    );
 }
