@@ -15,5 +15,11 @@ public class ChargeSearchDTO {
     private String status;         // 상태 (01=충전가능, 02=충전중...)
     private Boolean twentyFour;    // 24시간 여부
     private String floorType;      // 설치 위치 (G/B)
+    
+ // ✅ 근처 검색용
+    private String mode;      // "nearby" 이면 근처 검색
+    private Double lat;       // 위도
+    private Double lng;       // 경도
+    private Double radius;    // km
 
 }

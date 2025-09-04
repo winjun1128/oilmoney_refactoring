@@ -71,7 +71,7 @@ export default function ChargeFilterPanel({ handleChargeFilterSearch, onClose })
             const payload = {
                 mode: "nearby",
                 lat: myCoord.lat,
-                lon: myCoord.lon,
+                lng: myCoord.lon,
                 radius: Number(radius), // km
             };
             console.log("📍 내 주변 충전소 검색:", payload);
