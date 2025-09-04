@@ -31,7 +31,7 @@ function App() {
         <Route path="/route" element={<RouteMapPage isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />} />
         <Route path="/mypage" element={<MyPageWrapper isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen}
           setIsLogin={setIsLogin} />} />
-        <Route path="/oilPrice" element={<OilPrice />} />
+        <Route path="/oilPrice" element={<OilPrice isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen}/>} />
       </Routes>
     </BrowserRouter>
   );

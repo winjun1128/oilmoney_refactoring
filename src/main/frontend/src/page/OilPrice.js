@@ -3,13 +3,13 @@ import PriceSideBar from './PriceSideBar';
 import FinalProject from '../FinalProject3/FinalProject';
 import '../App.css';
 
-export default function OilPrice() {
+export default function OilPrice({ isLogin, setIsLoginModalOpen }) {
     const [showFinalProject, setShowFinalProject] = useState(true);
 
     return (
         <div>
             {/* 왼쪽 사이드바 */}
-            <PriceSideBar
+            <PriceSideBar isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen}
             />
 
             {/* 오른쪽 구역 */}
