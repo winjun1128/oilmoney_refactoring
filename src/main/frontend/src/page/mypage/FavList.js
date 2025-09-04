@@ -23,11 +23,11 @@ function FavList() {
     }, []);
 
     return (
-        <div className="edit-info-container">
+        <div className="fav-info-container">
             <div className='edit-title'>
-                <span className='edit-title-text'>즐겨찾기</span>
+                <span className='fav-title-text'>즐겨찾기</span>
             </div>
-            <div className='edit-contents'>
+            <div className='fav-contents'>
                 {stations.length === 0 ? (
                     <span className='mypage-regist-info'>등록된 장소가 없습니다.</span>
                 ) : (

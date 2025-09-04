@@ -127,8 +127,10 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
                     <div>
                         <EditInfo userInfo={userInfo} setUserInfo={setUserInfo} />
                         <CarRegist cars={cars} setCars={setCars} />
-                        <FavList stations={favStations}/>
-                        <ReviewList />
+                        <div className="mypage-fav-review">
+                            <FavList stations={favStations} />
+                            <ReviewList />
+                        </div>
                     </div>
                 </div>
             </div>

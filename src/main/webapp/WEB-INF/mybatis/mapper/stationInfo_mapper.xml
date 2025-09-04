@@ -53,6 +53,8 @@
 			ON c.STATID = REPLACE(r.REVIEW_KEY, 'ev:', '')
 		WHERE r.USER_ID = #{userId}
 			AND r.REVIEW_KEY LIKE 'ev:%'
+			
+		ORDER BY createdAt DESC
 	</select>
 
 </mapper>

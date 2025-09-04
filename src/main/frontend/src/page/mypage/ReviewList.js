@@ -19,25 +19,31 @@ function ReviewList() {
             });
     }, []);
 
-    
+
 
     return (
-        <div className="edit-info-container">
+        <div className="review-info-container">
             <div className='edit-title'>
-                <span className='edit-title-text'>내가 쓴 리뷰</span>
+                <span className='fav-title-text'>내가 쓴 리뷰</span>
             </div>
-            <div className='edit-contents'>
+            <div className='fav-contents'>
                 {reviews.length === 0 ? (
                     <span className='mypage-regist-info'>등록된 리뷰가 없습니다.</span>
                 ) : (
                     <ul className="mypage-fav-list">
                         {reviews.map((review) => (
                             <li key={review.reviewKey} className="review-item">
-                                <span className={`review-type ${review.type}`}>
-                                    [{review.type === 'oil' ? '주유소' : '충전소'}]
-                                </span>
-                                <span className="review-station">{review.name}</span>
-                                <span className="review-rating">⭐ {review.rating}</span>
+                                <div className='review-station-type'>
+                                    <div>
+                                        <span className={`review-type ${review.type}`}>
+                                            [{review.type === 'oil' ? '주유소' : '충전소'}]
+                                        </span>
+                                    </div>
+                                    <div className='review-title-box'>
+                                        <span className="review-station">{review.name}</span>
+                                        <span className="review-rating">⭐ {review.rating}</span>
+                                    </div>
+                                </div>
                                 <p className="review-text">{review.text}</p>
                                 <div className="review-date">
                                     작성일: {review.createdAt}
