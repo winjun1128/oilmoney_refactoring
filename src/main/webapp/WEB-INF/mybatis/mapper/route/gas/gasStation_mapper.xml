@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="gasStation_mapper">
+
+<!-- 결과 매핑 -->
+  <resultMap id="GasStationRowMap" type="com.app.dto.route.GasStationRow">
+    <id     property="uni"          column="uni_cd"/>
+    <result property="brand"        column="brand"/>
+    <result property="brandGroup"   column="brand_group"/>
+    <result property="name"         column="name"/>
+    <result property="tel"          column="tel"/>
+    <result property="addr"         column="addr"/>
+    <result property="addrOld"      column="addr_old"/>
+    <result property="sidoCd"       column="sido_cd"/>
+    <result property="sigunCd"      column="sigun_cd"/>
+    <result property="selfYn"       column="self_yn"/>
+    <result property="cvsYn"        column="cvs_yn"/>
+    <result property="carWashYn"    column="car_wash_yn"/>
+    <result property="maintYn"      column="maint_yn"/>
+    <result property="kpetroYn"     column="kpetro_yn"/>
+    <result property="lpgYn"        column="lpg_yn"/>
+    <result property="open24hYn"    column="open_24h_yn"/>
+    <result property="xKatec"       column="x_katec"/>
+    <result property="yKatec"       column="y_katec"/>
+    <result property="xWeb"         column="x_web"/>
+    <result property="yWeb"         column="y_web"/>
+    <result property="lon"          column="lon"/>
+    <result property="lat"          column="lat"/>
+    <result property="priceGasoline" column="price_gasoline"/>
+    <result property="priceDiesel"   column="price_diesel"/>
+    <result property="pricePremium"  column="price_premium"/>
+    <result property="priceKerosene" column="price_kerosene"/>
+    <result property="priceLpg"      column="price_lpg"/>
+    <result property="priceUpdatedAt" column="price_updated_at"/>
+    <result property="modifiedYmd"   column="modified_ymd"/>
+    <result property="createdAt"     column="created_at"/>
+    <result property="updatedAt"     column="updated_at"/>
+  </resultMap>
+
+  <!-- 단건 조회 -->
+  <select id="selectOne" parameterType="string" resultMap="GasStationRowMap">
+    SELECT *
+    FROM t_gas_station
+    WHERE uni_cd = #{value}
+  </select>
+
+  <!-- 가격이 하나라도 존재하는 지점들 -->
+  <select id="selectAllWithAnyPrice" resultMap="GasStationRowMap">
+    SELECT *
+    FROM t_gas_station
+    WHERE price_gasoline IS NOT NULL
+       OR price_diesel   IS NOT NULL
+       OR price_premium  IS NOT NULL
+       OR price_kerosene IS NOT NULL
+       OR price_lpg      IS NOT NULL
+    ORDER BY NVL(price_updated_at, created_at) DESC
+  </select>
+
+  <!-- 가격/기준시각 갱신 -->
+  <update id="updatePrices" parameterType="map">
+  UPDATE t_gas_station
+  <set>
+    <if test="gas != null">       price_gasoline = #{gas},       </if>
+    <if test="diesel != null">    price_diesel   = #{diesel},    </if>
+    <if test="premium != null">   price_premium  = #{premium},   </if>
+    <if test="kerosene != null">  price_kerosene = #{kerosene},  </if>
+    <if test="lpg != null">       price_lpg      = #{lpg},       </if>
+
+    <if test="baseTs != null">
+      price_updated_at =
+        CASE
+          WHEN LENGTH(#{baseTs}) = 8  THEN TO_TIMESTAMP(#{baseTs}, 'YYYYMMDD')
+          WHEN LENGTH(#{baseTs}) = 12 THEN TO_TIMESTAMP(#{baseTs}, 'YYYYMMDDHH24MI')
+          WHEN LENGTH(#{baseTs}) &gt;= 14 THEN TO_TIMESTAMP(SUBSTR(#{baseTs},1,14), 'YYYYMMDDHH24MISS')
+          ELSE price_updated_at
+        END,
+    </if>
+
+    updated_at = SYSTIMESTAMP
+  </set>
+  WHERE uni_cd = #{uni}
+</update>
+
+
+  <insert id="mergeOne" parameterType="GasStation">
+    MERGE INTO t_gas_station t
+    USING (SELECT #{uniCd} AS uni_cd FROM dual) s
+    ON (t.uni_cd = s.uni_cd)
+    WHEN MATCHED THEN UPDATE SET
+      brand = #{brand},
+      brand_group = #{brandGroup},
+      name = #{name},
+      tel = #{tel},
+      addr = #{addr},
+      addr_old = #{addrOld},
+      sido_cd = #{sidoCd},
+      sigun_cd = #{sigunCd},
+      self_yn = #{selfYn},
+      cvs_yn = #{cvsYn},
+      car_wash_yn = #{carWashYn},
+      maint_yn = #{maintYn},
+      kpetro_yn = #{kpetroYn},
+      lpg_yn = #{lpgYn},
+      open_24h_yn = #{open24hYn},
+      x_katec = #{xKatec},
+      y_katec = #{yKatec},
+      x_web = #{xWeb},
+      y_web = #{yWeb},
+      lon = #{lon},
+      lat = #{lat},
+      price_gasoline = #{priceGasoline},
+      price_diesel   = #{priceDiesel},
+      price_premium  = #{pricePremium},
+      price_kerosene = #{priceKerosene},
+      price_lpg      = #{priceLpg},
+      price_updated_at = SYSTIMESTAMP,
+      modified_ymd = CASE WHEN #{modifiedYmd} IS NOT NULL
+                          THEN TO_DATE(#{modifiedYmd}, 'YYYYMMDD')
+                          ELSE NULL END,
+      updated_at = SYSTIMESTAMP
+
+    WHEN NOT MATCHED THEN INSERT (
+      uni_cd, brand, brand_group, name, tel, addr, addr_old, sido_cd, sigun_cd,
+      self_yn, cvs_yn, car_wash_yn, maint_yn, kpetro_yn, lpg_yn, open_24h_yn,
+      x_katec, y_katec, x_web, y_web, lon, lat,
+      price_gasoline, price_diesel, price_premium, price_kerosene, price_lpg, price_updated_at,
+      modified_ymd, created_at, updated_at
+    ) VALUES (
+      #{uniCd}, #{brand}, #{brandGroup}, #{name}, #{tel}, #{addr}, #{addrOld}, #{sidoCd}, #{sigunCd},
+      #{selfYn}, #{cvsYn}, #{carWashYn}, #{maintYn}, #{kpetroYn}, #{lpgYn}, #{open24hYn},
+      #{xKatec}, #{yKatec}, #{xWeb}, #{yWeb}, #{lon}, #{lat},
+      #{priceGasoline}, #{priceDiesel}, #{pricePremium}, #{priceKerosene}, #{priceLpg}, SYSTIMESTAMP,
+      CASE WHEN #{modifiedYmd} IS NOT NULL THEN TO_DATE(#{modifiedYmd}, 'YYYYMMDD') ELSE NULL END,
+      SYSTIMESTAMP, SYSTIMESTAMP
+    )
+  </insert>
+
+  <!-- 대량 저장용: 서비스에서 loop 돌리는 방식을 권장
+       (ExecutorType.BATCH로 성능 확보) -->
+       
+     <!-- 전체 조회 (옵션: sidoCd, sigunCd) -->
+  <select id="selectAll" parameterType="map" resultType="GasStation">
+    SELECT
+      uni_cd, brand, brand_group, name, tel,
+      addr, addr_old, sido_cd, sigun_cd,
+      self_yn, cvs_yn, car_wash_yn, maint_yn, kpetro_yn, lpg_yn, open_24h_yn,
+      x_katec, y_katec, x_web, y_web, lon, lat,
+      price_gasoline, price_diesel, price_premium, price_kerosene, price_lpg, price_updated_at,
+      modified_ymd, created_at, updated_at
+    FROM t_gas_station
+    <where>
+      <if test="sidoCd != null and sidoCd != ''">
+        AND sido_cd = #{sidoCd}
+      </if>
+      <if test="sigunCd != null and sigunCd != ''">
+        AND sigun_cd = #{sigunCd}
+      </if>
+    </where>
+    ORDER BY uni_cd
+  </select>
+  
+  <!-- 전체 UNI_CD 리스트 -->
+<select id="selectAllUniCd" resultType="string">
+  SELECT uni_cd
+  FROM t_gas_station
+  ORDER BY uni_cd
+</select>
+ 
+<select id="selectUniCdBySido" resultType="string" parameterType="string">
+  SELECT uni_cd
+  FROM t_gas_station
+  WHERE sido_cd = #{value}
+  ORDER BY uni_cd
+</select>
+  
+  
+</mapper>

@@ -8,5 +8,7 @@
 </head>
 <body>
 	<h1>메인 </h1>
+	
+	<button type="button" onclick="location.href='/api'">api 저장하기</button>
 </body>
 </html>

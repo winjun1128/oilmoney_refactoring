@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<!DOCTYPE mapper PUBLIC
+		   "-//mybatis.org//DTD Mapper 3.0//EN" 
+		   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="station_mapper">
+
+<select id="oilFilter" parameterType="OilSearchDTO" resultType="StationDTO">
+    SELECT
+      UNI_CD       AS stationId,
+      NAME          AS name,
+      BRAND         AS brand,
+      ADDR          AS address,
+      SIDO_CD       AS region,
+      SIGUN_CD      AS city,
+      LAT,
+      LON,
+      CAR_WASH_YN   AS carWash,
+      CVS_YN        AS store,
+      MAINT_YN      AS repair,
+      SELF_YN       AS self,
+      KPETRO_YN     AS quality,
+      LPG_YN		AS lpgYN,
+      OPEN_24H_YN   AS twentyFour,
+      UPDATED_AT    AS updateTime
+    FROM T_GAS_STATION
+    <where>
+      <!-- 지역 -->
+      <if test="region != null and region != ''">
+        AND SIDO_CD = #{region}
+      </if>
+      <if test="city != null and city != ''">
+        AND SIGUN_CD = #{city}
+      </if>
+
+      <!-- 부가정보 (Boolean 값으로 판단) -->
+      <if test="carWash">   AND CAR_WASH_YN = 'Y'   </if>
+      <if test="store">     AND CVS_YN = 'Y'        </if>
+      <if test="repair">    AND MAINT_YN = 'Y'      </if>
+      <if test="self">      AND SELF_YN = 'Y'       </if>
+      <if test="quality">   AND KPETRO_YN = 'Y'     </if>
+      <if test="twentyFour">AND OPEN_24H_YN = 'Y'   </if>
+      <if test="lpg">         AND LPG_YN = 'Y'      </if> 
+
+      <!-- 상표 -->
+      <if test="brands != null and brands.size() > 0">
+        AND BRAND IN
+        <foreach collection="brands" item="brand" open="(" separator="," close=")">
+          #{brand}
+        </foreach>
+      </if>
+    </where>
+</select>
+
+<select id="findNearby" parameterType="map" resultType="com.app.dto.StationDTO">
+    SELECT *
+    FROM T_GAS_STATION
+    WHERE (
+        6371 * 2 * ASIN(
+            SQRT(
+                POWER(SIN(((#{lat} * (ACOS(-1)/180)) - (LAT * (ACOS(-1)/180))) / 2), 2) +
+                COS(#{lat} * (ACOS(-1)/180)) * COS(LAT * (ACOS(-1)/180)) *
+                POWER(SIN(((#{lon} * (ACOS(-1)/180)) - (LON * (ACOS(-1)/180))) / 2), 2)
+            )
+        )
+    ) &lt;= #{radius}
+</select>
+
+
+  
+  </mapper>

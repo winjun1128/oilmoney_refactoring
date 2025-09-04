@@ -1,5 +1,3 @@
-
-
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MyPageWrapper from "./page/mypage/MyPageWrapper.js";
 import Page from './page/Page';

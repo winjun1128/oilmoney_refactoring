@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<!DOCTYPE mapper PUBLIC
+		   "-//mybatis.org//DTD Mapper 3.0//EN" 
+		   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="charge_mapper">
+
+    <!-- 충전소 필터 검색 -->
+    <select id="chargeFilter"
+        parameterType="com.app.dto.ChargeSearchDTO"
+        resultType="com.app.dto.ChargeDTO">
+  SELECT
+    c.STATID      AS statId,     -- 프론트에서 isCharge 판단에 사용
+    c.STATNM      AS statNm,
+    c.ADDR        AS addr,
+    c.ZCODE       AS zcode,
+    c.SCODE       AS scode,
+    c.LAT         AS lat,        -- ★ 추가
+    c.LNG         AS lng,        -- ★ 추가 (프론트는 lng도 인식)
+    c.USETIME     AS useTime,
+    c.FLOORTYPE   AS floorType,
+
+    g.CHGERID     AS chgerId,
+    g.METHOD      AS method,
+    g.OUTPUT_KW   AS outputKw,
+
+    s.STAT        AS status,
+
+    t.TYPE_NM     AS typeNm
+  FROM T_CHARGE c
+  JOIN T_CHARGER g
+    ON c.STATID = g.STATID
+  JOIN T_CHARGER_STATUS s
+    ON g.STATID = s.STATID
+   AND g.CHGERID = s.CHGERID
+  JOIN T_CHARGER_TYPE t
+    ON g.TYPE_CD = t.TYPE_CD
+  <where>
+    <if test="region != null and region != ''">
+      AND c.ZCODE = #{region}
+    </if>
+    <if test="city != null and city != ''">
+      AND c.SCODE = #{city}
+    </if>
+
+    <if test="method != null and method.size() &gt; 0">
+      AND g.METHOD IN
+      <foreach collection="method" item="m" open="(" separator="," close=")">
+        #{m}
+      </foreach>
+    </if>
+
+    <if test="chargerType != null and chargerType.size() &gt; 0">
+      AND t.TYPE_NM IN
+      <foreach collection="chargerType" item="ct" open="(" separator="," close=")">
+        #{ct}
+      </foreach>
+    </if>
+
+    <if test="minOutput != null and minOutput != ''">
+      AND g.OUTPUT_KW &gt;= #{minOutput}
+    </if>
+
+    <if test="status != null and status != ''">
+      AND s.STAT = #{status}
+    </if>
+
+    <if test="floorType != null and floorType != ''">
+      AND c.FLOORTYPE = #{floorType}
+    </if>
+
+    <if test="twentyFour == true">
+      AND c.USETIME LIKE '%24시간%'
+    </if>
+  </where>
+</select>
+
+
+</mapper>

@@ -118,6 +118,18 @@
 			<artifactId>jackson-databind</artifactId>
 			<version>2.19.2</version>
 		</dependency>
+		<!--xml매퍼-->
+		<dependency>
+		    <groupId>com.fasterxml.jackson.dataformat</groupId>
+		    <artifactId>jackson-dataformat-xml</artifactId>
+		    <version>2.19.2</version>
+		</dependency>
+		
+		<dependency>
+		  <groupId>com.fasterxml.jackson.datatype</groupId>
+		  <artifactId>jackson-datatype-jsr310</artifactId>
+		  <version>2.19.2</version>
+		</dependency>
 
 
 		<!--
@@ -173,9 +185,8 @@
 			<artifactId>commons-fileupload</artifactId>
 			<version>1.5</version>
 		</dependency>
-		
-		
-		
+
+
 		<!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-api -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
@@ -199,6 +210,24 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- 커넥션풀 -->
+		<dependency>
+			<groupId>com.zaxxer</groupId>
+			<artifactId>HikariCP</artifactId>
+			<version>5.1.0</version>
+		</dependency>
+
+		<dependency>
+		    <groupId>javax.mail</groupId>
+		    <artifactId>mail</artifactId>
+		    <version>1.4.7</version>
+		</dependency>
+		
+		<dependency>
+		    <groupId>org.springframework</groupId>
+		    <artifactId>spring-context-support</artifactId>
+		    <version>5.3.30</version>
+		</dependency>
 
 	</dependencies>
 </project>

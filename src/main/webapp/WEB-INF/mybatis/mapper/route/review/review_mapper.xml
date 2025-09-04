@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="review_mapper">
+
+  <!-- 공통 컬럼: USER_NAME, CLIENT_ID 제거 -->
+  <sql id="col_all">
+    ID, REVIEW_KEY, USER_ID, RATING, TEXT, CREATED_AT, UPDATED_AT
+  </sql>
+
+  <!-- resultMap: USER_NAME, CLIENT_ID 제거 -->
+  <resultMap id="RouteReviewMap" type="com.app.dto.route.Review">
+    <id     property="id"        column="ID"/>
+    <result property="reviewKey" column="REVIEW_KEY"/>
+    <result property="userId"    column="USER_ID"/>
+    <result property="rating"    column="RATING"/>
+    <result property="text"      column="TEXT"/>
+    <result property="createdAt" column="CREATED_AT"/>
+    <result property="updatedAt" column="UPDATED_AT"/>
+    <result property="mine"      column="MINE"/>
+  </resultMap>
+
+  <!-- INSERT: 두 컬럼 제거 -->
+  <insert id="insertReview" parameterType="com.app.dto.route.Review">
+    <selectKey keyProperty="id" order="BEFORE" resultType="long">
+      SELECT REVIEWS_SEQ.NEXTVAL FROM DUAL
+    </selectKey>
+    INSERT INTO T_REVIEWS (ID, REVIEW_KEY, USER_ID, RATING, TEXT)
+    VALUES (#{id}, #{reviewKey}, #{userId}, #{rating}, #{text})
+  </insert>
+
+  <!-- UPDATE: UPDATED_AT 반드시 갱신 -->
+  <update id="updateReviewByOwner">
+    UPDATE T_REVIEWS
+       SET RATING     = #{rating},
+           TEXT       = #{text},
+           UPDATED_AT = SYSTIMESTAMP
+     WHERE ID = #{id}
+       AND USER_ID = #{userId}
+  </update>
+
+  <!-- DELETE -->
+  <delete id="deleteReviewByOwner">
+    DELETE FROM T_REVIEWS
+     WHERE ID = #{id}
+       AND USER_ID = #{userId}
+  </delete>
+
+  <!-- 단건 -->
+  <select id="selectOne" parameterType="long" resultMap="RouteReviewMap">
+    SELECT <include refid="col_all"/>, 0 AS MINE
+      FROM T_REVIEWS
+     WHERE ID = #{id}
+  </select>
+
+  <!-- 목록(페이징) -->
+  <select id="selectByKeyPaged" resultMap="RouteReviewMap">
+    SELECT <include refid="col_all"/>,
+           CASE WHEN USER_ID = #{userId} THEN 1 ELSE 0 END AS MINE
+      FROM T_REVIEWS
+     WHERE REVIEW_KEY = #{reviewKey}
+     ORDER BY CREATED_AT DESC
+     OFFSET #{offset} ROWS FETCH NEXT #{size} ROWS ONLY
+  </select>
+
+  <!-- 집계 -->
+  <select id="selectAggByKey" resultType="com.app.dto.route.ReviewAgg">
+    SELECT NVL(AVG(RATING), 0) AS avgRating, COUNT(*) AS count
+      FROM T_REVIEWS
+     WHERE REVIEW_KEY = #{reviewKey}
+  </select>
+
+  <!-- 총 개수 -->
+  <select id="countByKey" resultType="int">
+    SELECT COUNT(*) FROM T_REVIEWS WHERE REVIEW_KEY = #{reviewKey}
+  </select>
+
+</mapper>

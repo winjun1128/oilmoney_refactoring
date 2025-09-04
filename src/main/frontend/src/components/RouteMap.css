@@ -1,0 +1,209 @@
+/* =========================
+   RouteMap.css (sliding door from dock edge)
+   ========================= */
+:root{
+  --dock-w:80px;          /* 왼쪽 사이드바 실제 너비 */
+  --panel-w:300px;        /* 열렸을 때 패널 너비 */
+
+  /* 슬라이드 속도/이징 (느리게 보이도록 여유 있게) */
+  --slide-dur:.28s;
+  --slide-ease:cubic-bezier(.22,.61,.36,1);
+
+  --panel-bg:#fafafa;
+  --panel-border:#e6e6e6;
+  --text:#222;
+  --text-muted:#6b7280;
+  --accent:#2b8af7;
+  --accent-600:#1e72d4;
+}
+
+/* 지도는 화면 가득, 패널이 위에 덮임 */
+#map{ width:100%; height:100%; display:block; }
+
+/* ===== 도크 오른쪽 경계에서 '폭'으로 여닫힘 ===== */
+.filter-flyout{
+  position:fixed;
+  top:0;
+  left:var(--dock-w);     /* 도크 오른쪽 끝에 붙임 */
+  height:100vh;
+  width:0;                /* 닫힘: 완전히 접힘 */
+  overflow:hidden;        /* 접힐 때 내용 숨김 */
+  pointer-events:none;    /* 닫힘 상태 클릭 차단 */
+  z-index:50;
+
+  display:flex;
+  align-items:stretch;
+
+  transition:width var(--slide-dur) var(--slide-ease);
+  will-change:width;
+}
+
+/* 열림: 목표 폭까지 확장 */
+.filter-flyout.open{
+  width:var(--panel-w);
+  pointer-events:auto;
+}
+
+/* ===== 패널 본체 (미닫이문처럼: 풀높이, 라운드/그림자 없음) ===== */
+.sidebar-card{
+  width:100%;
+  height:100vh;                 /* 도크처럼 전고 */
+  margin:0;                     /* 위/아래 틈 제거 */
+  padding:12px;
+  background:var(--panel-bg);
+  color:var(--text);
+  box-sizing:border-box;
+
+  /* 슬라이딩 ‘문’처럼 보이게: 직각/플랫 */
+  border-radius:0;
+  box-shadow:none;
+  border-right:1px solid var(--panel-border);
+
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+.sidebar-card > * { min-width:0; }
+
+/* ── 텍스트/폼 ── */
+.sidebar-title{ margin:0 0 6px; font-size:16px; font-weight:700; color:var(--text); }
+.form-group{ display:flex; flex-direction:column; gap:6px; margin:0 0 10px; }
+.form-label{ font-size:11px; font-weight:600; color:var(--text-muted); }
+.help-text,.small-note{ font-size:11px; color:var(--text-muted); }
+
+/* 라벨+컨트롤 */
+.label-row{ display:flex; align-items:center; gap:8px; margin:6px 0 10px; }
+.label-row__label{ width:86px; font-size:11px; color:var(--text-muted); font-weight:600; }
+.label-row__control{ flex:1; min-width:0; }
+
+/* 입력/선택 */
+.input,.select{
+  width:100%; min-width:0; padding:8px 10px; font-size:13px;
+  border:1px solid #e5e7eb; border-radius:10px; background:#fff;
+  transition:border-color .2s, box-shadow .2s, background .2s;
+}
+.input:focus,.select:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(43,138,247,.15); }
+
+/* 버튼 */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:8px 10px; font-size:12px; font-weight:700; border-radius:10px;
+  border:1px solid #e5e7eb; background:#fff; cursor:pointer;
+  transition:transform .04s, box-shadow .2s, background .2s, border-color .2s;
+}
+.btn:active{ transform:translateY(1px); }
+.btn:disabled{ opacity:.55; cursor:not-allowed; }
+.btn-primary{ background:var(--accent); color:#fff; border-color:var(--accent); }
+.btn-primary:hover{ background:var(--accent-600); border-color:var(--accent-600); }
+.btn-ghost{ background:#fff; }
+.btn-ghost:hover{ background:#f3f4f6; }
+.btn-toggle{ background:#fff; }
+.btn-toggle.on{ background:#e8f5e9; border-color:#cde9d5; }
+
+/* 버튼 묶음 */
+.btn-row{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:6px 0 10px; }
+.btn-row.compact{ gap:6px; }
+
+/* 칩 */
+.btn-choice{ background:#fff; }
+.btn-choice.on{ background:#eef5ff; border-color:#cfe0ff; box-shadow:0 0 0 3px rgba(43,138,247,.12); }
+
+/* 스크롤바 */
+.sidebar-card::-webkit-scrollbar{ width:10px; height:10px; }
+.sidebar-card::-webkit-scrollbar-thumb{
+  background:#e1e4e8; border-radius:8px; border:2px solid transparent; background-clip:padding-box;
+}
+
+/* 높이 작을 때 */
+@media (max-height: 860px){
+  .sidebar-card{ padding:10px; gap:10px; }
+  .form-group{ margin:0 0 8px; }
+  .label-row{ margin:6px 0 8px; }
+  .input,.select,.btn{ padding:7px 9px; font-size:12px; }
+  .label-row__label{ width:82px; }
+}
+
+/* 같은 폭 강제: 블록화 + 박스사이징 통일 */
+.sidebar-card .form-group .input,
+.sidebar-card .form-group .select,
+.sidebar-card .label-row__control > .input,
+.sidebar-card .label-row__control > .select{
+  display:block;
+  width:100%;
+  box-sizing:border-box;
+}
+
+/* 스크롤바가 생겨도 내용 가로폭이 흔들리지 않도록(지원 브라우저에서) */
+.sidebar-card{
+  scrollbar-gutter: stable;
+}
+
+/* 상단 헤더(제목 + 닫기) */
+.sidebar-header{
+  position: sticky;    /* 스크롤해도 항상 위에 고정 */
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--panel-border);
+}
+
+/* 아이콘형 버튼 (X) */
+.icon-btn{
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background .2s, border-color .2s, transform .04s;
+}
+.icon-btn:hover{ background:#f3f4f6; border-color:#d1d5db; }
+.icon-btn:active{ transform: translateY(1px); }
+.close-btn{ font-weight: 700; }
+
+.map-summary {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;                 /* 지도 위로 */
+  max-width: min(66vw, 420px);
+  pointer-events: none;          /* 지도 드래그/클릭 방해 X */
+}
+
+.map-summary__card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.map-summary__row + .map-summary__row {
+  margin-top: 4px;
+}
+/***************통일 모달*************/
+.info-window { font-size:13px; line-height:1.5; max-width:280px; }
+.info-header { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.info-title { font-weight:700; font-size:14px; }
+.info-badge { background:#f5f5f5; border:1px solid #ddd; border-radius:6px; padding:2px 6px; font-size:12px; }
+.info-row { margin:4px 0; }
+.price-box { margin-top:6px; border:1px solid #eee; border-radius:8px; padding:6px; }
+.price-row { display:flex; justify-content:space-between; padding:2px 0; }
+.price-error { margin-top:6px; color:#c0392b; }
+.info-flags { margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; }
+.flag { font-size:12px; padding:2px 8px; border-radius:999px; background:#bdc3c7; color:#fff; }
+.flag.on { background:#27ae60; }
+

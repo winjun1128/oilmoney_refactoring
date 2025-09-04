@@ -33,5 +33,15 @@ http://www.springframework.org/schema/context/spring-context.xsd">
 		<constructor-arg name="sqlSessionFactory" ref="sqlSessionFactory" />
 	</bean>
 	
+	<!-- ✅ 배치 전용 템플릿 -->
+	<bean id="batchSqlSessionTemplate" class="org.mybatis.spring.SqlSessionTemplate">
+	  <constructor-arg ref="sqlSessionFactory"/>
+	  <constructor-arg value="BATCH"/>
+	</bean>
+	
 	<context:component-scan base-package="com.app.*"></context:component-scan>
+	
+	<!-- @Scheduled 활성화 -->
+<task:annotation-driven scheduler="cronScheduler"/>
+<task:scheduler id="cronScheduler" pool-size="2"/>
 </beans>
