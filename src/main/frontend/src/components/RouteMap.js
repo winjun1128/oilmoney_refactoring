@@ -2,7 +2,13 @@
 import "./RouteMap.css";
 import { useEffect, useRef, useState } from "react";
 import proj4 from "proj4";
+//////////통일 모달
+// html escape
+const escapeHtml = (s) =>
+  String(s ?? "").replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
 
+
+////////////
 /** 원점(홈) 저장 키 & 카카오 스타마커 이미지 */
 const HOME_KEY = "route.home.coord.v1";
 const KAKAO_STAR_IMG = "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png";
@@ -277,6 +283,21 @@ const addLabeledMarker = ({ map, kakao, type, lat, lng, name, onClick, labelAlwa
 /* ───────────────────────────────────────────────────────────────────── */
 
 export default function RouteMap() {
+  ////통일 모달 
+  // 문자열 html을 DOM 노드로 바꿔 넣고, 필요하면 앵커(marker)에 열기
+// infoWindow에 HTML을 넣고, 마운트 직후 바인딩 콜백 실행
+const setInfoHtml = (html, anchorMarker, onAfterMount) => {
+  const box = document.createElement("div");
+  box.innerHTML = html;
+  infoRef.current.setContent(box);
+  infoRef.current.open(mapRef.current, anchorMarker);
+  if (typeof onAfterMount === "function") onAfterMount(box);
+};
+
+
+  // 지도 공용 인포윈도우
+  const infoRef = useRef(null);
+
   const mapRef = useRef(null);
   const polyRef = useRef(null);
   const viaRef = useRef(null);
@@ -432,20 +453,24 @@ const fmtWon = (v) => {
     return `ev:${ids}`;
   };
   const isFavStation = (st, mode = modalMode) => !!favKeyOf(st, mode) && favSet.has(favKeyOf(st, mode));
+
   const toggleFav = async () => {
     const key = favKeyOf(modalStation, modalMode);
     if (!key) return;
-    const token = getToken();
+    
+    // ⛔ 로그아웃이면 불가
+   if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
+   const token = getToken();
 
-    setFavSet((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      localStorage.setItem(FAV_KEY, JSON.stringify([...next]));
-      return next;
-    });
+   // 통신 성공을 전제로 optimistic (실패 시 롤백)
+   setFavSet((prev) => {
+     const next = new Set(prev);
+     next.has(key) ? next.delete(key) : next.add(key);
+     localStorage.setItem(FAV_KEY, JSON.stringify([...next]));
+     return next;
+   });
 
     try {
-      if (!token) return;
       const wasFav = favSetRef.current?.has(key);
       const method = wasFav ? "DELETE" : "POST";
       const url = method === "POST" ? "/api/route/favs" : `/api/route/favs/${encodeURIComponent(key)}`;
@@ -474,6 +499,59 @@ const fmtWon = (v) => {
       alert("즐겨찾기 저장에 실패했습니다.");
     }
   };
+
+  //// 통일 모달
+  // 클릭 핸들러 내부에서 사용할 헬퍼
+
+
+  // 특정 지점(충전소/주유소)을 즐겨찾기 토글 (로그인 필수, 실패시 롤백)
+const toggleFavForStation = async (station, mode) => {
+  const key = favKeyOf(station, mode);
+  if (!key) return;
+  if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
+
+  const token = getToken();
+  const wasFav = favSetRef.current?.has(key);
+
+  // optimistic update
+  setFavSet(prev => {
+    const next = new Set(prev);
+    wasFav ? next.delete(key) : next.add(key);
+    localStorage.setItem(FAV_KEY, JSON.stringify([...next]));
+    return next;
+  });
+
+  try {
+    const method = wasFav ? "DELETE" : "POST";
+    const url = method === "POST" ? "/api/route/favs" : `/api/route/favs/${encodeURIComponent(key)}`;
+    const body = method === "POST"
+      ? JSON.stringify({
+          key,
+          label: station?.name || "",
+          lat: station?.lat, lng: station?.lng,
+          mode,
+        })
+      : undefined;
+
+    const r = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body,
+    });
+    if (!r.ok) throw new Error("즐겨찾기 동기화 실패");
+  } catch (e) {
+    console.warn(e);
+    // rollback
+    setFavSet(prev => {
+      const rollback = new Set(prev);
+      wasFav ? rollback.add(key) : rollback.delete(key);
+      localStorage.setItem(FAV_KEY, JSON.stringify([...rollback]));
+      return rollback;
+    });
+    alert("즐겨찾기 저장에 실패했습니다.");
+  }
+};
+
   const favSetRef = useRef(favSet);
   useEffect(() => { favSetRef.current = favSet; }, [favSet]);
 
@@ -536,19 +614,38 @@ const fmtWon = (v) => {
 const fmtTs = (v) => {
   if (!v) return "";
   const s = String(v).trim();
-  // ISO가 아니면 공백을 T로 바꿔서 파싱 시도
+
+  // 14자리: yyyyMMddHHmmss
+  let m = s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+  if (m) {
+    const [, y, mo, d, h, mi] = m;
+    return `${y}-${mo}-${d} ${h}:${mi}`;
+  }
+  // 12자리: yyyyMMddHHmm
+  m = s.match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})$/);
+  if (m) {
+    const [, y, mo, d, h, mi] = m;
+    return `${y}-${mo}-${d} ${h}:${mi}`;
+  }
+  // 8자리: yyyyMMdd
+  m = s.match(/^(\d{4})(\d{2})(\d{2})$/);
+  if (m) {
+    const [, y, mo, d] = m;
+    return `${y}-${mo}-${d}`;
+  }
+
+  // ISO/스페이스 구분 시각들
   const tryDate = new Date(s.includes("T") ? s : s.replace(" ", "T"));
   if (!isNaN(tryDate.getTime())) {
-    // 로컬 표기: 2자리 연,월,일,시,분
     const pad = (n) => String(n).padStart(2, "0");
     const y = tryDate.getFullYear();
-    const m = pad(tryDate.getMonth() + 1);
+    const mo = pad(tryDate.getMonth() + 1);
     const d = pad(tryDate.getDate());
     const hh = pad(tryDate.getHours());
     const mm = pad(tryDate.getMinutes());
-    return `${y}-${m}-${d} ${hh}:${mm}`;
+    return `${y}-${mo}-${d} ${hh}:${mm}`;
   }
-  // 파싱이 애매하면 앞 16자만 잘라서 노출
+  // 모르면 최대한 보기 좋게
   return s.replace("T", " ").slice(0, 16);
 };
 
@@ -575,6 +672,10 @@ const isTokenAlive = (t) => {
   // exp가 없으면(서버 설정에 따라) 일단 true 취급, 있으면 만료 체크
   return typeof exp === "number" ? Date.now() < exp * 1000 : true;
 };
+
+//// 통일 모달
+const isLoggedIn = () => isTokenAlive(getToken());
+
 
 // requireJson 에 401 처리 추가 (이미 있는 함수에 아래 블록만 넣기)
 const requireJson = async (r) => {
@@ -1007,6 +1108,14 @@ const onModalDragEnd = () => {
       });
       mapRef.current = map;
       // ⭐️ 홈(원점) 바로 표시
+      ////
+      infoRef.current = new kakao.maps.InfoWindow({ removable: true });
+
+      // (선택) 지도 클릭하면 정보창 닫기
+      kakao.maps.event.addListener(map, "click", () => {
+        try { infoRef.current?.close(); } catch {}
+      });
+
       drawHomeMarker(homeCoord);
 
       // services 준비
@@ -1332,10 +1441,16 @@ const handleResetHome = () => {
   };
 
   /* ───────── 표기 유틸 ───────── */
-  const statusText = (s) =>
-    ({ "1": "통신이상", "2": "충전가능", "3": "충전중", "4": "운영중지", "5": "점검중", "9": "미확인" }[String(s)] ?? s);
-  const statusBadgeStyle = (s) => {
-    const code = String(s);
+  ////통일 모달
+   const statusText = (s) => {
+   const code = (String(s ?? "").trim() || "9");   // 빈 값 → 9(미확인)
+   return ({
+     "1": "통신이상", "2": "충전가능", "3": "충전중",
+     "4": "운영중지", "5": "점검중", "9": "미확인", "0": "미확인"
+   }[code]) || "미확인";
+ };
+ const statusBadgeStyle = (s) => {
+   const code = (String(s ?? "").trim() || "9");
     let bg = "#999";
     if (code === "2") bg = "#27ae60";
     else if (code === "3") bg = "#f39c12";
@@ -1420,7 +1535,14 @@ const handleResetHome = () => {
     return out;
   };
 
+  ////통일 모달
   /* ───────── 마커 그리기 ───────── */
+  // drawEvMarkers 위에 아무데나
+const statIdsOfSite = (site) =>
+  Array.isArray(site?.statIds) && site.statIds.length
+    ? site.statIds.map(String)
+    : (site?.statId ? [String(site.statId)] : []);
+
   const drawEvMarkers = (list) => {
     if (!mapRef.current) return;
     const { kakao } = window;
@@ -1437,53 +1559,393 @@ const handleResetHome = () => {
         starred: starred0,
       });
 
-      kakao.maps.event.addListener(marker, "click", () => {
-        const starredNow = !!(favKey && favSetRef.current?.has(favKey));
-        setActiveMarker({ marker, type: "ev", starred: starredNow, overlay });
-        openStationModal(it);
-        drawDetourForPoint(it);
+    kakao.maps.event.addListener(marker, "click", async () => {
+  const pos = new kakao.maps.LatLng(it.lat, it.lng);
+
+  // 선택 마커 하이라이트 유지
+  const starredNow = !!(favKey && favSetRef.current?.has(favKey));
+  setActiveMarker({ marker, type: "ev", starred: starredNow, overlay });
+
+    // A) 우측 상단 즐겨찾기 버튼 HTML
+  const favBtnHtml = (on) => `
+    <button class="fav-btn ${on ? "on" : ""}"
+            ${isLoggedIn() ? "" : "disabled"}
+            title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
+            style="border:none;background:transparent;font-size:18px;line-height:1;
+                   ${isLoggedIn() ? "cursor:pointer;" : "cursor:not-allowed;opacity:.5"}">
+      ${on ? "★" : "☆"}
+    </button>`;
+
+  // ── 기본 칩(총 기수/급속/완속) + "상태 불러오는 중..."을 먼저 그림
+  const chips = `
+    <div class="info-flags">
+      ${Number(it.chargerCount) ? `<span class="flag on">총 ${it.chargerCount}기</span>` : ""}
+      ${it.hasDc ? `<span class="flag on">⚡ 급속(DC)</span>` : `<span class="flag">급속 없음</span>`}
+      ${it.hasAc ? `<span class="flag on">🔌 완속(AC)</span>` : `<span class="flag">완속 없음</span>`}
+    </div>
+  `;
+
+    // B) 헤더: 제목은 한 줄 고정 + ellipsis, 우측에 ★
+  const baseHtml = `
+    <div class="info-window">
+      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+        <div style="flex:1;min-width:0;">
+          <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${escapeHtml(it.name || "충전소")}
+          </div>
+        </div>
+        ${favBtnHtml(starredNow)}
+      </div>
+      ${it.addr     ? `<div class="info-row">📍 ${escapeHtml(it.addr)}</div>` : ""}
+      ${it.usetime  ? `<div class="info-row">⏰ ${escapeHtml(it.usetime)}</div>` : ""}
+      ${it.businm   ? `<div class="info-row">👤 운영사: ${escapeHtml(it.businm)}</div>` : ""}
+      ${(it.floornum || it.floortype)
+        ? `<div class="info-row">🏢 설치층: ${escapeHtml(it.floornum || "-")} / ${escapeHtml(floorTypeName(it.floortype))}</div>`
+        : ""}
+      ${chips}
+      <div class="info-row" id="ev-status-line">상태 불러오는 중…</div>
+    </div>
+  `.trim();
+
+    setInfoHtml(baseHtml, marker, (root) => {
+   const btn = root.querySelector(".fav-btn");
+   if (!btn) return;
+   btn.addEventListener("click", async (e) => {
+     e.stopPropagation();
+     if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
+     await toggleFavForStation(it, "ev");
+     const on = favSetRef.current?.has(favKey);
+     btn.textContent = on ? "★" : "☆";
+     btn.classList.toggle("on", on);
+     setActiveMarker({ marker, type: "ev", starred: on, overlay });
+   });
+ });
+  mapRef.current.panTo(pos);
+
+    // C) 버튼 바인딩(기본 화면)
+  {
+    const root = infoRef.current.getContent?.();
+    const btn = root?.querySelector?.(".fav-btn");
+    if (btn) {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
+        await toggleFavForStation(it, "ev");
+        const on = favSetRef.current?.has(favKey);
+        btn.textContent = on ? "★" : "☆";
+        btn.classList.toggle("on", on);
+        // active 마커 외형도 즉시 반영
+        setActiveMarker({ marker, type: "ev", starred: on, overlay });
       });
+    }
+  }
+
+  // 경유/도착 미리보기는 병렬로
+  //// 통일모달
+  //drawDetourForPoint(it).catch(() => {});
+
+  // ── ★ 여기서 상태를 불러와 인포윈도우 내용을 갱신
+  try {
+    const ids = statIdsOfSite(it);
+    if (!ids.length) throw new Error("STAT_ID 없음");
+    const url = `/api/route/ev/status/by-station?statIds=${encodeURIComponent(ids.join(","))}`;
+    const data = await (await fetch(url)).json();
+    const list = normalizeEvStatusForModal(data); // ← 이미 파일 하단에 정의되어 있음
+
+   // 상태 응답 기준으로 총대수/급속/완속 재계산
+  // 상태 응답 기준으로 "충전가능" 개수/급속/완속 재계산
+  const availableCount =
+    list.filter(c => (String(c.status ?? "").trim() || "9") === "2").length;
+
+   const hasDc = list.some(c => ["01","03","04","05","06","08","09"]
+                     .includes(String(c.type).padStart(2,"0")));
+   const hasAc = list.some(c => ["02","03","06","07","08"]
+                     .includes(String(c.type).padStart(2,"0")));
+   const chips2 = `
+     <div class="info-flags">
+       <span class="flag ${availableCount ? "on" : ""}">
+        충전가능 ${availableCount}기
+       </span>
+       ${hasDc ? `<span class="flag on">⚡ 급속(DC)</span>` : `<span class="flag">급속 없음</span>`}
+       ${hasAc ? `<span class="flag on">🔌 완속(AC)</span>` : `<span class="flag">완속 없음</span>`}
+     </div>
+   `;
+
+   // 최신 업데이트 시간만 추출
+  let latestTs = "";
+  for (const c of list) {
+    const t = String(c.lastTs || "").trim();
+    if (t && (!latestTs || new Date(t.replace(" ","T")) > new Date(latestTs.replace(" ","T")))) {
+      latestTs = t;
+    }
+  }
+  const updatedText = latestTs ? fmtTs(latestTs) : "";
+
+      // ---------- 충전 포트 카드 UI ----------
+  const statusPill = (s) => {
+    const code = String(s ?? "9");
+    let bg = "#999";
+    if (code === "2") bg = "#27ae60";     // 충전가능
+    else if (code === "3") bg = "#f39c12"; // 충전중
+    else if (code === "5") bg = "#e74c3c"; // 점검중
+    else if (code === "4" || code === "1" || code === "9") bg = "#7f8c8d";
+    return `<span style="
+      display:inline-block;padding:3px 8px;border-radius:999px;
+      font-size:12px;color:#fff;background:${bg};
+    ">${escapeHtml(statusText(code))}</span>`;
+  };
+
+  const rowsHtml = list.map((c) => `
+    <div style="
+      display:flex;align-items:center;justify-content:space-between;
+      gap:10px;margin:6px 0;padding:8px 10px;border:1px solid #f0f0f0;
+      border-radius:10px;background:#fafafa;
+    ">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <span style="
+          display:inline-block;min-width:44px;text-align:center;
+          font-weight:700;color:#444;background:#fff;border:1px solid #eaeaea;
+          padding:4px 8px;border-radius:8px;
+        ">#${escapeHtml(c.chgerId)}</span>
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+          <span style="color:#666;margin-left:6px;font-size:12px;">
+            ${escapeHtml(chargerTypeName(c.type) || "-")}
+          </span>
+        </span>
+      </div>
+      <div>${statusPill(c.status)}</div>
+    </div>
+  `).join("");
+
+        const nowStar = !!(favKey && favSetRef.current?.has(favKey));
+    const html = `
+      <div class="info-window">
+        <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+          <div style="flex:1;min-width:0;">
+            <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+              ${escapeHtml(it.name || "충전소")}
+            </div>
+          </div>
+          ${favBtnHtml(nowStar)}
+        </div>
+        ${it.addr     ? `<div class="info-row">📍 ${escapeHtml(it.addr)}</div>` : ""}
+        ${it.usetime  ? `<div class="info-row">⏰ ${escapeHtml(it.usetime)}</div>` : ""}
+        ${it.businm   ? `<div class="info-row">👤 운영사: ${escapeHtml(it.businm)}</div>` : ""}
+        ${(it.floornum || it.floortype)
+          ? `<div class="info-row">🏢 설치층: ${escapeHtml(it.floornum || "-")} / ${escapeHtml(floorTypeName(it.floortype))}</div>`
+          : ""}
+        ${chips2}
+         <div class="info-row"><strong>업데이트</strong>: ${updatedText || "-"}</div>
+       ${rowsHtml ? `
+        <div style="margin-top:8px">
+          <div style="font-size:12px;color:#666;margin:2px 0 6px">충전 포트 상세</div>
+          <div style="max-height:200px;overflow:auto">${rowsHtml}</div>
+        </div>` : ""
+       }
+      </div>
+    `.trim();
+
+     setInfoHtml(html, marker, (root) => {
+   const btn = root.querySelector(".fav-btn");
+   if (!btn) return;
+   btn.addEventListener("click", async (e) => {
+     e.stopPropagation();
+     if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
+     await toggleFavForStation(it, "ev");
+     const on = favSetRef.current?.has(favKey);
+     btn.textContent = on ? "★" : "☆";
+     btn.classList.toggle("on", on);
+     setActiveMarker({ marker, type: "ev", starred: on, overlay });
+   });
+ });
+  } catch (e) {
+    // 실패 시 안내
+    const failHtml = `
+      <div class="info-window">
+        <div class="info-title">${escapeHtml(it.name || "충전소")}</div>
+        ${chips}
+        <div class="info-row" style="color:#c0392b">⚠️ 상태 조회 실패</div>
+      </div>
+    `.trim();
+    setInfoHtml(failHtml, marker);
+  }
+    });
+
+
 
       allMarkersRef.current.push({ marker, overlay, type: "ev", cat: "ev", lat: it.lat, lng: it.lng, data: it, favKey });
     });
   };
 
   const drawOilMarkers = (list) => {
-    if (!mapRef.current) return;
-    const { kakao } = window;
+  if (!mapRef.current) return;
+  const { kakao } = window;
 
-    list.forEach((gs) => {
-      const isLpg = /^(Y|1|T|TRUE)$/i.test(String(gs.lpgYn ?? ""));
-      const cat = isLpg ? "lpg" : "oil";
-      // B027(휘발유) 우선, 없으면 D047(경유)로 판정
-       const d = parseNum(gs?.diff?.B027 ?? gs?.diff?.D047);
-       let markerType = cat;
-       if (cat === "oil" && Number.isFinite(d)) {
-         if (d < 0) markerType = "oil-cheap";
-         else if (d > 0) markerType = "oil-exp";
-       }
+  list.forEach((gs) => {
+    const isLpg = /^(Y|1|T|TRUE)$/i.test(String(gs.lpgYn ?? ""));
+    const cat = isLpg ? "lpg" : "oil";
 
-      const favKey = favKeyOf(gs, "oil");
-      const starred0 = !!(favKey && favSetRef.current?.has(favKey));
+    // B027(휘발유) 우선, 없으면 D047(경유)
+    const d = parseNum(gs?.diff?.B027 ?? gs?.diff?.D047);
+    let markerType = cat;
+    if (cat === "oil" && Number.isFinite(d)) {
+      if (d < 0) markerType = "oil-cheap";
+      else if (d > 0) markerType = "oil-exp";
+    }
 
-      const { marker, overlay } = addLabeledMarker({
-        map: mapRef.current, kakao, type: markerType,
-        lat: gs.lat, lng: gs.lng,
-        name: gs.name || (cat === "lpg" ? "LPG" : "주유소"),
-        labelAlways: LABEL_ALWAYS,
-        starred: starred0,
-      });
+    const favKey = favKeyOf(gs, "oil");
+    const starred0 = !!(favKey && favSetRef.current?.has(favKey));
 
-      kakao.maps.event.addListener(marker, "click", () => {
-        const starredNow = !!(favKey && favSetRef.current?.has(favKey));
-        setActiveMarker({ marker, type: markerType, starred: starredNow, overlay });
-        openOilModal(gs);
-        drawDetourForPoint(gs);
-      });
-
-      allMarkersRef.current.push({ marker, overlay, type: markerType, cat, lat: gs.lat, lng: gs.lng, data: gs, favKey });
+    const { marker, overlay } = addLabeledMarker({
+      map: mapRef.current, kakao, type: markerType,
+      lat: gs.lat, lng: gs.lng,
+      name: gs.name || (cat === "lpg" ? "LPG" : "주유소"),
+      labelAlways: LABEL_ALWAYS,
+      starred: starred0,
     });
-  };
+
+    kakao.maps.event.addListener(marker, "click", async () => {
+      const pos = new kakao.maps.LatLng(gs.lat, gs.lng);
+
+      // 선택 마커 하이라이트 유지
+      const starredNow = !!(favKey && favSetRef.current?.has(favKey));
+      setActiveMarker({ marker, type: markerType, starred: starredNow, overlay });
+
+      const favBtnHtml = (on) => `
+        <button class="fav-btn ${on ? "on" : ""}"
+                ${isLoggedIn() ? "" : "disabled"}
+                title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
+                style="border:none;background:transparent;font-size:18px;line-height:1;
+                       ${isLoggedIn() ? "cursor:pointer;" : "cursor:not-allowed;opacity:.5"}">
+          ${on ? "★" : "☆"}
+        </button>`;
+
+      // 편의시설 플래그(가격과 무관하게 먼저 그림)
+      const flags = {
+        세차장: /^(Y|1|T|TRUE)$/i.test(String(gs.carWashYn ?? "")),
+        편의점: /^(Y|1|T|TRUE)$/i.test(String(gs.cvsYn ?? "")),
+        경정비: /^(Y|1|T|TRUE)$/i.test(String(gs.maintYn ?? "")),
+        셀프주유소: /^(Y|1|T|TRUE)$/i.test(String(gs.self ?? "")),
+        품질인증주유소: /^(Y|1|T|TRUE)$/i.test(String(gs.kpetroYn ?? "")),
+        "24시간": /^(Y|1|T|TRUE)$/i.test(String(gs.open24hYn ?? "")),
+        LPG충전소: /^(Y|1|T|TRUE)$/i.test(String(gs.lpgYn ?? "")),
+      };
+
+      const stationName = gs.name || "이름없음";
+      const addr = gs.addr || "";
+      const brand = brandName(gs.brand || "");
+
+      // (A) 기본 화면: 가격 로딩 전 즉시 표시
+      const baseHtml = `
+        <div class="info-window">
+          <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+            <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
+              <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ${escapeHtml(stationName)}
+              </div>
+              ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
+            </div>
+            ${favBtnHtml(starredNow)}
+          </div>
+          ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
+          <div class="price-box">가격 불러오는 중…</div>
+          <div class="info-flags">
+            ${Object.entries(flags)
+              .map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`)
+              .join("")}
+          </div>
+        </div>`.trim();
+
+      setInfoHtml(baseHtml, marker, (root) => {
+        const btn = root.querySelector(".fav-btn");
+        if (btn) {
+          btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
+            await toggleFavForStation(gs, "oil");
+            const on = favSetRef.current?.has(favKey);
+            btn.textContent = on ? "★" : "☆";
+            btn.classList.toggle("on", on);
+            setActiveMarker({ marker, type: markerType, starred: on, overlay });
+          });
+        }
+      });
+
+      // 필요할 때만 화면 이동(경로 없고, 현재 bounds 밖일 때)
+      const b = mapRef.current.getBounds?.();
+      if (!routeCtxRef.current?.path && (!b || !b.contain(pos))) {
+        mapRef.current.panTo(pos);
+      }
+
+      // (B) 가격 로드 후 업데이트
+      let oilHtml = "";
+      try {
+        const r = await fetch(`/api/route/oil/price?id=${encodeURIComponent(gs.uni)}`);
+        if (!r.ok) throw new Error();
+        const j = await r.json();
+        const arr = normalizeOilPriceItems(j, gs.uni);
+        const priceMap = {};
+        for (const it of arr) priceMap[it.product] = it.price;
+
+        if (priceMap["휘발유"] || priceMap["경유"] || priceMap["자동차용 LPG"] || priceMap["등유"]) {
+          oilHtml = `
+            <div class="price-box">
+              ${priceMap["휘발유"]       ? `<div class="price-row"><span>⛽ 휘발유</span><b>${priceMap["휘발유"].toLocaleString()}원</b></div>` : ""}
+              ${priceMap["경유"]         ? `<div class="price-row"><span>🛢 경유</span><b>${priceMap["경유"].toLocaleString()}원</b></div>` : ""}
+              ${priceMap["등유"]         ? `<div class="price-row"><span>🏠 등유</span><b>${priceMap["등유"].toLocaleString()}원</b></div>` : ""}
+              ${priceMap["자동차용 LPG"] ? `<div class="price-row"><span>🔥 LPG</span><b>${priceMap["자동차용 LPG"].toLocaleString()}원</b></div>` : ""}
+            </div>`;
+        } else {
+          oilHtml = `<div class="price-box">⚠️ 가격 등록이 안됐습니다.</div>`;
+        }
+      } catch {
+        oilHtml = `<div class="price-error">⚠️ 가격 정보를 불러오지 못했습니다.</div>`;
+      }
+
+      const nowStar = !!(favKey && favSetRef.current?.has(favKey));
+      const html2 = `
+        <div class="info-window">
+          <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+            <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
+              <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                ${escapeHtml(stationName)}
+              </div>
+              ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
+            </div>
+            ${favBtnHtml(nowStar)}
+          </div>
+          ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
+          ${oilHtml}
+          <div class="info-flags">
+            ${Object.entries(flags)
+              .map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`)
+              .join("")}
+          </div>
+        </div>`.trim();
+
+      setInfoHtml(html2, marker, (root) => {
+        const btn = root.querySelector(".fav-btn");
+        if (btn) {
+          btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
+            await toggleFavForStation(gs, "oil"); // ← oil 모드
+            const on = favSetRef.current?.has(favKey);
+            btn.textContent = on ? "★" : "☆";
+            btn.classList.toggle("on", on);
+            setActiveMarker({ marker, type: markerType, starred: on, overlay });
+          });
+        }
+      });
+
+      // 경유/도착 미리 보기 유지
+      try { await drawDetourForPoint(gs); } catch {}
+    });
+
+    allMarkersRef.current.push({ marker, overlay, type: markerType, cat, lat: gs.lat, lng: gs.lng, data: gs, favKey });
+  });
+};
+
 
   /* ───────── 필터/자동숨김 적용 ───────── */
   const matchesOilSubFilters = (_gs) => true;

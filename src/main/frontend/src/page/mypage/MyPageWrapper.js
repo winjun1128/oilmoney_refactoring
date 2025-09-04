@@ -1,14 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import MyPage from "../../page/mypage/MyPage";
-import SideBar from "../SideBar";
 import Auth from "../auth/Auth";
 import LoginRequired from "../auth/LoginRequired";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import MyPageSideBar from "./MyPageSideBar";
 
 export default function MyPageWrapper() {
-    const navigate = useNavigate();
 
     const token = localStorage.getItem("token");
 
@@ -16,31 +12,6 @@ export default function MyPageWrapper() {
     const [userInfo, setUserInfo] = useState({});
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
     const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
-
-    useEffect(() => {
-        if (!token) {
-            setIsLogin(false);
-            //alert("로그인이 필요합니다.");
-            setIsLoginModalOpen(true);
-
-            return;
-        }
-
-        axios.get("/mypage", { headers: { "Authorization": "Bearer " + token } })
-            .then(res => {
-                setUserInfo(res.data);
-                setIsLogin(true);
-            })
-            .catch(err => {
-                console.log(err);
-                setIsLogin(false);
-                localStorage.removeItem("token");
-                alert("로그인이 필요합니다.");
-                setIsLoginModalOpen(true);
-
-            });
-    }, [token, navigate]);
-
 
     return (
         <div style={{ display: "flex", height: "100vh" }}>
@@ -64,7 +35,7 @@ export default function MyPageWrapper() {
                     setIsLogin={setIsLogin}
                 />
             ) : (
-                <LoginRequired setIsLoginModalOpen={setIsLoginModalOpen} />
+                <MyPageSideBar setIsLoginModalOpen={setIsLoginModalOpen} />
             )}
         </div>
     );

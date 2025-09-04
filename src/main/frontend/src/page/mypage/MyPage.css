@@ -1,12 +1,12 @@
 .mypage-container {
     margin: 10px;
     display: flex;
-    /* height: 100vh; */
 }
 
 .mypage-left {
     min-width: 300px;
-    height: 875px;
+    /* height: 875px; */
+    /* position: fixed; */
     box-shadow: 3px 1px 8px 0 rgba(0, 0, 0, 0.07);
 }
 
@@ -20,7 +20,9 @@
 }
 
 .mypage-profile-img {
-    width: 140px;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
     cursor: pointer;
     margin-top: 15px;
     margin-bottom: 14px;
@@ -34,14 +36,37 @@
     margin-top: 100px;
     display: flex;
     flex-direction: column;
-    margin-left: 25px;
-    gap: 20px;
-    font-size: 19px;
+    margin-left: 27px;
+    align-items: flex-start;
+    gap: 23px;
     color: rgb(34, 34, 34);
 }
 
-.mypage-left-menu>span {
+.mypage-left-menu img {
+    width: 30px;
+}
+
+.mypage-left-menu span {
     cursor: pointer;
+}
+
+.mypage-menu-tabs {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.mypage-menu-tab {
+    display: flex;
+    justify-content: space-between;
+    font-size: 20px;
+    color: #252525;
+    width: 180px;
+}
+
+.mypage-count {
+    text-align: center;
+    width: 30px;
 }
 
 .mypage-left-footer {
@@ -58,6 +83,10 @@
 
 .mypage-left-footer>span {
     cursor: pointer;
+}
+
+.mypage-right {
+    margin-left: 40px;
 }
 
 .mypage-modal-overlay {
@@ -82,14 +111,14 @@
     box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-.mypage-modal-input{
+.mypage-modal-input {
     height: 28px;
     border: 1px solid black;
     border-radius: 5px;
-    
+
 }
 
-.mypage-modal-btns{
+.mypage-modal-btns {
     margin-top: 10px;
     margin-left: 150px;
 }
@@ -110,39 +139,254 @@
 }
 
 /* EditInfo css */
-.edit-info-container{
-    margin: 40px;
-    border: 1px solid black;
+.edit-info-container {
+    margin: 30px;
+    border: 3px solid rgb(191, 224, 255);
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
     min-width: 700px;
     border-radius: 15px;
-    padding: 20px;
     display: flex;
     flex-direction: column;
 }
 
-.edit-title{
+.edit-title {
     display: flex;
     justify-content: space-between;
-    margin-top: 5px;
+    background-color: rgb(226, 241, 255);
+    border-radius: 13px 13px 0 0;
+    padding: 15px;
 }
 
-.edit-title-text{
+.edit-title-text {
     font-size: 25px;
     font-weight: bold;
 }
 
-.edit-buttons{
+.edit-buttons {
     display: flex;
     gap: 10px;
 }
-.edit-button{
+
+.edit-button {
     max-height: 30px;
-    
+    margin-top: 3px;
+    width: 45px;
+    border: 1px solid rgb(204, 230, 255);
+    border-radius: 10px;
+    background-color: rgb(204, 230, 255);
 }
 
-.edit-contents{
+.edit-button:hover {
+    background-color: rgb(191, 224, 255);
+    cursor: pointer;
+}
+
+#edit-info {
+    font-size: 13px;
+    margin-left: 5px;
+    color: #9b9b9b;
+}
+
+.edit-contents-box {
+    display: flex;
+    gap: 80px;
+}
+
+.edit-contents {
     display: flex;
     flex-direction: column;
     gap: 5px;
-    margin-top: 20px;
+    padding: 15px;
+    font-size: 17px;
+}
+
+.edit-contents input {
+    height: 18px;
+    border-radius: 7px;
+    border: 1.7px solid rgba(100, 100, 100, 0.76);
+    padding: 3px;
+}
+
+.edit-profile p {
+    font-size: 17px;
+}
+
+.mypage-regist-info {
+    color: #747474;
+}
+
+/* CarRegist css */
+.mypage-regist-contents{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 15px;
+    font-size: 17px;
+}
+
+.mypage-car-item {
+    display: flex;
+    justify-content: space-between;
+    flex: 0 0 46%;
+    /* width: 350px; */
+    padding: 8px;
+    border-bottom-style: groove;
+}
+
+.car-delete-btn {
+    background-color: white;
+    border-style: none;
+    cursor: pointer;
+}
+
+.fa-xmark {
+    font-size: 18px;
+    margin-right: 5px;
+    color: #797979;
+    margin-bottom: 20px;
+}
+
+/* FavList css */
+.fav-info-container{
+    margin-left: 30px;
+    border: 3px solid rgb(191, 224, 255);
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    width: 350px;
+    height: 370px;
+}
+
+.mypage-fav-review{
+    display: flex;
+    gap: 5px;
+}
+
+.mypage-fav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.fav-title-text{
+    font-size: 22px;
+    font-weight: bold;
+}
+
+.fav-item {
+    margin-bottom: 12px;
+    padding: 8px;
+    border-bottom: 1px solid #cacaca;
+}
+
+.fav-type.oil {
+    color: #f7ab08;
+    font-weight: bold;
+}
+
+.fav-type.ev {
+    color: #66a2fd;
+    font-weight: bold;
+}
+
+.fav-name {
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.fav-addr {
+    font-size: 16px;
+    color: #222222;
+    display: block;
+    margin: 4px 0;
+}
+
+.fav-tel {
+    font-size: 15px;
+    color: #3d3d3d;
+    display: block;
+}
+
+.fav-contents {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px;
+    font-size: 16px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ReviewList css */
+.review-info-container{
+    margin-left: 30px;
+    border: 3px solid rgb(191, 224, 255);
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    width: 310px;
+    height: 370px;
+}
+
+.review-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.review-item {
+    margin-bottom: 12px;
+    border-bottom: 1px solid #cacaca;
+    padding: 8px;
+}
+
+.review-station-type{
+    display: flex;
+}
+
+.review-title-box{
+    display: flex;
+    justify-content: space-between;
+    width: 75%;
+}
+
+.review-type.oil {
+    color: #f7ab08;
+    font-weight: bold;
+}
+
+.review-type.ev {
+    color: #66a2fd;
+    font-weight: bold;
+}
+
+.review-station {
+    margin-left: 8px;
+    font-weight: 600;
+}
+
+.review-addr {
+    display: block;
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 2px;
+}
+
+.review-rating {
+    margin-top: 2px;
+    /* margin-left: 30px; */
+    font-size: 0.95rem;
+    color: black;
+}
+
+.review-text {
+    margin: 8px 0;
+    font-size: 17px;
+}
+
+.review-date {
+    font-size: 12px;
+    color: #888;
 }
