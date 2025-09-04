@@ -71,7 +71,7 @@ public class OilPriceController {
     	
     	SigunCodeResult scr = siGunService.getSigunList(area);
     	
-    	System.out.println(scr);
+//    	System.out.println(scr);
     	
         return scr; // 서비스에서 Opinet areaCode.do 호출
     }

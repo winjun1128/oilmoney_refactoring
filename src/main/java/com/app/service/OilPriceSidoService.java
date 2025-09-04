@@ -20,8 +20,9 @@ import java.util.List;
 @Service
 public class OilPriceSidoService {
 
-    private final String API_KEY = "F250822740";
-
+	//private final String API_KEY = "F250822740";
+	private final String API_KEY = "F250904769";
+	
     public List<OilPriceSido> getAndProcessOilPrices() {
         String apiUrl = "http://www.opinet.co.kr/api/avgSidoPrice.do?out=json&code=" + API_KEY;
         RestTemplate restTemplate = new RestTemplate();

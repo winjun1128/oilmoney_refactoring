@@ -20,10 +20,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Service
 public class LowerTopService {
 
-	private final String API_KEY = "F250822740";
-
+	//private final String API_KEY = "F250822740";
+	private final String API_KEY = "F250904769";
+	
 	// 선택된 시군(area) 코드로 최저가 주유소 가져오기
 	public List<LowerTopPrice> getAndProcessOilPrices(String area, String prodcd) {
+		
+		// ✅ 널(null) 또는 빈 문자열(empty) 체크 추가
+        if (area == null || area.isEmpty() || prodcd == null || prodcd.isEmpty()) {
+            log.warn("유효하지 않은 지역 또는 유종 코드로 요청이 들어왔습니다. area={}, prodcd={}", area, prodcd);
+            return Collections.emptyList();
+        }
+        
 		String apiUrl = "https://www.opinet.co.kr/api/lowTop10.do?out=json"
 				+ "&prodcd=" + prodcd 
 				+ "&area=" + area

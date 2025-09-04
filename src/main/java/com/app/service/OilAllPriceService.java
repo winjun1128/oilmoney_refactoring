@@ -20,13 +20,14 @@ import java.util.List;
 @Service
 public class OilAllPriceService {
 
-    private final String API_KEY = "F250822740";
-
+	//private final String API_KEY = "F250822740";
+	private final String API_KEY = "F250904769";
+	
     public List<OilAllPrice> getAndProcessOilPrices() {
         String apiUrl = "http://www.opinet.co.kr/api/avgAllPrice.do?out=json&code=" + API_KEY;
         RestTemplate restTemplate = new RestTemplate();
         ObjectMapper mapper = new ObjectMapper();
-
+        System.out.println("전국평균가 1통과");
         try {
             // 브라우저 흉내내는 헤더
             HttpHeaders headers = new HttpHeaders();
@@ -40,18 +41,21 @@ public class OilAllPriceService {
                 entity,
                 String.class
             );
-
+            System.out.println("전국평균가 2통과");
             // 상태코드 확인 및 응답 처리
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 String json = response.getBody();
+                System.out.println("전국평균가 3통과");
                 log.info("=== API 응답 === {}", json);
-
+                System.out.println("전국평균가 4통과");
                 // 문자열(JSON)을 DTO로 변환
                 OilAllPriceResult result = mapper.readValue(json, OilAllPriceResult.class);
+                System.out.println(result);
                 return result.getResult().getOilList();
             }
         } catch (Exception e) {
             log.error("유가 정보 처리 중 오류 발생", e);
+            System.out.println("전국평균가 오류");
         }
         return Collections.emptyList();
     }

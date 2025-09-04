@@ -1,0 +1,20 @@
+// pinsData.js
+export const PINS = [
+    { name: "서울", top: "70px", left: "135px" },
+    { name: "인천", top: "75px", left: "80px" },
+    { name: "경기", top: "40px", left: "130px" },
+    { name: "충북", top: "105px", left: "190px" },
+    { name: "세종", top: "145px", left: "150px" },
+    { name: "대전", top: "195px", left: "145px" },
+    { name: "강원", top: "70px", left: "215px" },
+    { name: "충남", top: "170px", left: "80px" },
+    { name: "대구", top: "220px", left: "205px" },
+    { name: "부산", top: "285px", left: "230px" },
+    { name: "경북", top: "175px", left: "220px" },
+    { name: "울산", top: "235px", left: "250px" },
+    { name: "경남", top: "285px", left: "170px" },
+    { name: "전남", top: "320px", left: "60px" },
+    { name: "제주", top: "390px", left: "63px" },
+    { name: "광주", top: "280px", left: "70px" },
+    { name: "전북", top: "240px", left: "85px" },
+];

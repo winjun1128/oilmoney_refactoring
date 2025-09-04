@@ -1,0 +1,79 @@
+/* AllAvgPrice.css */
+.all-avg-price-card {
+    max-width: 450px;
+    /* max-height: 450px; */
+}
+
+.fuel-tabs {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.fuel-tab-btn {
+    padding: 8px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background-color: #f8f9fa;
+    color: #000000;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+}
+
+.fuel-tab-btn.active {
+    background-color: #4a90e2;
+    color: #fff;
+    border-color: #4a90e2;
+}
+
+.price-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 15px;
+    background-color: #f0f4f8;
+    border-radius: 8px;
+}
+
+.price-label {
+    font-size: 1rem;
+    color: #718096;
+}
+
+.price-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #1b65e4;
+}
+
+.price-diff {
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.price-diff.up {
+    color: red; /* ▲ 상승 화살표 빨간색 */
+}
+
+.price-diff.down {
+    color: rgb(21, 184, 0); /* ▼ 하락 화살표 파란색으로 변경 */
+}
+
+.local-price-card {
+    padding: 15px;
+    border-radius: 12px;
+    background-color: #f0f4f8;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.price-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+} 
+
+.flip-numbers-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
