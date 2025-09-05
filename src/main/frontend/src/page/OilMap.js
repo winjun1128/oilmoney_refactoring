@@ -836,7 +836,21 @@ export default function OilMap({ stations, handleLocationSearch }) {
     });
 
     markersRef.current = newMarkers;
-    if (newMarkers.length > 0) mapRef.current.setBounds(bounds);
+    if (newMarkers.length > 0) {
+      // 현재 표시되는 모든 포인트(lat/lon) 수집
+      const pts = [];
+      stations.forEach((s0) => {
+        const lat = Number(s0.lat ?? s0.LAT);
+        const lon = Number(s0.lon ?? s0.LON ?? s0.lng);
+        if (Number.isFinite(lat) && Number.isFinite(lon)) pts.push({ lat, lon });
+      });
+
+      // 레벨 6에서 최다 밀집되는 중심 찾기
+      const bestCenter = findDensestCenterAtLevel(mapRef.current, pts, 6);
+      // 레벨 6으로 고정 + 그 중심으로 이동
+      try { mapRef.current.setLevel(6, { animate: false }); } catch { mapRef.current.setLevel(6); }
+      if (bestCenter) mapRef.current.panTo(bestCenter);
+    }
   }, [stations, favSet]);
 
   // ✅ 내 위치 이동
@@ -937,7 +951,7 @@ export default function OilMap({ stations, handleLocationSearch }) {
       {/* ✅ 하단 마커색깔 설명 구역 */}
       <div
         style={{
-          position: "fixed",
+          position: "absolute",
           left: "50%",
           transform: "translateX(-50%)",
           bottom: 16,
@@ -1003,6 +1017,49 @@ function LegendDot({ color }) {
     />
   );
 }
+
+// 레벨 6에서 최다 밀집 영역의 중심을 찾아 panTo용 LatLng 반환
+function findDensestCenterAtLevel(map, points, targetLevel = 6) {
+  if (!map || !window.kakao || !points?.length) return null;
+
+  const b = map.getBounds();
+  if (!b) return null;
+
+  // 현재 레벨/뷰포트의 위경도 스팬
+  const currLevel = map.getLevel();
+  const latSpanNow = Math.abs(b.getNorthEast().getLat() - b.getSouthWest().getLat());
+  const lngSpanNow = Math.abs(b.getNorthEast().getLng() - b.getSouthWest().getLng());
+
+  // 카카오맵: 레벨이 1 커질 때마다 스케일 2배 → span도 2배
+  const scale = Math.pow(2, targetLevel - currLevel);
+  const latSpan = latSpanNow * scale;
+  const lngSpan = lngSpanNow * scale;
+
+  const halfLat = latSpan / 2;
+  const halfLng = lngSpan / 2;
+
+  // 레벨 6 뷰 사각형 안에 가장 많은 포인트가 들어오게 하는 중심 찾기
+  let bestCount = -1;
+  let bestLat = points[0].lat;
+  let bestLng = points[0].lon;
+
+  for (const p of points) {
+    const minLat = p.lat - halfLat, maxLat = p.lat + halfLat;
+    const minLng = p.lon - halfLng, maxLng = p.lon + halfLng;
+    let c = 0;
+    for (const q of points) {
+      if (q.lat >= minLat && q.lat <= maxLat && q.lon >= minLng && q.lon <= maxLng) c++;
+    }
+    if (c > bestCount) {
+      bestCount = c;
+      bestLat = p.lat;
+      bestLng = p.lon;
+    }
+  }
+
+  return new window.kakao.maps.LatLng(bestLat, bestLng);
+}
+
 
 
 
