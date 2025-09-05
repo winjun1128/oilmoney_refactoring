@@ -148,6 +148,26 @@ public class MyPageController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("삭제 실패");
 		}
 	}
+	
+//	대표차 설정
+	@PostMapping("/setmain")
+	public ResponseEntity<?> setMainCar(@RequestParam String userId, @RequestParam int carId){
+		try {
+			usersService.changeMainCar(userId, carId);
+			System.out.println("[Controller] 대표차 변경 완료");
+			return ResponseEntity.ok(Map.of("message", "대표차 변경 완료"));
+		} catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("[Controller] 대표차 변경 실패");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                 .body(Map.of("message", "대표차 변경 실패"));
+        }
+	}
+	
+	@GetMapping("/cars")
+	public List<Car> getCarsByUserId(@RequestParam String userId) {
+        return usersService.getCarsByUserId(userId);
+    }
 
 //	즐겨찾기 목록
 	@PostMapping("/favorites")

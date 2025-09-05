@@ -1,0 +1,23 @@
+/* OilDashboard.css */
+.oil-dashboard-container {
+    padding: 1rem;
+    background-color: #f7f9fc;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+}
+
+.dashboard-section-top,
+.dashboard-section-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: stretch;
+}
+
+@media (max-width: 1200px) {
+    .dashboard-section-top,
+    .dashboard-section-bottom {
+        flex-direction: column;
+    }
+}
