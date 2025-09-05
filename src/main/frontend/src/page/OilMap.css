@@ -397,3 +397,24 @@
 .review-select:focus{
   border-color:#2563eb; box-shadow:0 0 0 4px rgba(37,99,235,.10);
 }
+/* 리뷰 항목 오른쪽(별점/삭제) */
+.review-item__right{
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 삭제 버튼 */
+.review-item__delete{
+  border: none;
+  background: transparent;
+  color: #ef4444;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.review-item__delete:hover{
+  background: #fee2e2;
+}

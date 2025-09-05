@@ -1081,6 +1081,24 @@ function ReviewModal({ open, mode, station, onClose }) {
   const MAX_LEN = 500;
   const loggedIn = isLoggedIn();
 
+  // 토큰(payload)에서 닉네임/아이디를 뽑아 표시명으로 사용
+  const getMyDisplayName = () => {
+    try {
+      const p = parseJwt(getToken()) || {};
+      // 선호 순서: nickname > name > username > user > email local-part > sub
+      const nick =
+        p.nickname ||
+        p.name ||
+        p.username ||
+        p.user ||
+        (p.email ? String(p.email).split("@")[0] : null) ||
+        p.sub;
+      return nick ? String(nick) : "익명";
+    } catch {
+      return "익명";
+    }
+  };
+
   const getStationId = () =>
     mode === "oil"
       ? (station?.stationId ?? station?.uni ?? station?.UNI_CD ?? "")
@@ -1094,7 +1112,11 @@ function ReviewModal({ open, mode, station, onClose }) {
       setLoading(true);
       try {
         const id = getStationId();
-        const res = await fetch(`/api/route/reviews?key=${encodeURIComponent(makeReviewKey())}`);
+        const token = getToken();
+        const res = await fetch(`/api/route/reviews?key=${encodeURIComponent(makeReviewKey())}`,
+          token
+            ? { headers: { Authorization: `Bearer ${token}` } }
+            : undefined);
         const json = await res.json();
         const list = (json?.items ?? []).map(r => ({
           id: r.id,
@@ -1114,6 +1136,42 @@ function ReviewModal({ open, mode, station, onClose }) {
     // 모달 닫히면 폼 초기화
     return () => { ignore = true; setText(""); setRating(0); setSubmitting(false); };
   }, [open, mode, station]);
+
+  // 삭제 함수 (경로 파라미터 사용 + 토큰만 헤더에)
+  const deleteReview = async (reviewId) => {
+    if (!loggedIn) { alert("로그인 후 이용 가능합니다."); return; }
+    if (!window.confirm("이 리뷰를 삭제할까요?")) return;
+
+    // 낙관적 제거(실패 시 롤백 대비 복제본 저장)
+    const snapshot = [...items];
+    setItems(prev => prev.filter(r => r.id !== reviewId));
+
+    try {
+      const res = await fetch(`/api/route/reviews/${reviewId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        }
+      });
+
+      if (!res.ok) {
+        // 401/403 등 처리
+        const msg = res.status === 403
+          ? "삭제 권한이 없습니다."
+          : res.status === 401
+            ? "로그인이 필요합니다."
+            : "삭제에 실패했습니다.";
+        throw new Error(msg);
+      }
+
+      // (선택) 서버 응답 {"ok":true} 체크
+      // const j = await res.json();
+      // if (!j.ok) throw new Error("삭제 실패");
+    } catch (e) {
+      alert(e.message || "삭제에 실패했습니다.");
+      setItems(snapshot); // 롤백
+    }
+  };
 
   const submitReview = async (e) => {
     e?.preventDefault?.();
@@ -1143,7 +1201,7 @@ function ReviewModal({ open, mode, station, onClose }) {
       const now = new Date().toISOString();
       setItems(prev => [{
         id: item?.id ?? Math.random().toString(36).slice(2),
-        nickname: "나",                     // 서버가 닉네임 안 주므로 프론트에서 표시만
+        nickname: getMyDisplayName(),                    // 서버가 닉네임 안 주므로 프론트에서 표시만
         text: clean,
         rating: rating || undefined,        // UI가 정수 별점 repeat
         createdAt: now,                     // 서버는 create 응답에 시간 안 줌 → 프론트에서 now 사용
@@ -1197,11 +1255,22 @@ function ReviewModal({ open, mode, station, onClose }) {
                       <b className="review-item__nick">{r.nickname ?? r.user ?? "익명"}</b>
                       <span className="review-item__date">{(r.createdAt ?? "").slice(0, 10)}</span>
                     </div>
-                    {r.rating ? (
-                      <span className="review-item__rating">
-                        {"★".repeat(r.rating || 0)}{"☆".repeat(5 - (r.rating || 0))}
-                      </span>
-                    ) : null}
+                    <div className="review-item__right">
+                      {r.rating ? (
+                        <span className="review-item__rating">
+                          {"★".repeat(r.rating || 0)}{"☆".repeat(5 - (r.rating || 0))}
+                        </span>
+                      ) : null}
+                      {r.mine && loggedIn && (
+                        <button
+                          className="review-delete"
+                          onClick={() => deleteReview(r.id)}
+                          title="내가 쓴 리뷰 삭제"
+                        >
+                          삭제
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="review-item__text">{r.text ?? r.content ?? ""}</div>
                 </li>
@@ -1236,7 +1305,7 @@ function ReviewModal({ open, mode, station, onClose }) {
             <label className="review-label">내용</label>
             <textarea
               className="review-textarea"
-              placeholder={loggedIn ? "방문 소감, 가격, 친절도 등을 적어주세요. (Ctrl/Cmd + Enter 등록)" : "로그인 후 작성할 수 있습니다."}
+              placeholder={loggedIn ? "방문 소감, 가격, 친절도 등을 적어주세요." : "로그인 후 작성할 수 있습니다."}
               maxLength={MAX_LEN}
               value={text}
               onChange={(e) => setText(e.target.value)}
