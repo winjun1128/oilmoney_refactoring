@@ -145,7 +145,7 @@
     margin: 30px;
     /* border: 3px solid rgb(191, 224, 255); */
     box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
-    min-width: 700px;
+    width: 700px;
     border-radius: 15px;
     display: flex;
     flex-direction: column;
@@ -218,7 +218,7 @@
 }
 
 /* CarRegist css */
-.mypage-regist-contents{
+.mypage-regist-contents {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -243,13 +243,33 @@
 
 .fa-xmark {
     font-size: 18px;
-    margin-right: 5px;
     color: #797979;
     margin-bottom: 20px;
 }
 
+.main-car {
+    font-weight: bold;
+    color: rgb(57, 153, 231);
+}
+
+.main-label {
+    background: yellow;
+    padding: 2px 4px;
+    margin-left: 5px;
+    border-radius: 3px;
+}
+
+.car-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.set-main-btn{
+    height: 25px;
+}
+
 /* FavList css */
-.fav-info-container{
+.fav-info-container {
     margin-left: 30px;
     /* border: 2px solid rgb(191, 224, 255); */
     box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.315);
@@ -260,7 +280,7 @@
     height: 370px;
 }
 
-.mypage-fav-review{
+.mypage-fav-review {
     display: flex;
     gap: 5px;
 }
@@ -271,7 +291,7 @@
     margin: 0;
 }
 
-.fav-title-text{
+.fav-title-text {
     font-size: 22px;
     font-weight: bold;
 }
@@ -321,7 +341,7 @@
 }
 
 /* ReviewList css */
-.review-info-container{
+.review-info-container {
     margin-left: 30px;
     border: 1px solid rgb(191, 224, 255);
     box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.315);
@@ -344,11 +364,11 @@
     padding: 8px;
 }
 
-.review-station-type{
+.review-station-type {
     display: flex;
 }
 
-.review-title-box{
+.review-title-box {
     display: flex;
     justify-content: space-between;
     width: 75%;

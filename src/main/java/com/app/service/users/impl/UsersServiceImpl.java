@@ -137,17 +137,28 @@ public class UsersServiceImpl implements UsersService {
 
 	}
 
+//	회원탈퇴
 	@Transactional
 	@Override
 	public boolean deleteUser(String userId, String pw) {
 		Users users = usersDAO.getUserInfo(userId);
 		if (users != null) {
-			if (users.getPw() != null && users.getPw().equals(pw)) {
-				int result = usersDAO.deleteUser(userId);
-				return result > 0;
-			}
-		}
-		return false;
+	        // sns 계정이면 비밀번호 확인없이 탈퇴
+			if (userId.startsWith("google_")) {
+	            int result = usersDAO.deleteUser(userId);
+				System.out.println("[Service] SNS 계정 탈퇴 처리 - userId: " + userId);
+	            return result > 0;
+	        }
+
+	        // 일반 계정이면 비밀번호 확인 후 탈퇴
+	        if (users.getPw() != null && users.getPw().equals(pw)) {
+	            int result = usersDAO.deleteUser(userId);
+	            System.out.println("[Service] 일반 계정 탈퇴 처리 - userId: " + userId);
+	            return result > 0;
+	        }
+	    }
+		System.out.println("[Service] 탈퇴 실패 - userId: " + userId + ", pw 입력: " + pw);
+	    return false;
 	}
 
 	@Override
@@ -254,5 +265,13 @@ public class UsersServiceImpl implements UsersService {
     private String generateRandomPassword() {
         return new BigInteger(130, new SecureRandom()).toString(32);
     }
+
+    @Transactional
+	@Override
+	public void changeMainCar(String userId, int carId) {
+		usersDAO.resetMainCar(userId);
+		usersDAO.setMainCar(carId);
+		System.out.println("[Service] 대표차 변경 완료 - userId : " + userId + ", carId : " + carId);
+	}
 
 }

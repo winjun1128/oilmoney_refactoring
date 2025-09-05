@@ -28,6 +28,7 @@ public interface UsersService {
     boolean registerCar(Car car);
     List<Car> getCarsByUserId(String userId);
     boolean deleteCar(Car car);
+    void changeMainCar(String userId, int carId);
     
     Map<String, Object> loginWithGoogle(String idToken);
 }

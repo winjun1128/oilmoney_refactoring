@@ -138,7 +138,7 @@ public class UsersController {
 	// 회원탈퇴
 	@PostMapping("/delete")
 	@ResponseBody
-	public ResponseEntity<Map<String, Object>> deleteAccount(@RequestParam String pw,
+	public ResponseEntity<Map<String, Object>> deleteAccount(@RequestParam(required = false) String pw,
 	        @RequestHeader("Authorization") String authHeader) {
 
 	    Map<String, Object> response = new HashMap<>();
@@ -146,14 +146,23 @@ public class UsersController {
 	        String token = authHeader.replace("Bearer ", "");
 	        String userId = JwtProvider.getUserIdFromToken(token);
 
-	        // 디버깅용 로그
 	        Users user = usersService.getUserInfo(userId);
 	        System.out.println("[Controller] 회원탈퇴 요청 - userId: " + userId + ", 입력 PW: " + pw + ", DB PW: " + (user != null ? user.getPw() : "null"));
 
-	        boolean result = usersService.deleteUser(userId, pw);
+	        //boolean result = usersService.deleteUser(userId, pw);
+	        boolean result = false;
+	        
+	        // sns 계정이면 비밀번호 확인 없이 탈퇴 가능
+	        if(userId.startsWith("google_")) {
+	        	result = usersService.deleteUser(userId, null);
+	        } else {
+	        	result = usersService.deleteUser(userId, pw);
+	        }
+	        
 	        if (result) {
 	            response.put("success", true);
 	            response.put("message", "회원 탈퇴 완료");
+	            System.out.println("[Controller] 탈퇴 완료");
 	        } else {
 	            response.put("success", false);
 	            response.put("message", "비밀번호가 일치하지 않음");

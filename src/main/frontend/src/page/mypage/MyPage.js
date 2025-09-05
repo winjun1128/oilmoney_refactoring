@@ -48,22 +48,31 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
     }, [token, navigate]);
 
     const handleDeleteAccount = async () => {
-        setDeleteModal(true);
+        //sns 로그인 계정으로 탈퇴 시 비밀번호 없이 탈퇴
+        const isSnsAccount = userInfo.userId.startsWith("google_");
+        if (isSnsAccount) {
+            if (window.confirm("탈퇴하시겠습니까?")) {
+                await confirmDeleteAccount(true);
+                navigate("/");
+            }
+        } else {
+            setDeleteModal(true);
+        }
     }
 
-    const confirmDeleteAccount = async () => {
+    const confirmDeleteAccount = async (isSns = false) => {
         try {
             const token = localStorage.getItem("token");
 
             const res = await axios.post("/auth/delete",
                 null,
                 {
-                    params: { pw: deletePw },
+                    params: { pw: isSns ? null : deletePw },
                     headers: { "Authorization": "Bearer " + token }
                 }
             );
             if (res.data.success) {
-                alert("회원 탈퇴가 완료되었습니다.");
+                alert("탈퇴가 완료되었습니다. 이용해주셔서 감사합니다.");
                 localStorage.removeItem("token");
                 //setIsLogin(false);
                 window.location.href = "/";
@@ -85,6 +94,25 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
             navigate("/");
         }
     };
+
+    const fetchCars = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const res = await axios.get("/cars", {
+                params: { userId: userInfo.userId },
+                headers: { "Authorization": "Bearer " + token }
+            });
+            setCars(res.data);           // 차량 목록 업데이트
+            setCarCount(res.data.length); // 차량 수 업데이트
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    useEffect(() => {
+        if (!token) return;
+        fetchCars();
+    }, [token]);
 
     return (
         <div>
@@ -126,7 +154,7 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
                 <div className="mypage-right">
                     <div>
                         <EditInfo userInfo={userInfo} setUserInfo={setUserInfo} />
-                        <CarRegist cars={cars} setCars={setCars} />
+                        <CarRegist cars={cars} setCars={setCars} userInfo={userInfo} fetchCars={fetchCars} />
                         <div className="mypage-fav-review">
                             <FavList stations={favStations} />
                             <ReviewList />

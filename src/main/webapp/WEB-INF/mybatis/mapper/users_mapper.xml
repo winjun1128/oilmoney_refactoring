@@ -12,7 +12,7 @@
 	</insert>
 	
 	<!-- 아이디 중복 확인 -->
-	<select id="countByUserId" parameterType="string" resultType="int">
+	<select id="countByUserId" parameterType="String" resultType="int">
 		select count(*) from t_users where user_id = #{userId}
 	</select>
 	
@@ -28,12 +28,12 @@
 	</insert>
 	
 	<!-- 인증번호 확인 -->
-	<select id="getCodeByEmail" parameterType="string" resultType="string">
+	<select id="getCodeByEmail" parameterType="String" resultType="String">
 		select code from t_email_verification where email = #{email}
 	</select>
 	
 	<!-- 사용자 정보 조회 -->
-	<select id="getUserInfo" parameterType="string" resultType="Users">
+	<select id="getUserInfo" parameterType="String" resultType="Users">
 		select 
 			user_id AS userId, pw, name, email, phone_num AS phoneNum, addr, profile_url AS profileUrl
 		from t_users where user_id = #{userId}
@@ -62,27 +62,34 @@
 	</select>
 	
 	<!-- sns 로그인 -->
-	<select id="getUserByEmail" parameterType="string" resultType="Users">
+	<select id="getUserByEmail" parameterType="String" resultType="Users">
 		select * from t_users where email = #{email}
 	</select>
 	
 	<!-- 회원탈퇴 -->
-	<delete id="deleteUser" parameterType="string">
+	<delete id="deleteUser" parameterType="String">
 		delete from t_users where user_id = #{userId}
 	</delete>
 	
 	<!-- 내 차 등록 -->
-	<insert id="insertMyCar" parameterType="Car">
+<!-- 	<insert id="insertMyCar" parameterType="Car" useGeneratedKeys="true" keyProperty="carId">
 		insert into t_car (car_id, user_id, fuel_type, car_type)
 		values (seq_car.NEXTVAL, #{userId}, #{fuelType}, #{carType})
+	</insert> -->
+	<insert id="insertMyCar" parameterType="Car">
+	    <selectKey keyProperty="carId" resultType="int" order="BEFORE">
+	        SELECT seq_car.NEXTVAL FROM dual
+	    </selectKey>
+		    insert into t_car (car_id, user_id, fuel_type, car_type)
+		    values (#{carId}, #{userId}, #{fuelType}, #{carType})
 	</insert>
 	
 	<!-- 등록 차량 정보 조회 -->
-	<select id="getCarsByUserId" parameterType="string" resultType="Car">
+	<select id="getCarsByUserId" parameterType="String" resultType="Car">
 	    select 
-	    	car_id, user_id, fuel_type, car_type, reg_date
+	    	car_id, user_id, fuel_type, car_type, reg_date, is_main
 	    from t_car where user_id = #{userId}
-	    order by reg_date
+	    order by decode(is_main, 'Y', 1, 'N', 0) desc , reg_date
 	</select>
 	
 	<!-- 등록 차량 삭제 -->
@@ -91,18 +98,28 @@
 	    where user_id = #{userId} and car_id = #{carId}
 	</delete>
 	
+	<!-- 대표차 설정 -->
+	<update id="setMainCar" parameterType="int">
+	    update t_car set is_main = 'Y' where car_id = #{carId}
+	</update>
+	
+	<!-- 대표차 해제 -->
+	<update id="resetMainCar" parameterType="String">
+	    update t_car set is_main = 'N' where user_id = #{userId}
+	</update>
+	
 	<!-- 등록 차량 수 -->
-	<select id="countCarByUserId" parameterType="string" resultType="int">
+	<select id="countCarByUserId" parameterType="String" resultType="int">
 		select count(*) from t_car where user_id = #{userId}
 	</select>
 	
 	<!-- 즐겨찾기 -->
-	<select id="countFavByUserId" parameterType="string" resultType="int">
+	<select id="countFavByUserId" parameterType="String" resultType="int">
 		select count(*) from fav where user_id = #{userId}
 	</select>
 	
 	<!-- 내가 쓴 리뷰 -->
-	<select id="countReviewsByUserId" parameterType="string" resultType="int">
+	<select id="countReviewsByUserId" parameterType="String" resultType="int">
 		select count(*) from t_reviews where user_id = #{userId}
 	</select>
 	
