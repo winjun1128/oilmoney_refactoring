@@ -70,12 +70,12 @@
 /* ── 텍스트/폼 ── */
 .sidebar-title{ margin:0 0 6px; font-size:16px; font-weight:700; color:var(--text); }
 .form-group{ display:flex; flex-direction:column; gap:6px; margin:0 0 10px; }
-.form-label{ font-size:11px; font-weight:600; color:var(--text-muted); }
+.form-label{ font-size:13px; font-weight:600; color:var(--text-muted); }
 .help-text,.small-note{ font-size:11px; color:var(--text-muted); }
 
 /* 라벨+컨트롤 */
 .label-row{ display:flex; align-items:center; gap:8px; margin:6px 0 10px; }
-.label-row__label{ width:86px; font-size:11px; color:var(--text-muted); font-weight:600; }
+.label-row__label{ width:86px; font-size:13px; color:var(--text-muted); font-weight:600; }
 .label-row__control{ flex:1; min-width:0; }
 
 /* 입력/선택 */
@@ -87,6 +87,12 @@
 .input:focus,.select:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(43,138,247,.15); }
 
 /* 버튼 */
+.btnrow{
+  flex: 1;
+  border-radius: 10px;
+   border:1px solid #e5e7eb; background:#fff; cursor:pointer;
+  transition:transform .04s, box-shadow .2s, background .2s, border-color .2s;
+}
 .btn{
   display:inline-flex; align-items:center; justify-content:center;
   padding:8px 10px; font-size:12px; font-weight:700; border-radius:10px;
@@ -104,7 +110,7 @@
 
 /* 버튼 묶음 */
 .btn-row{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:6px 0 10px; }
-.btn-row.compact{ gap:6px; }
+.btn-row.compact{ display: flex; }
 
 /* 칩 */
 .btn-choice{ background:#fff; }
@@ -206,4 +212,36 @@
 .info-flags { margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; }
 .flag { font-size:12px; padding:2px 8px; border-radius:999px; background:#bdc3c7; color:#fff; }
 .flag.on { background:#27ae60; }
+
+
+/* === Zoom Bar === */
+/* .zoom-bar{
+  position:absolute;
+  right:12px; bottom:90px; 
+  z-index: 1000;
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  padding:10px 8px;
+  width:44px;
+  background:#fff; border:1px solid #ddd; border-radius:12px;
+  box-shadow:0 6px 18px rgba(0,0,0,.12);
+  user-select:none;
+}
+.zoom-bar > div[role="button"],
+.zoom-bar > div:first-child,
+.zoom-bar > div:nth-child(3){
+  cursor:pointer; font-size:20px; line-height:1;
+}
+.zoom-track{
+  position:relative; width:6px; height:140px;
+  background:#f3f3f3; border-radius:999px; overflow:hidden;
+}
+.zoom-fill{
+  position:absolute; left:0; right:0; bottom:0; height:0;
+  background:#2b8af7; border-radius:999px;
+  transition:height .15s ease-out;
+}
+.zoom-label{
+  font-size:12px; color:#555; margin-top:2px;
+} */
+
 

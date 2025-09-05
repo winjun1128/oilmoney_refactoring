@@ -2,6 +2,9 @@
 import "./RouteMap.css";
 import { useEffect, useRef, useState } from "react";
 import proj4 from "proj4";
+
+const INFOWIN_Z = 20000; // 마커(9999)보다 충분히 큼
+
 //////////통일 모달
 // html escape
 const escapeHtml = (s) =>
@@ -220,6 +223,17 @@ const getMarkerImage = (type, kakao, starred = false, scale = 1) => {
     return img;
   }
 
+    // ⭐️ 즐겨찾기(★)면 타입과 상관없이 카카오 별 마커 사용
+  if (starred) {
+    const img = new kakao.maps.MarkerImage(
+      KAKAO_STAR_IMG,
+      new kakao.maps.Size(24 * scale, 35 * scale),
+      { offset: new kakao.maps.Point(12 * scale, 35 * scale) }
+    );
+    markerImgCache[key] = img;
+    return img;
+  }
+
   const fill =
    type === "ev"         ? "#2b8af7" :
    type === "oil-cheap"  ? "#2ecc71" :   // 싸다(초록)
@@ -229,7 +243,8 @@ const getMarkerImage = (type, kakao, starred = false, scale = 1) => {
     type === "origin" ? "#7b1fa2" :
     type === "dest" ? "#2e7d32" : "#999";
 
-  const src = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(pinSvg(fill, "#1b6ad1", starred));
+  // 즐겨찾기일 때 별을 그리던 오버레이는 더 이상 쓰지 않으므로 starred=false로 고정
+ const src = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(pinSvg(fill, "#1b6ad1", false));
   const w = 28 * scale, h = 40 * scale;
   const img = new kakao.maps.MarkerImage(src, new kakao.maps.Size(w, h), {
     offset: new kakao.maps.Point(14 * scale, 40 * scale),
@@ -293,8 +308,10 @@ const setInfoHtml = (html, anchorMarker, onAfterMount) => {
   box.innerHTML = html;
   infoRef.current.setContent(box);
   infoRef.current.open(mapRef.current, anchorMarker);
+  infoRef.current.setZIndex(INFOWIN_Z); // 항상 맨 위
   if (typeof onAfterMount === "function") onAfterMount(box);
 };
+
 
 
   // 지도 공용 인포윈도우
@@ -303,6 +320,33 @@ const setInfoHtml = (html, anchorMarker, onAfterMount) => {
   const mapRef = useRef(null);
   const polyRef = useRef(null);
   const viaRef = useRef(null);
+
+  //// 줌바
+  // [ZOOMBAR] 설정값 + ref
+const MIN_LEVEL = 1;
+const MAX_LEVEL = 14;
+const zoomFillRef = useRef(null);
+const zoomLabelRef = useRef(null);
+
+// [ZOOMBAR] 표시 갱신
+const updateZoomBar = () => {
+  if (!mapRef.current) return;
+  const level = mapRef.current.getLevel();
+  if (zoomLabelRef.current) zoomLabelRef.current.textContent = `Lv ${level}`;
+  const ratio = Math.max(0, Math.min(1, (MAX_LEVEL - level) / (MAX_LEVEL - MIN_LEVEL)));
+  if (zoomFillRef.current) zoomFillRef.current.style.height = `${ratio * 100}%`;
+};
+
+// [ZOOMBAR] 버튼 동작
+const zoomIn = () => {
+  if (!mapRef.current) return;
+  mapRef.current.setLevel(Math.max(MIN_LEVEL, mapRef.current.getLevel() - 1));
+};
+const zoomOut = () => {
+  if (!mapRef.current) return;
+  mapRef.current.setLevel(Math.min(MAX_LEVEL, mapRef.current.getLevel() + 1));
+};
+
 
     // ⭐️ 홈(원점)
   const homeMarkerRef = useRef(null);
@@ -666,21 +710,34 @@ const toggleFavForStation = async (station, mode) => {
     return () => clearTimeout(tid);
   }, [isFilterOpen]);
 
-  // 지도 클릭 모드
-  const [clickMode, setClickMode] = useState("origin"); // 'origin' | 'dest' | 'home'
-  const clickModeRef = useRef(clickMode);
-  useEffect(() => { clickModeRef.current = clickMode; }, [clickMode]);
+  // 지도 클릭 모드: 필요할 때만 켠다 (기본 비활성)
+ // '', 'origin', 'dest' 중 하나
+ const [clickMode, setClickMode] = useState("");
+ const clickModeRef = useRef(clickMode);
+ useEffect(() => { clickModeRef.current = clickMode; }, [clickMode]);
 
-  // 지도 편집 토글
-  const [isMapEdit, setIsMapEdit] = useState(false);
-  const isMapEditRef = useRef(isMapEdit);
-  useEffect(() => { isMapEditRef.current = isMapEdit; }, [isMapEdit]);
+ // 클릭 모드일 때만 커서를 crosshair로
+ useEffect(() => {
+   const el = document.getElementById("map");
+   if (!el) return;
+   el.style.cursor = clickMode ? "crosshair" : "default";
+ }, [clickMode]);
 
-  useEffect(() => {
-    const el = document.getElementById("map");
-    if (!el) return;
-    el.style.cursor = isMapEdit ? "crosshair" : "default";
-  }, [isMapEdit]);
+ // 원점=출발
+ const setOriginToHome = async () => {
+   // 홈(원점)을 출발지로 세팅
+   replaceOriginPin({ lat: homeCoord.lat, lng: homeCoord.lng });
+   setOriginInput(await coordToLabel(homeCoord.lat, homeCoord.lng));
+   routeCtxRef.current = {
+     origin: [homeCoord.lng, homeCoord.lat],
+     dest: null, baseMeters: 0, baseSeconds: 0, path: null, destFixed: false,
+     previewTopN: false,
+   };
+   setSummary(`출발지(원점) 설정됨 · ‘경로 & 표시’를 눌러 추천을 보세요`);
+   setDetourSummary("");
+   hideMarkers();
+ };
+
 
   // 모달
   const [modalOpen, setModalOpen] = useState(false);
@@ -1332,6 +1389,21 @@ const onModalDragEnd = () => {
   window.removeEventListener("touchend", onModalDragEnd);
 };
 
+//// 전체마커 막기
+// 마커 표시 게이트
+const [markersVisible, setMarkersVisible] = useState(false);
+const markersVisibleRef = useRef(markersVisible);
+useEffect(() => { markersVisibleRef.current = markersVisible; }, [markersVisible]);
+
+const showMarkers = () => { markersVisibleRef.current = true; setMarkersVisible(true); };
+const hideMarkers = () => {
+  markersVisibleRef.current = false; setMarkersVisible(false);
+  // 즉시 모두 숨김
+  allMarkersRef.current.forEach(o => {
+    o.marker.setMap(null);
+    if (o.overlay) o.overlay.setMap(null);
+  });
+};
 
   /* ───────── Kakao SDK + 초기 마커 로드 ───────── */
   useEffect(() => {
@@ -1348,9 +1420,12 @@ const onModalDragEnd = () => {
         level: 7,
       });
       mapRef.current = map;
+      // [ZOOMBAR] 최초 갱신 + 이벤트 바인딩
+updateZoomBar();
+kakao.maps.event.addListener(map, "zoom_changed", updateZoomBar);
       // ⭐️ 홈(원점) 바로 표시
       ////
-      infoRef.current = new kakao.maps.InfoWindow({ removable: true });
+      infoRef.current = new kakao.maps.InfoWindow({ removable: false, zIndex: INFOWIN_Z, });
 
       // (선택) 지도 클릭하면 정보창 닫기
       kakao.maps.event.addListener(map, "click", () => {
@@ -1583,7 +1658,7 @@ const onModalDragEnd = () => {
   };
   const handleClearAll = () => {
     clearRouteOnly();
-    applyFiltersToMarkers();
+    hideMarkers();          // ✅ 여기!
   };
 
   // 홈 이동
@@ -1597,7 +1672,6 @@ const onModalDragEnd = () => {
     setFilters(defaultFilters());
     setEvAvailSet(null);
     setNearestCount(5);
-    setIsMapEdit(false);
     setClickMode("origin");
     setModalOpen(false);
     routeCtxRef.current = null;
@@ -1614,7 +1688,7 @@ const onModalDragEnd = () => {
       const { lat, lng } = homeCoord || { lat: 36.807313, lng: 127.147169 };
       mapRef.current.setLevel(7);
       mapRef.current.setCenter(new window.kakao.maps.LatLng(lat, lng));
-      setTimeout(() => applyFiltersToMarkers(), 0);
+      hideMarkers();   // ✅ setTimeout + applyFiltersToMarkers() 대신 이것만
     } catch (e) {
       console.error(e);
     }
@@ -1937,8 +2011,8 @@ const statIdsOfSite = (site) =>
       const starred0 = !!(favKey && favSetRef.current?.has(favKey));
       const label = it.chargerCount ? `${it.name || "EV"} (${it.chargerCount}기)` : (it.name || "EV");
 
-      const { marker, overlay } = addLabeledMarker({
-        map: mapRef.current, kakao, type: "ev",
+     const { marker, overlay } = addLabeledMarker({
+   map: markersVisibleRef.current ? mapRef.current : null, kakao, type: "ev",
         lat: it.lat, lng: it.lng, name: label,
         labelAlways: LABEL_ALWAYS,
         starred: starred0,
@@ -2192,7 +2266,7 @@ const statIdsOfSite = (site) =>
     const starred0 = !!(favKey && favSetRef.current?.has(favKey));
 
     const { marker, overlay } = addLabeledMarker({
-      map: mapRef.current, kakao, type: markerType,
+   map: markersVisibleRef.current ? mapRef.current : null, kakao, type: markerType,
       lat: gs.lat, lng: gs.lng,
       name: gs.name || (cat === "lpg" ? "LPG" : "주유소"),
       labelAlways: LABEL_ALWAYS,
@@ -2401,11 +2475,19 @@ const statIdsOfSite = (site) =>
 
   /** 현재 필터/줌 기준 적용 */
   const applyFiltersToMarkers = () => {
+    // ⛔ 경로&표시 이전엔 전부 숨김
+  if (!markersVisibleRef.current) {
+    allMarkersRef.current.forEach(o => {
+      o.marker.setMap(null);
+      if (o.overlay) o.overlay.setMap(null);
+    });
+    return;
+  }
     const arr = allMarkersRef.current;
     const ctx = routeCtxRef.current;
 
-    // 출발지만 있는 모드
-    if (ctx && ctx.origin && ctx.destFixed === false) {
+    // 출발지만 있는 모드(버튼 눌러 Top-N 프리뷰를 명시적으로 켰을 때만)
+  if (ctx && ctx.origin && ctx.destFixed === false && ctx.previewTopN) {
       arr.forEach((o) => (o._ok = matchesFilter(o)));
       arr.forEach((o) => {
         o._dist = o._ok ? havKm(ctx.origin[1], ctx.origin[0], o.lat, o.lng) : Infinity;
@@ -2650,90 +2732,68 @@ const drawDetourForPoint = async (p) => {
 
 
   /* ───────── 지도 클릭으로 출발/도착 지정 ───────── */
-  const onMapClick = async ({ lat, lng }) => {
-    if (!isMapEditRef.current) return;
-    const mode = clickModeRef.current;
-    const lonLat = [Number(lng), Number(lat)];
+ // 교체본
+// 지도 클릭 → 출발/도착 지정 (경로는 절대 그리지 않음)
+const onMapClick = async ({ lat, lng }) => {
+  const mode = clickModeRef.current;
+  if (!mode) return;
 
-    // 좌표 → 주소/장소 라벨
-    const label = await coordToLabel(lat, lng);
+  const lonLat = [Number(lng), Number(lat)];
+  const label = await coordToLabel(lat, lng);
 
-        // ⭐️ 홈(원점) 지정 모드
-   if (mode === "home") {
-      saveHome(lat, lng);
-      setSummary("원점이 저장되었습니다.");
-      return;
-    }
+  if (mode === "origin") {
+    clearRouteOnly();
+    setOriginInput(label);
+    replaceOriginPin({ lat, lng });
 
-    if (mode === "origin") {
-      clearRouteOnly();
-      setOriginInput(label); // ✅ 좌표 대신 장소/주소명 바인딩
-      replaceOriginPin({ lat, lng });
+    routeCtxRef.current = {
+      origin: lonLat,
+      dest: null,
+      baseMeters: 0,
+      baseSeconds: 0,
+      path: null,
+      destFixed: false,     // 출발지만 모드(추천 N개 노출용)
+      previewTopN: false,   // ★ 아직 추천 Top-N 보이지 않음
+    };
 
-      routeCtxRef.current = {
-        origin: lonLat,
-        dest: null,
-        baseMeters: 0,
-        baseSeconds: 0,
-        path: null,
-      };
+    mapRef.current.setCenter(new window.kakao.maps.LatLng(lat, lng));
+    setSummary(`출발지 설정됨 · 아래 ‘경로 & 표시’를 눌러 추천을 보세요`);
+    setDetourSummary("");
+    hideMarkers();          // ✅ 여기!
+    setClickMode("");
+    return;
+  }
 
-      mapRef.current.setCenter(new window.kakao.maps.LatLng(lat, lng));
-      setSummary(`출발지 설정됨 · 가까운 추천 ${nearestCountRef.current}개 표시`);
-      setDetourSummary("");
-      applyFiltersToMarkers();
-      return;
-    }
+  // ===== dest 클릭 분기 =====
+  setDestInput(label);
 
-    // mode === 'dest'
-    setDestInput(label); // ✅ 좌표 대신 장소/주소명 바인딩
+  const ctx = routeCtxRef.current;
+  if (ctx?.origin) {
+    // ⛔ 경로 계산/그리기 없음. 도착 핀만 놓고 버튼 안내
+    replaceDestPin({ lat, lng, name: "도착" });
 
-    const ctx = routeCtxRef.current;
-    if (ctx?.origin) {
-      try {
-        if (polyRef.current) { polyRef.current.setMap(null); polyRef.current = null; }
-        if (viaRef.current) { viaRef.current.setMap(null); viaRef.current = null; }
+    routeCtxRef.current = {
+      origin: ctx.origin,
+      dest: lonLat,
+      baseMeters: 0,
+      baseSeconds: 0,
+      path: null,           // 경로 없음
+      destFixed: false,     // 아직 '고정' 아님 (버튼 눌러야 계산)
+    };
 
-        const route = await fetchOsrm(ctx.origin, lonLat);
-        const { kakao } = window;
-        const path = route.geometry.coordinates.map(([LON, LAT]) => new kakao.maps.LatLng(LAT, LON));
+    setSummary(`도착지 설정됨 · 아래 ‘경로 & 표시’ 버튼을 눌러 경로를 그리세요`);
+    setDetourSummary("");
+    hideMarkers();          // ✅ 여기!
+  } else {
+    // 출발지 없이 도착만 찍은 경우
+    replaceDestPin({ lat, lng, name: "도착" });
+    setSummary("도착지 설정됨 · 출발지를 먼저 지정하세요.");
+  }
 
-        const blue = new kakao.maps.Polyline({
-          path, strokeWeight: 5, strokeColor: "#1e88e5", strokeOpacity: 0.9, strokeStyle: "solid",
-        });
-        blue.setMap(mapRef.current);
-        polyRef.current = blue;
+  setClickMode("");
+};
 
-        replaceDestPin({ lat, lng, name: "도착" });
 
-        routeCtxRef.current = {
-          origin: ctx.origin,
-          dest: lonLat,
-          baseMeters: route.distance,
-          baseSeconds: route.duration,
-          path,
-          destFixed: true, // ← 사용자가 도착을 명시 확정
-        };
-
-        const km = (route.distance / 1000).toFixed(2);
-        const min = Math.round(route.duration / 60);
-        setSummary(`기본 경로: 총 ${km} km / 약 ${min} 분`);
-        setDetourSummary("");
-
-        const bounds = new kakao.maps.LatLngBounds();
-        path.forEach((p) => bounds.extend(p));
-        mapRef.current.setBounds(bounds);
-
-        applyFiltersToMarkers();
-      } catch (err) {
-        console.error(err);
-        alert("경로 계산에 실패했습니다.");
-      }
-    } else {
-      replaceDestPin({ lat, lng, name: "도착" });
-      setSummary("도착지 설정됨 · 출발지를 먼저 지정하세요.");
-    }
-  };
 
   // 포커스(출발로 이동)
   const handleFocusOrigin = async () => {
@@ -2759,6 +2819,7 @@ const drawDetourForPoint = async (p) => {
 
       setLoading(true);
       clearRouteOnly();
+      hideMarkers(); // 시작할 때 잠깐 확실히 꺼두기
 
       const origin = await resolveTextToLonLat(originInput);
 
@@ -2771,6 +2832,7 @@ const drawDetourForPoint = async (p) => {
           baseSeconds: 0,
           path: null,
           destFixed: false, // ← 도착지 아직 '고정' 아님(마커 클릭할 때마다 도착지로 갱신)
+          previewTopN: true, // ★ 여기서만 Top-N 프리뷰 ON
         };
 
         const { kakao } = window;
@@ -2783,7 +2845,8 @@ const drawDetourForPoint = async (p) => {
         mapRef.current.setCenter(new kakao.maps.LatLng(origin[1], origin[0]));
         setSummary(`출발지 설정됨 · 가까운 추천 ${nearestCountRef.current || nearestCount}개 표시`);
         setDetourSummary("");
-        applyFiltersToMarkers();
+        showMarkers();
+   applyFiltersToMarkers();
 
     // …출발지만 설정하는 분기 내부에서 요약/상태 세팅한 직후…
 try {
@@ -2858,7 +2921,8 @@ try {
         odRef.current.dest = marker; odRef.current.destLabel = overlay; overlay.setMap(mapRef.current);
       }
 
-      applyFiltersToMarkers();
+      showMarkers();
+   applyFiltersToMarkers();
 
       const bounds = new kakao.maps.LatLngBounds();
       path.forEach((p) => bounds.extend(p));
@@ -3189,30 +3253,28 @@ const ReviewsSection = () => (
               <span className="form-label">유종 색상 기준</span>
   <div className="btn-row compact">
     <button
-      className={`btn btn-toggle ${priceBasis === "B027" ? "on" : ""}`}
+      className={`btnrow btn-toggle ${priceBasis === "B027" ? "on" : ""}`}
       onClick={() => setPriceBasis("B027")}
       title="휘발유 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
     >
       휘발유
     </button>
     <button
-      className={`btn btn-toggle ${priceBasis === "D047" ? "on" : ""}`}
+      className={`btnrow btn-toggle ${priceBasis === "D047" ? "on" : ""}`}
       onClick={() => setPriceBasis("D047")}
       title="경유 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
     >
       경유
     </button>
     <button
-      className={`btn btn-toggle ${priceBasis === "K015" ? "on" : ""}`}
+      className={`btnrow btn-toggle ${priceBasis === "K015" ? "on" : ""}`}
       onClick={() => setPriceBasis("K015")}
       title="LPG 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
     >
       LPG
     </button>
   </div>
-  <div className="small-note">
-    선택한 유종의 시·군 평균 대비 <b>{PRICE_DIFF_THRESH}원 이상 싸면 초록</b>, <b>{PRICE_DIFF_THRESH}원 이상 비싸면 빨강</b>으로 표시돼요.
-  </div>
+  
             </div>
 
             <LabelRow label="추천 개수">
@@ -3268,11 +3330,7 @@ const ReviewsSection = () => (
               </>
             )}
 
-            {(activeCat === "oil" || activeCat === "lpg") && (
-              <div className="help-text">
-                세부조건 없이 {activeCat === "oil" ? "주유소" : "LPG 충전소"}만 표시합니다.
-              </div>
-            )}
+          
 
 {isAuthed && (
   <LabelRow label="내 경로">
@@ -3333,6 +3391,22 @@ const ReviewsSection = () => (
   <datalist id="originOptions">
     {originOpts.map((s, i) => <option key={i} value={s} />)}
   </datalist>
+    <div className="btn-row compact" style={{ marginTop: 6 }}>
+    <button
+      className={`btn btn-toggle ${clickMode === "origin" ? "on" : ""}`}
+      onClick={() => setClickMode(clickMode === "origin" ? "" : "origin")}
+      title="지도를 클릭해 출발지를 찍습니다"
+    >
+      지도클릭
+    </button>
+    <button
+      className="btn"
+      onClick={setOriginToHome}
+      title="원점(내 위치)로 출발지를 설정합니다"
+    >
+      내위치
+    </button>
+  </div>
 </div>
 
 <div className="form-group">
@@ -3348,6 +3422,15 @@ const ReviewsSection = () => (
   <datalist id="destOptions">
     {destOpts.map((s, i) => <option key={i} value={s} />)}
   </datalist>
+    <div className="btn-row compact" style={{ marginTop: 6 }}>
+    <button
+      className={`btn btn-toggle ${clickMode === "dest" ? "on" : ""}`}
+      onClick={() => setClickMode(clickMode === "dest" ? "" : "dest")}
+      title="지도를 클릭해 도착지를 찍습니다"
+    >
+      지도클릭
+    </button>
+  </div>
 </div>
 
 
@@ -3359,86 +3442,10 @@ const ReviewsSection = () => (
             </div>
 
             <div className="form-group" style={{ marginTop: 6 }}>
-              <span className="form-label">지도 옵션</span>
-              <div className="btn-row">
-                <button className="btn" onClick={handleFocusOrigin}>출발지 포커스</button>
-                <button className="btn" onClick={handleGoHome} title="휴먼교육센터로 이동">지도초기화</button>
-                <button
-                  className="btn"
-                  onClick={() => {
-                    if (!mapRef.current) return;
-                    mapRef.current.setCenter(new window.kakao.maps.LatLng(homeCoord.lat, homeCoord.lng));
-                  }}
-                >
-                 원점 포커스
-               </button>
-               <button
-                 className="btn"
-                 onClick={async () => {
-                   // 원점을 출발지로 즉시 세팅
-                   replaceOriginPin({ lat: homeCoord.lat, lng: homeCoord.lng });
-                   setOriginInput(await coordToLabel(homeCoord.lat, homeCoord.lng));
-                   routeCtxRef.current = {
-                     origin: [homeCoord.lng, homeCoord.lat],
-                     dest: null, baseMeters: 0, baseSeconds: 0, path: null, destFixed: false,
-                   };
-                   setSummary(`출발지(원점) 설정됨 · 가까운 추천 ${nearestCountRef.current}개 표시`);
-                   setDetourSummary("");
-                   applyFiltersToMarkers();
-                 }}
-               >
-                 원점=출발
-               </button>
-                {/* ✅ 여기 추가 */}
-                <button
-                  className="btn"
-                  onClick={handleResetHome}
-                  title="저장된 원점을 지우고 기본 좌표(휴먼교육센터)로 복귀합니다"
-                >
-                  원점 초기화
-                </button>
-              </div>
+             <button className="btn" onClick={handleGoHome} title="휴먼교육센터로 이동">지도초기화</button>
             </div>
 
-            <div className="form-group">
-              <span className="form-label">지도 편집</span>
-              <button
-                className={`btn btn-toggle ${isMapEdit ? "on" : ""}`}
-                onClick={() => setIsMapEdit((v) => !v)}
-                title="지도 클릭으로 출발/도착 편집을 켜고 끕니다"
-              >
-                {isMapEdit ? "지도 편집 ON" : "지도 편집 OFF"}
-              </button>
-
-              <div className="btn-row compact" style={{ marginTop: 8 }}>
-                {/* ✅ 편집 모드 선택 버튼: 선택된 쪽에 '불' (배경 on) */}
-                <button
-                  className={`btn btn-toggle ${clickMode === "origin" ? "on" : ""}`}
-                  onClick={() => setClickMode("origin")}
-                  disabled={!isMapEdit}
-                  title="지도 클릭으로 출발지 지정"
-                >
-                  지도클릭=출발
-                </button>
-                <button
-                  className={`btn btn-toggle ${clickMode === "dest" ? "on" : ""}`}
-                  onClick={() => setClickMode("dest")}
-                  disabled={!isMapEdit}
-                  title="지도 클릭으로 도착지 지정"
-                >
-                  지도클릭=도착
-                </button>
-                <button
-                  className={`btn btn-toggle ${clickMode === "home" ? "on" : ""}`}
-                  onClick={() => setClickMode("home")}
-                  disabled={!isMapEdit}
-                  title="지도 클릭으로 원점 저장"
-                >
-                  지도클릭=원점
-                </button>
-              </div>
-              <div className="small-note">편집 ON일 때만 모드 버튼이 활성화됩니다.</div>
-            </div>
+           
           </div>
         </aside>
 
@@ -3460,6 +3467,27 @@ const ReviewsSection = () => (
                 </div>
               </div>
             )}
+
+            {/* ✅ 줌바 */}
+<div className="zoom-bar" aria-label="지도의 확대/축소 컨트롤">
+  <div onClick={zoomIn} role="button" title="확대">＋</div>
+  <div className="zoom-track" aria-hidden="true">
+    <div ref={zoomFillRef} className="zoom-fill" />
+  </div>
+  <div onClick={zoomOut} role="button" title="축소">－</div>
+  <div ref={zoomLabelRef} className="zoom-label">Lv -</div>
+</div>
+              {/* ✅ 원점 포커스 */}
+               <button
+                  className="my-location-btn"
+                  onClick={() => {
+                    if (!mapRef.current) return;
+                    mapRef.current.setCenter(new window.kakao.maps.LatLng(homeCoord.lat, homeCoord.lng));
+                  }}
+                >
+                 📍
+               </button>
+
           </div>
         </div>
 
