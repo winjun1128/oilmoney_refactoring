@@ -10,7 +10,6 @@ import FavList from "./FavList";
 function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
 
     const navigate = useNavigate();
-
     const token = localStorage.getItem("token");
 
     const [deletePw, setDeletePw] = useState("");
@@ -22,10 +21,35 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
     const [reviewCount, serReviewCount] = useState(0);
     const [favStations, setFavStations] = useState([]);
 
+    // 토큰 만료 시 setIsLoginModalOpen 오류 해결용
+    useEffect(() => {
+        const interceptor = axios.interceptors.response.use(
+            response => response,
+            error => {
+                if (error.response && error.response.status === 401) {
+                    // 토큰 만료 처리
+                    localStorage.removeItem("token");
+                    setIsLogin(false);
+                    alert("세션이 만료되었습니다. 다시 로그인해주세요.");
+                    if (typeof setIsLoginModalOpen === "function") {
+                        setIsLoginModalOpen(true);
+                    }
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        return () => {
+            axios.interceptors.response.eject(interceptor);
+        };
+    }, [setIsLoginModalOpen]);
+
     useEffect(() => {
         if (!token) {
             setIsLogin(false);
-            setIsLoginModalOpen(true);
+            if (typeof setIsLoginModalOpen === "function") {
+                setIsLoginModalOpen(true);
+            }
             return;
         }
 
@@ -43,7 +67,9 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
                 console.log(err);
                 setIsLogin(false);
                 localStorage.removeItem("token");
-                setIsLoginModalOpen(true);
+                if (typeof setIsLoginModalOpen === "function") {
+                    setIsLoginModalOpen(true);
+                }
             });
     }, [token, navigate]);
 
