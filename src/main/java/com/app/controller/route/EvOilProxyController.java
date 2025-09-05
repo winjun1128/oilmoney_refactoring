@@ -104,15 +104,6 @@ public class EvOilProxyController {
 //  }
 
 
-  /* ───────────────── EV: XML → JSON 변환해서 반환 ───────────────── */
-
-  /** 충전소 정보(XML 수신 → JSON 변환해서 반환) */
-//  @GetMapping(value = "/ev/info", produces = MediaType.APPLICATION_JSON_VALUE)
-//  public ResponseEntity<Map<String, Object>> evInfo() throws Exception {
-//    String body = EVInfoImpl.getEvInfo();
-//    Map<String, Object> map = om.readValue(body, new TypeReference<Map<String,Object>>(){});
-//    return ResponseEntity.ok(map);
-//  }
   @GetMapping(value = "/ev/info", produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<Map<String, Object>> evInfoFromDb(
       @RequestParam(required = false) String zcode,
@@ -130,79 +121,7 @@ public class EvOilProxyController {
 
  
 
-//  @GetMapping(value="/ev/status", produces = MediaType.APPLICATION_JSON_VALUE)
-//  public ResponseEntity<Map<String, Object>> evStatus() throws Exception {
-//    String body = EVStatus.getEVStatus();
-//    Map<String, Object> map = om.readValue(body, new TypeReference<Map<String,Object>>(){});
-//    return ResponseEntity.ok(map);
-//  }
-  
-//  @GetMapping(value="/ev/status", produces = MediaType.APPLICATION_JSON_VALUE)
-//  public ResponseEntity<Map<String, Object>> evStatusFiltered(
-//      @RequestParam(defaultValue = "4") int pages  // 필요시 페이지 수 조절
-//  ) throws Exception {
-//
-//    // 1) DB에서 유지할 statId 집합
-//    Set<String> keepIds = new HashSet<>(
-//        evChargeService.selectAllStatIds().stream()
-//            .filter(s -> s != null && !s.isBlank())
-//            .map(String::valueOf)
-//            .collect(Collectors.toSet())
-//    );
-//
-//    // 2) 외부 API 4페이지(5000 x 4) 호출해서 병합
-//    List<Map<String, Object>> merged = new ArrayList<>();
-//    // 중복 제거용 (statId + chgerId 기준)
-//    Set<String> seen = new HashSet<>();
-//
-//    for (int i = 1; i <= pages; i++) {
-//      String body = EVStatus.getEVStatus(i); // ← 질문에 주신 메서드 사용
-//      JsonNode root = om.readTree(body);
-//
-//      // 일반적으로 { items: { item: [ ... ] } } 형태
-//      JsonNode node = root.path("items").path("item");
-//
-//      if (node.isArray()) {
-//        for (JsonNode it : node) {
-//          String statId = firstText(it, "statId", "STAT_ID", "csId", "CS_ID");
-//          String chgerId = firstText(it, "chgerId", "CHGER_ID", "chargerId");
-//
-//          if (statId == null || statId.isBlank()) continue;
-//          if (!keepIds.contains(statId)) continue;           // ✅ DB에 있는 statId만 남김
-//
-//          String key = statId + "|" + (chgerId == null ? "" : chgerId);
-//          if (!seen.add(key)) continue;                      // 중복 제거
-//
-//          // 노드를 Map으로 변환해서 누적
-//          Map<String, Object> asMap = om.convertValue(it, new TypeReference<Map<String, Object>>() {});
-//          merged.add(asMap);
-//        }
-//      } else if (node.isObject()) {
-//        JsonNode it = node;
-//        String statId = firstText(it, "statId", "STAT_ID", "csId", "CS_ID");
-//        String chgerId = firstText(it, "chgerId", "CHGER_ID", "chargerId");
-//        if (statId != null && keepIds.contains(statId)) {
-//          String key = statId + "|" + (chgerId == null ? "" : chgerId);
-//          if (seen.add(key)) {
-//            merged.add(om.convertValue(it, new TypeReference<Map<String, Object>>() {}));
-//          }
-//        }
-//      } else {
-//        // 포맷이 다르면 원문도 참조할 수 있게 로그 정도
-//        log.warn("[EV STATUS] unexpected payload on page {}", i);
-//      }
-//    }
-//
-//    // 3) 응답 형태 통일 (프론트에서 그대로 쓰던 형태 맞춤)
-//    Map<String, Object> items = new LinkedHashMap<>();
-//    items.put("item", merged);
-//
-//    Map<String, Object> payload = new LinkedHashMap<>();
-//    payload.put("items", items);
-//
-//    return ResponseEntity.ok(payload);
-//  }
-  //
+
   @GetMapping(value="/ev/status/available", produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<Map<String, Object>> evAvailable(
       @RequestParam(required = false) String zcode,
@@ -338,16 +257,6 @@ public class EvOilProxyController {
    }
    return null;
  }
-
-
-  /* ───────────────── 오피넷: 기존 그대로 JSON 반환 ───────────────── */
-
-//  @GetMapping(value="/oil/info", produces = MediaType.APPLICATION_JSON_VALUE)
-//  public ResponseEntity<Map<String, Object>> oilInfo() throws Exception {
-//    String body = OilInfo.getOilInfo();
-//    Map<String, Object> map = om.readValue(body, new TypeReference<Map<String,Object>>(){});
-//    return ResponseEntity.ok(map);
-//  }
   
 	//com/app/controller/EvOilProxyController.java (혹은 별도 컨트롤러)
   @GetMapping(value="/oil/info", produces = MediaType.APPLICATION_JSON_VALUE)

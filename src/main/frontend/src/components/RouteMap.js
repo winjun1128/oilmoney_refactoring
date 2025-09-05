@@ -256,17 +256,19 @@ const makeNameOverlay = (kakao, { name, lat, lng }) => {
   });
 };
 
-const addLabeledMarker = ({ map, kakao, type, lat, lng, name, onClick, labelAlways = false, starred = false }) => {
+const addLabeledMarker = ({ map, kakao, type, lat, lng, name, onClick, labelAlways = false, starred = false, zIndexOverride }) => {
   const pos = new kakao.maps.LatLng(lat, lng);
   const marker = new kakao.maps.Marker({
     map,
     position: pos,
     image: getMarkerImage(type, kakao, starred),
     title: name ? String(name) : undefined,
-    zIndex: type === "origin" || type === "dest" ? 40
+    zIndex: typeof zIndexOverride === "number"
+          ? zIndexOverride
+      : (type === "origin" || type === "dest" ? 40
       : type === "ev" ? 35
       : type === "oil" || type === "lpg" ? 30
-      : 10,
+      : 10),
   });
   const overlay = makeNameOverlay(kakao, { name, lat, lng });
   if (labelAlways) overlay.setMap(map); else overlay.setMap(null);
@@ -343,6 +345,34 @@ const setInfoHtml = (html, anchorMarker, onAfterMount) => {
 
   const routeCtxRef = useRef(null);
   const allMarkersRef = useRef([]); // {marker, overlay, type, cat, lat, lng, data}
+
+    /* ───────── 경로 버튼(목적지/경유 토글) 헬퍼 ───────── */
+  // 현재 상태 기준 라벨 계산
+  const routeBtnLabelForKey = (markerKey) => {
+    const ctx = routeCtxRef.current;
+    if (!ctx || !ctx.origin) return "경로지정";
+    // 출발지만 모드(= destFixed=false)에서는 늘 목적지 지정/해제만 허용
+    if (!ctx.destFixed) {
+      return ctx.destKey === markerKey && ctx.dest ? "목적지 해제" : "목적지로";
+    }
+    // 도착지가 '고정'된 이후에만 경유 토글 노출
+    if (ctx.destKey === markerKey) return "목적지 해제";
+    return ctx.viaKey === markerKey ? "경유지 해제" : "경유지로";
+  };
+  // 인포윈도우용 버튼 HTML
+  const routeBtnHtmlForKey = (markerKey) => {
+    const can = !!(routeCtxRef.current && routeCtxRef.current.origin);
+    const label = routeBtnLabelForKey(markerKey);
+    return `
+      <button class="route-btn"
+              data-key="${escapeHtml(markerKey || "")}"
+              ${can ? "" : "disabled"}
+              style="border:1px solid #ddd;background:#f5f5f5;border-radius:8px;
+                     padding:4px 8px;font-size:12px;
+                     ${can ? "cursor:pointer" : "cursor:not-allowed;opacity:.6"}">
+        ${label}
+      </button>`;
+  };
 
   // 출발/도착 마커 ref
   const odRef = useRef({ origin: null, originLabel: null, dest: null, destLabel: null });
@@ -787,6 +817,137 @@ const getClientId = () => {
 // 기존: const [isAuthed, setIsAuthed] = useState(!!getToken());
 // 교체
 const [isAuthed, setIsAuthed] = useState(() => isTokenAlive(getToken()));
+
+//// 경로
+// 헬퍼: d가 빈 문자열이면 '출발만' 항목을 매칭
+const normLabel = (s) => String(s || "").trim();
+const findSavedRoutesByLabels = (olab, dlab) => {
+  const o = normLabel(olab), d = normLabel(dlab);
+  return savedRoutes.filter(r => normLabel(r.olab) === o && normLabel(r.dlab || "") === d);
+};
+
+// 기존 deleteByLabelPair 전체를 이걸로 교체
+// const deleteByLabelPair = async () => {
+//   if (!isAuthed) { alert("로그인 후 삭제할 수 있습니다."); return; }
+
+//   const originLabel = normLabel(originInput);
+//   const destLabel   = normLabel(destInput); // 비어있으면 '출발만' 삭제
+//   if (!originLabel) { alert("출발지를 입력하세요."); return; }
+
+//   if (!window.confirm(`저장된 경로를 삭제할까요?\n“${originLabel}${destLabel ? ` → ${destLabel}` : " (출발만)"}”`)) return;
+
+//   try {
+//     const token = getToken();
+//     const qs = new URLSearchParams({ o: originLabel });
+//     if (destLabel) qs.set("d", destLabel);
+
+//     const r = await fetch(`/api/route/paths/by-labels?${qs.toString()}`, {
+//       method: "DELETE",
+//       headers: { Authorization: `Bearer ${token}` },
+//     });
+
+//     // 401/403 처리 등 공통 핸들러 사용(204도 OK)
+//     await requireJson(r);
+
+//     // 삭제된 항목들을 클라이언트 상태에서도 제거
+//     setSavedRoutes(prev => prev.filter(x =>
+//       !(normLabel(x.olab) === originLabel && normLabel(x.dlab) === destLabel)
+//     ));
+//     if (routeSel) setRouteSel("");
+//     alert("삭제됐습니다.");
+//   } catch (e) {
+//     console.warn(e);
+//     alert(e.message || "경로 삭제 실패");
+//   }
+// };
+
+
+
+// ── [Saved Routes per user] ─────────────────────────────────────────────
+const [savedRoutes, setSavedRoutes] = useState([]); // [{id, olab, dlab, olon, olat, dlon, dlat}]
+const [routeSel, setRouteSel] = useState("");
+
+const listSavedRoutes = async () => {
+  const token = getToken(); if (!token) return [];
+  console.log('token ' + token);
+  const r = await fetch(`/api/route/paths`, { headers: { Authorization: `Bearer ${token}`,Accept: "application/json" } });
+  console.debug("[GET /api/route/paths]", r.status, r.redirected, r.url, r.headers.get("content-type"));
+  console.log('11');
+  const json = await requireJson(r);
+  console.log('22');
+  const arr = Array.isArray(json?.items ?? json) ? (json.items ?? json) : [];
+
+  // listSavedRoutes() 내부 매핑만 살짝 보정
+  return arr.map(x => ({
+    id: String(x.id ?? x.routeId),
+    olab: x.originLabel ?? x.olab ?? x.origin ?? "",
+    dlab: x.destLabel   ?? x.dlab  ?? x.dest   ?? "",   // ← 없으면 빈 문자열
+    olon: Number(x.originLon ?? x.olon),
+    olat: Number(x.originLat ?? x.olat),
+    dlon: Number(x.destLon   ?? x.dlon),                // ← 없으면 NaN
+    dlat: Number(x.destLat   ?? x.dlat),
+  }));
+
+};
+
+// 기존 함수 교체
+const createSavedRoute = async ({ olab, olon, olat, dlab, dlon, dlat }) => {
+  const token = getToken(); if (!token) return null;
+
+  // 🔧 도착지가 없으면 생략(또는 플래그로 전달)
+  const payload = { originLabel: olab, originLon: olon, originLat: olat };
+  if (!isBlank(dlab) && Number.isFinite(dlon) && Number.isFinite(dlat)) {
+    payload.destLabel = dlab; payload.destLon = dlon; payload.destLat = dlat;
+  } else {
+    payload.destLabel = "";           // 서버가 허용한다면 빈 문자열/NULL
+    payload.isOriginOnly = true;      // (선택) 서버에서 구분하고 싶으면 사용
+  }
+
+  const r = await fetch(`/api/route/paths`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`,Accept: "application/json" },
+    body: JSON.stringify(payload),
+  });
+  console.debug("[POST /api/route/paths]", r.status, r.redirected, r.url, r.headers.get("content-type"));
+  return await requireJson(r);
+};
+
+
+// 헬퍼
+const isLocalRouteId = (id) => String(id || "").startsWith("local:");
+
+// 기존 함수 교체
+const deleteSavedRoute = async (id) => {
+  // 1) 임시 ID면 서버 호출 없이 로컬에서만 삭제
+  if (isLocalRouteId(id)) {
+    console.log("!!!@@#$$");
+    setSavedRoutes(prev => prev.filter(x => x.id !== id));
+    return;
+  }
+  // 2) 진짜 ID면 서버 호출
+  const token = getToken(); if (!token) return;
+  console.log('path delete');
+  console.log(encodeURIComponent(id));
+  const r = await fetch(`/api/route/paths/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}`,Accept: "application/json" },
+  });
+  await requireJson(r); // 204면 null 반환
+};
+
+// 로그인 상태 바뀌면 목록 동기화(로그아웃 시 즉시 비우기)
+useEffect(() => {
+  (async () => {
+    if (!isAuthed) { setSavedRoutes([]); setRouteSel(""); return; }
+    try { setSavedRoutes(await listSavedRoutes()); } catch (e) { console.warn(e); }
+  })();
+}, [isAuthed]);
+
+// datalist 옵션(로그인 상태에서만 채움)
+const dedup = (arr) => [...new Set(arr.filter(Boolean))];
+const originOpts = isAuthed ? dedup(savedRoutes.map(r => r.olab)) : [];
+const destOpts   = isAuthed ? dedup(savedRoutes.map(r => r.dlab)) : [];
+
 
 useEffect(() => {
   const sync = () => {
@@ -1385,7 +1546,7 @@ const onModalDragEnd = () => {
   };
 
   // 목적지 마커 교체
-  const replaceDestPin = ({ lat, lng, name = "도착" }) => {
+  const replaceDestPin = ({ lat, lng, name = "도착", keepBehindPoi = false }) => {
     if (!mapRef.current || !window.kakao?.maps) return;
     if (odRef.current.dest) { odRef.current.dest.setMap(null); odRef.current.dest = null; }
     if (odRef.current.destLabel) { odRef.current.destLabel.setMap(null); odRef.current.destLabel = null; }
@@ -1398,6 +1559,8 @@ const onModalDragEnd = () => {
       lat, lng,
       name,
       labelAlways: true,
+        // 출발지만 모드에서는 주유소/충전소 마커(30/35)보다 아래로 보냄
+        zIndexOverride: keepBehindPoi ? 20 : undefined,
     });
     odRef.current.dest = marker;
     odRef.current.destLabel = overlay;
@@ -1508,6 +1671,127 @@ const handleResetHome = () => {
     const json = await res.json();
     if (!json.routes?.length) throw new Error("경유 경로가 없습니다.");
     return json.routes[0];
+  };
+
+    /* ───────── 마커 → 목적지/경유 토글 ───────── */
+  // point: {lat,lng,name?}, markerKey: 즐겨찾기 키(or 고유키)
+  const toggleRouteForMarker = async (point, markerKey) => {
+    const ctx = routeCtxRef.current;
+    if (!ctx || !ctx.origin) { alert("출발지를 먼저 지정하세요."); return; }
+
+   // (A) '출발지만' 모드 → 목적지 지정/해제만 허용(고정 금지)
+    if (!ctx.destFixed) {
+      // 같은 마커를 다시 누르면 목적지 해제(출발지만 모드로 복귀)
+      if (ctx.dest && ctx.destKey === markerKey) {
+        if (polyRef.current) { polyRef.current.setMap(null); polyRef.current = null; }
+        if (viaRef.current)  { viaRef.current.setMap(null);  viaRef.current  = null; }
+        if (odRef.current.dest)      { odRef.current.dest.setMap(null);      odRef.current.dest = null; }
+        if (odRef.current.destLabel) { odRef.current.destLabel.setMap(null); odRef.current.destLabel = null; }
+
+        routeCtxRef.current = {
+          origin: ctx.origin, dest: null,
+          baseMeters: 0, baseSeconds: 0,
+          path: null, destFixed: false,
+          destKey: undefined, viaKey: undefined,
+        };
+        setSummary(`출발지 설정됨 · 가까운 추천 ${nearestCountRef.current}개 표시`);
+        setDetourSummary("");
+        applyFiltersToMarkers();
+        return;
+      }
+
+      // 다른 마커를 누르면 목적지를 그 마커로 '갱신'하되, destFixed는 그대로 false 유지
+      try {
+        const dest = [Number(point.lng), Number(point.lat)];
+        if (polyRef.current) { polyRef.current.setMap(null); polyRef.current = null; }
+        if (viaRef.current)  { viaRef.current.setMap(null);  viaRef.current  = null; }
+
+        const route = await fetchOsrm(ctx.origin, dest);
+        const path = route.geometry.coordinates.map(([lon, lat]) =>
+          new window.kakao.maps.LatLng(lat, lon)
+        );
+        const blue = new window.kakao.maps.Polyline({
+          path, strokeWeight:5, strokeColor:"#1e88e5", strokeOpacity:0.9, strokeStyle:"solid"
+        });
+        blue.setMap(mapRef.current);
+        polyRef.current = blue;
+
+        replaceDestPin({ lat: point.lat, lng: point.lng, name: "도착", keepBehindPoi: true });
+
+        routeCtxRef.current = {
+          origin: ctx.origin, dest,
+          baseMeters: route.distance, baseSeconds: route.duration,
+          path,
+          destFixed: false,          // ✨ 절대 고정하지 않음!
+          destKey: markerKey,        // 현재 선택된 목적지의 키만 기억
+          viaKey: undefined,
+        };
+
+        const km  = (route.distance / 1000).toFixed(2);
+        const min = Math.round(route.duration / 60);
+        setSummary(`출발 → ${point.name || "선택지"}: 총 ${km} km / 약 ${min} 분`);
+        setDetourSummary("");
+
+        const bounds = new window.kakao.maps.LatLngBounds();
+        path.forEach((pt) => bounds.extend(pt));
+        mapRef.current.setBounds(bounds);
+        applyFiltersToMarkers();
+      } catch (e) {
+        console.error(e); alert("경로를 계산하지 못했습니다.");
+      }
+      return;
+    }
+
+    // (B) 도착지 있는 상태
+    // 1) 이 마커가 현재 '목적지'면 → 목적지 해제(출발지만 남김)
+    if (ctx.destKey === markerKey) {
+      if (polyRef.current) { polyRef.current.setMap(null); polyRef.current = null; }
+      if (viaRef.current)  { viaRef.current.setMap(null);  viaRef.current = null; }
+      if (odRef.current.dest)      { odRef.current.dest.setMap(null);      odRef.current.dest = null; }
+      if (odRef.current.destLabel) { odRef.current.destLabel.setMap(null); odRef.current.destLabel = null; }
+      routeCtxRef.current = {
+        origin: ctx.origin, dest: null,
+        baseMeters: 0, baseSeconds: 0, path: null,
+        destFixed: false, destKey: undefined, viaKey: undefined,
+      };
+      setSummary(`출발지 설정됨 · 가까운 추천 ${nearestCountRef.current}개 표시`);
+      setDetourSummary("");
+      applyFiltersToMarkers();
+      return;
+    }
+
+    // 2) 이 마커가 현재 '경유지'면 → 경유 해제
+    if (ctx.viaKey === markerKey) {
+      if (viaRef.current) { viaRef.current.setMap(null); viaRef.current = null; }
+      routeCtxRef.current = { ...ctx, viaKey: undefined };
+      setDetourSummary("");
+      return;
+    }
+
+    // 3) 그 외 → 경유로 추가
+    try {
+      const via = [Number(point.lng), Number(point.lat)];
+      const route = await fetchOsrmVia(ctx.origin, via, ctx.dest);
+      if (viaRef.current) { viaRef.current.setMap(null); viaRef.current = null; }
+      const path = route.geometry.coordinates.map(([lon, lat]) => new window.kakao.maps.LatLng(lat, lon));
+      const purple = new window.kakao.maps.Polyline({ path, strokeWeight:5, strokeColor:"#8e24aa", strokeOpacity:0.9, strokeStyle:"solid" });
+      purple.setMap(mapRef.current);
+      viaRef.current = purple;
+
+      routeCtxRef.current = { ...ctx, viaKey: markerKey };
+
+      const km  = (route.distance / 1000).toFixed(2);
+      const min = Math.round(route.duration / 60);
+      const dKm = ((route.distance - ctx.baseMeters) / 1000).toFixed(2);
+      const dMn = Math.max(0, Math.round((route.duration - ctx.baseSeconds) / 60));
+      setDetourSummary(`경유 포함: 총 ${km} km / 약 ${min} 분  (${dKm} km · ${dMn} 분)`);
+
+      const bounds = new window.kakao.maps.LatLngBounds();
+      path.forEach((pt) => bounds.extend(pt));
+      mapRef.current.setBounds(bounds);
+    } catch (e) {
+      console.error(e); alert("경유 경로를 계산하지 못했습니다.");
+    }
   };
 
   /* ───────── API ───────── */
@@ -1686,7 +1970,7 @@ const statIdsOfSite = (site) =>
     </div>
   `;
 
-    // B) 헤더: 제목은 한 줄 고정 + ellipsis, 우측에 ★
+    // B) 헤더: 제목 + [경유/목적지 토글] + ★
   const baseHtml = `
     <div class="info-window">
       <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
@@ -1695,7 +1979,7 @@ const statIdsOfSite = (site) =>
             ${escapeHtml(it.name || "충전소")}
           </div>
         </div>
-        ${favBtnHtml(starredNow)}
+        ${routeBtnHtmlForKey(favKey)}${favBtnHtml(starredNow)}
       </div>
       ${it.addr     ? `<div class="info-row">📍 ${escapeHtml(it.addr)}</div>` : ""}
       ${it.usetime  ? `<div class="info-row">⏰ ${escapeHtml(it.usetime)}</div>` : ""}
@@ -1739,11 +2023,17 @@ const statIdsOfSite = (site) =>
         setActiveMarker({ marker, type: "ev", starred: on, overlay });
       });
     }
+        const rbtn = root?.querySelector?.(".route-btn");
+    if (rbtn) {
+      rbtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await toggleRouteForMarker(it, favKey);
+        rbtn.textContent = routeBtnLabelForKey(favKey);
+      });
+    }
   }
 
-  // 경유/도착 미리보기는 병렬로
-  //// 통일모달
-  //drawDetourForPoint(it).catch(() => {});
+  // 경유/도착 자동 미리보기 제거(버튼으로만 동작)
 
   // ── ★ 여기서 상태를 불러와 인포윈도우 내용을 갱신
   try {
@@ -1827,7 +2117,7 @@ const statIdsOfSite = (site) =>
               ${escapeHtml(it.name || "충전소")}
             </div>
           </div>
-          ${favBtnHtml(nowStar)}
+          ${routeBtnHtmlForKey(favKey)}${favBtnHtml(nowStar)}
         </div>
         ${it.addr     ? `<div class="info-row">📍 ${escapeHtml(it.addr)}</div>` : ""}
         ${it.usetime  ? `<div class="info-row">⏰ ${escapeHtml(it.usetime)}</div>` : ""}
@@ -1858,6 +2148,14 @@ const statIdsOfSite = (site) =>
      btn.classList.toggle("on", on);
      setActiveMarker({ marker, type: "ev", starred: on, overlay });
    });
+          const rbtn = root.querySelector(".route-btn");
+       if (rbtn) {
+         rbtn.addEventListener("click", async (e) => {
+           e.stopPropagation();
+           await toggleRouteForMarker(it, favKey);
+           rbtn.textContent = routeBtnLabelForKey(favKey);
+         });
+       }
  });
   } catch (e) {
     // 실패 시 안내
@@ -1901,146 +2199,157 @@ const statIdsOfSite = (site) =>
       starred: starred0,
     });
 
-    kakao.maps.event.addListener(marker, "click", async () => {
-      const pos = new kakao.maps.LatLng(gs.lat, gs.lng);
+  kakao.maps.event.addListener(marker, "click", async () => {
+  const pos = new kakao.maps.LatLng(gs.lat, gs.lng);
 
-      // 선택 마커 하이라이트 유지
-      const starredNow = !!(favKey && favSetRef.current?.has(favKey));
-      //setActiveMarker({ marker, type: markerType, starred: starredNow, overlay });
+  // 선택 마커 하이라이트
+  const starredNow = !!(favKey && favSetRef.current?.has(favKey));
+  {
+    const basisNow = priceBasisRef.current;
+    const curType = markerTypeByBasis(gs, cat, basisNow);
+    setActiveMarker({ marker, type: curType, starred: starredNow, overlay });
+  }
 
-      {
-       const basisNow = priceBasisRef.current;
-       const curType = markerTypeByBasis(gs, cat, basisNow);
-       setActiveMarker({ marker, type: curType, starred: starredNow, overlay });
-      }
-      const favBtnHtml = (on) => `
-        <button class="fav-btn ${on ? "on" : ""}"
-                ${isLoggedIn() ? "" : "disabled"}
-                title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
-                style="border:none;background:transparent;font-size:18px;line-height:1;
-                       ${isLoggedIn() ? "cursor:pointer;" : "cursor:not-allowed;opacity:.5"}">
-          ${on ? "★" : "☆"}
-        </button>`;
+  const favBtnHtml = (on) => `
+    <button class="fav-btn ${on ? "on" : ""}"
+            ${isLoggedIn() ? "" : "disabled"}
+            title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
+            style="border:none;background:transparent;font-size:18px;line-height:1;
+                   ${isLoggedIn() ? "cursor:pointer;" : "cursor:not-allowed;opacity:.5"}">
+      ${on ? "★" : "☆"}
+    </button>`;
 
-      // 편의시설 플래그(가격과 무관하게 먼저 그림)
-      const flags = {
-        세차장: /^(Y|1|T|TRUE)$/i.test(String(gs.carWashYn ?? "")),
-        편의점: /^(Y|1|T|TRUE)$/i.test(String(gs.cvsYn ?? "")),
-        경정비: /^(Y|1|T|TRUE)$/i.test(String(gs.maintYn ?? "")),
-        셀프주유소: /^(Y|1|T|TRUE)$/i.test(String(gs.self ?? "")),
-        품질인증주유소: /^(Y|1|T|TRUE)$/i.test(String(gs.kpetroYn ?? "")),
-        "24시간": /^(Y|1|T|TRUE)$/i.test(String(gs.open24hYn ?? "")),
-        LPG충전소: /^(Y|1|T|TRUE)$/i.test(String(gs.lpgYn ?? "")),
-      };
+  // 편의 플래그
+  const flags = {
+    세차장:  /^(Y|1|T|TRUE)$/i.test(String(gs.carWashYn ?? "")),
+    편의점:  /^(Y|1|T|TRUE)$/i.test(String(gs.cvsYn ?? "")),
+    경정비:  /^(Y|1|T|TRUE)$/i.test(String(gs.maintYn ?? "")),
+    셀프주유소: /^(Y|1|T|TRUE)$/i.test(String(gs.self ?? "")),
+    품질인증주유소: /^(Y|1|T|TRUE)$/i.test(String(gs.kpetroYn ?? "")),
+    "24시간": /^(Y|1|T|TRUE)$/i.test(String(gs.open24hYn ?? "")),
+    LPG충전소: /^(Y|1|T|TRUE)$/i.test(String(gs.lpgYn ?? "")),
+  };
 
-      const stationName = gs.name || "이름없음";
-      const addr = gs.addr || "";
-      const brand = brandName(gs.brand || "");
+  const stationName = gs.name || "이름없음";
+  const addr = gs.addr || "";
+  const brand = brandName(gs.brand || "");
 
-      // (A) 기본 화면: 가격 로딩 전 즉시 표시
-      const baseHtml = `
-        <div class="info-window">
-          <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-            <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
-              <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                ${escapeHtml(stationName)}
-              </div>
-              ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
-            </div>
-            ${favBtnHtml(starredNow)}
+  // (A) 가격 로딩 전
+  const baseHtml = `
+    <div class="info-window">
+      <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+        <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
+          <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${escapeHtml(stationName)}
           </div>
-          ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
-         ${oilAvgPairPanel(gs, { lpgOnly: isLpg })}  <!-- ✅ 휘발유/경유 평균 패널 -->
-          <div class="price-box">가격 불러오는 중…</div>
-          <div class="info-flags">
-            ${Object.entries(flags)
-              .map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`)
-              .join("")}
-          </div>
-        </div>`.trim();
+          ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
+        </div>
+        ${routeBtnHtmlForKey(favKey)}${favBtnHtml(starredNow)}
+      </div>
+      ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
+      ${oilAvgPairPanel(gs, { lpgOnly: isLpg })}
+      <div class="price-box">가격 불러오는 중…</div>
+      <div class="info-flags">
+        ${Object.entries(flags).map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`).join("")}
+      </div>
+    </div>`.trim();
 
-      setInfoHtml(baseHtml, marker, (root) => {
-        const btn = root.querySelector(".fav-btn");
-        if (btn) {
-          btn.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
-            await toggleFavForStation(gs, "oil");
-            const on = favSetRef.current?.has(favKey);
-            btn.textContent = on ? "★" : "☆";
-            btn.classList.toggle("on", on);
-            setActiveMarker({ marker, type: markerType, starred: on, overlay });
-          });
-        }
+  setInfoHtml(baseHtml, marker, (root) => {
+    const btn = root.querySelector(".fav-btn");
+    if (btn) {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
+        await toggleFavForStation(gs, "oil");
+        const on = favSetRef.current?.has(favKey);
+        btn.textContent = on ? "★" : "☆";
+        btn.classList.toggle("on", on);
+        setActiveMarker({ marker, type: markerType, starred: on, overlay });
       });
-
-     mapRef.current.panTo(pos);
-
-      // (B) 가격 로드 후 업데이트
-      let oilHtml = "";
-      try {
-        const r = await fetch(`/api/route/oil/price?id=${encodeURIComponent(gs.uni)}`);
-        if (!r.ok) throw new Error();
-        const j = await r.json();
-        const arr = normalizeOilPriceItems(j, gs.uni);
-        const priceMap = {};
-        for (const it of arr) priceMap[it.product] = it.price;
-
-        if (priceMap["휘발유"] || priceMap["경유"] || priceMap["자동차용 LPG"] || priceMap["등유"]) {
-          oilHtml = `
-            <div class="price-box">
-              ${priceMap["휘발유"]       ? `<div class="price-row"><span>⛽ 휘발유</span><b>${priceMap["휘발유"].toLocaleString()}원</b></div>` : ""}
-              ${priceMap["경유"]         ? `<div class="price-row"><span>🛢 경유</span><b>${priceMap["경유"].toLocaleString()}원</b></div>` : ""}
-              ${priceMap["등유"]         ? `<div class="price-row"><span>🏠 등유</span><b>${priceMap["등유"].toLocaleString()}원</b></div>` : ""}
-              ${priceMap["자동차용 LPG"] ? `<div class="price-row"><span>🔥 LPG</span><b>${priceMap["자동차용 LPG"].toLocaleString()}원</b></div>` : ""}
-            </div>`;
-        } else {
-          oilHtml = `<div class="price-box">⚠️ 가격 등록이 안됐습니다.</div>`;
-        }
-      } catch {
-        oilHtml = `<div class="price-error">⚠️ 가격 정보를 불러오지 못했습니다.</div>`;
-      }
-
-      const nowStar = !!(favKey && favSetRef.current?.has(favKey));
-      const html2 = `
-        <div class="info-window">
-          <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
-            <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
-              <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                ${escapeHtml(stationName)}
-              </div>
-              ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
-            </div>
-            ${favBtnHtml(nowStar)}
-          </div>
-          ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
-          ${oilAvgPairPanel(gs, { lpgOnly: isLpg })}  <!-- ✅ 휘발유/경유 평균 패널 -->
-          ${oilHtml}
-          <div class="info-flags">
-            ${Object.entries(flags)
-              .map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`)
-              .join("")}
-          </div>
-        </div>`.trim();
-
-      setInfoHtml(html2, marker, (root) => {
-        const btn = root.querySelector(".fav-btn");
-        if (btn) {
-          btn.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
-            await toggleFavForStation(gs, "oil"); // ← oil 모드
-            const on = favSetRef.current?.has(favKey);
-            btn.textContent = on ? "★" : "☆";
-            btn.classList.toggle("on", on);
-            setActiveMarker({ marker, type: markerType, starred: on, overlay });
-          });
-        }
+    }
+    const rbtn = root.querySelector(".route-btn");
+    if (rbtn) {
+      rbtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await toggleRouteForMarker(gs, favKey);
+        rbtn.textContent = routeBtnLabelForKey(favKey);
       });
+    }
+  });
 
-      // 경유/도착 미리 보기 유지
-      try { await drawDetourForPoint(gs); } catch {}
-    });
+  mapRef.current.panTo(pos);
+
+  // (B) 가격 로딩 후 업데이트
+  let oilHtml = "";
+  try {
+    const r = await fetch(`/api/route/oil/price?id=${encodeURIComponent(gs.uni)}`);
+    if (!r.ok) throw new Error();
+    const j = await r.json();
+    const arr = normalizeOilPriceItems(j, gs.uni);
+    const priceMap = {};
+    for (const it of arr) priceMap[it.product] = it.price;
+
+    if (priceMap["휘발유"] || priceMap["경유"] || priceMap["자동차용 LPG"] || priceMap["등유"]) {
+      oilHtml = `
+        <div class="price-box">
+          ${priceMap["휘발유"]       ? `<div class="price-row"><span>⛽ 휘발유</span><b>${priceMap["휘발유"].toLocaleString()}원</b></div>` : ""}
+          ${priceMap["경유"]         ? `<div class="price-row"><span>🛢 경유</span><b>${priceMap["경유"].toLocaleString()}원</b></div>` : ""}
+          ${priceMap["등유"]         ? `<div class="price-row"><span>🏠 등유</span><b>${priceMap["등유"].toLocaleString()}원</b></div>` : ""}
+          ${priceMap["자동차용 LPG"] ? `<div class="price-row"><span>🔥 LPG</span><b>${priceMap["자동차용 LPG"].toLocaleString()}원</b></div>` : ""}
+        </div>`;
+    } else {
+      oilHtml = `<div class="price-box">⚠️ 가격 등록이 안됐습니다.</div>`;
+    }
+  } catch {
+    oilHtml = `<div class="price-error">⚠️ 가격 정보를 불러오지 못했습니다.</div>`;
+  }
+
+  const nowStar = !!(favKey && favSetRef.current?.has(favKey));
+  const html2 = `
+    <div class="info-window">
+      <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
+        <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
+          <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${escapeHtml(stationName)}
+          </div>
+          ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
+        </div>
+        ${routeBtnHtmlForKey(favKey)}${favBtnHtml(nowStar)}
+      </div>
+      ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
+      ${oilAvgPairPanel(gs, { lpgOnly: isLpg })}
+      ${oilHtml}
+      <div class="info-flags">
+        ${Object.entries(flags).map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`).join("")}
+      </div>
+    </div>`.trim();
+
+  setInfoHtml(html2, marker, (root) => {
+    const btn = root.querySelector(".fav-btn");
+    if (btn) {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
+        await toggleFavForStation(gs, "oil");
+        const on = favSetRef.current?.has(favKey);
+        btn.textContent = on ? "★" : "☆";
+        btn.classList.toggle("on", on);
+        setActiveMarker({ marker, type: markerType, starred: on, overlay });
+      });
+    }
+    const rbtn = root.querySelector(".route-btn");
+    if (rbtn) {
+      rbtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await toggleRouteForMarker(gs, favKey);
+        rbtn.textContent = routeBtnLabelForKey(favKey);
+      });
+    }
+  });
+
+  // ⛔ 자동 미리보기 제거(버튼으로만 경유/목적지 지정)
+});
+
 
     allMarkersRef.current.push({ marker, overlay, type: markerType, cat, lat: gs.lat, lng: gs.lng, data: gs, favKey });
   });
@@ -2096,7 +2405,7 @@ const statIdsOfSite = (site) =>
     const ctx = routeCtxRef.current;
 
     // 출발지만 있는 모드
-    if (ctx && ctx.origin && !ctx.path) {
+    if (ctx && ctx.origin && ctx.destFixed === false) {
       arr.forEach((o) => (o._ok = matchesFilter(o)));
       arr.forEach((o) => {
         o._dist = o._ok ? havKm(ctx.origin[1], ctx.origin[0], o.lat, o.lng) : Infinity;
@@ -2119,7 +2428,8 @@ const statIdsOfSite = (site) =>
     }
 
     // 경로 없는 기본 모드
-    if (!polyRef.current || !routeCtxRef.current?.path) {
+   const hasPath = !!(ctx && ctx.path);
+   if (!hasPath || ctx.destFixed === false) {   // 도착지 미고정이면 path가 있어도 기본 모드
       arr.forEach((o) => {
         const show = matchesFilter(o);
         o.marker.setMap(show ? mapRef.current : null);
@@ -2129,7 +2439,9 @@ const statIdsOfSite = (site) =>
     }
 
     // 경로가 있는 모드
-    const path = routeCtxRef.current.path;
+     // 경로 '고정' 모드에서만 경로 기준 Top-N
+ if (!(ctx?.path && ctx.destFixed === true)) return;
+ const path = ctx.path;
     arr.forEach((o) => (o._ok = matchesFilter(o)));
     arr.forEach((o) => (o._dist = o._ok ? minDistanceKmFromPath(path, o.lng, o.lat) : Infinity));
 
@@ -2282,7 +2594,7 @@ const drawDetourForPoint = async (p) => {
       blue.setMap(mapRef.current);
       polyRef.current = blue;
 
-      replaceDestPin({ lat: p.lat, lng: p.lng, name: "도착" });
+      replaceDestPin({ lat: p.lat, lng: p.lng, name: "도착", keepBehindPoi: true });
 
       routeCtxRef.current = {
         origin: ctx.origin,
@@ -2472,6 +2784,35 @@ const drawDetourForPoint = async (p) => {
         setSummary(`출발지 설정됨 · 가까운 추천 ${nearestCountRef.current || nearestCount}개 표시`);
         setDetourSummary("");
         applyFiltersToMarkers();
+
+    // …출발지만 설정하는 분기 내부에서 요약/상태 세팅한 직후…
+try {
+  if (isAuthed) {
+    const newItem = {
+      olab: originInput, dlab: "",     // ← 도착 라벨은 비워서 저장
+      olon: origin[0],  olat: origin[1]
+      // dlon/dlat 없음
+    };
+
+    // 낙관적 추가
+    setSavedRoutes(prev => {
+      const dup = prev.find(x => x.olab === newItem.olab && (x.dlab || "") === "");
+      return dup ? prev : [{ id: `local:${Date.now()}`, ...newItem }, ...prev].slice(0, 200);
+    });
+
+    const res = await createSavedRoute(newItem);
+    const newId = String(res?.item?.id ?? res?.id ?? "");
+    if (newId) {
+      setSavedRoutes(prev => prev.map(x =>
+        x.id.startsWith("local:") && x.olab === newItem.olab && (x.dlab || "") === ""
+          ? ({ ...x, id: newId }) : x
+      ));
+    }
+  }
+} catch (e) {
+  console.warn("경로(출발만) 저장 실패:", e);
+}
+
         return;
       }
 
@@ -2489,6 +2830,8 @@ const drawDetourForPoint = async (p) => {
         baseSeconds: route.duration,
         path,
         destFixed: true, // ← 도착지 '고정'(이후 마커는 경유로 계산)
+        destKey: undefined, // 수동 입력으로 만든 목적지는 키 없음
+      viaKey: undefined,
       };
 
       const km = (route.distance / 1000).toFixed(2);
@@ -2520,6 +2863,43 @@ const drawDetourForPoint = async (p) => {
       const bounds = new kakao.maps.LatLngBounds();
       path.forEach((p) => bounds.extend(p));
       mapRef.current.setBounds(bounds);
+       // ✅ 출발도착 모두 있는 경우도 DB에 저장
+     try {
+        if (isAuthed) {
+    const newItem = {
+      olab: originInput, dlab: destInput,
+      olon: origin[0],  olat: origin[1],
+      dlon: dest[0],    dlat: dest[1],
+    };
+
+    // 1) 임시 ID로 낙관적 추가
+    const tempId = `local:${Date.now()}`;
+    setSavedRoutes(prev => [{ id: tempId, ...newItem }, ...prev].slice(0, 200));
+
+    // 2) 서버 저장
+    let newId = "";
+    try {
+      const res = await createSavedRoute(newItem);
+      newId = String(res?.item?.id ?? res?.id ?? "");
+    } catch (e) {
+      console.warn("createSavedRoute failed:", e);
+    }
+
+    // 3) 해당 임시 항목 한 건만 서버 ID로 치환
+    if (newId) {
+      setSavedRoutes(prev =>
+        prev.map(x => (x.id === tempId ? { ...x, id: newId } : x))
+      );
+    } else {
+      // (선택) 실패 시 임시 항목 제거
+      // setSavedRoutes(prev => prev.filter(x => x.id !== tempId));
+    }
+  }
+
+     } catch (e) {
+       console.warn("경로 저장 실패:", e);
+     }
+
     } catch (err) {
       console.error("❌ handleRoute 실패:", err);
       alert(err.message);
@@ -2894,25 +3274,82 @@ const ReviewsSection = () => (
               </div>
             )}
 
-            <div className="form-group">
-              <label className="form-label" htmlFor="originInput">출발지</label>
-              <input
-                className="input"
-                id="originInput"
-                value={originInput}
-                onChange={(e) => setOriginInput(e.target.value)}
-              />
-            </div>
+{isAuthed && (
+  <LabelRow label="내 경로">
+    <div style={{ display: "flex", gap: 8 }}>
+      <select
+        className="select"
+        style={{ flex: 1 }}
+        value={routeSel}
+        onChange={(e) => {
+          const id = e.target.value;
+          setRouteSel(id);
+          const r = savedRoutes.find(x => x.id === id);
+          if (r) { setOriginInput(r.olab || ""); setDestInput(r.dlab || ""); }
+        }}
+        disabled={savedRoutes.length === 0}
+        title="저장된 경로를 선택하면 출발/도착에 자동 채워집니다"
+      >
+        <option value="">선택…</option>
+        {savedRoutes.map(r => (
+          <option key={r.id} value={r.id}>{r.olab}{r.dlab ? ` → ${r.dlab}` : " (출발만)"}</option>
+        ))}
+      </select>
+
+      <button
+        className="btn btn-ghost"
+        onClick={async () => {
+          if (!routeSel) return;
+          if (!window.confirm("이 경로를 삭제할까요?")) return;
+          try {
+            console.log("값"+routeSel);
+            await deleteSavedRoute(routeSel);
+            setSavedRoutes(prev => prev.filter(x => x.id !== routeSel));
+            setRouteSel("");
+          } catch (e) {
+            alert(e.message || "경로 삭제 실패");
+          }
+        }}
+        disabled={!isAuthed || !routeSel}
+        title={isAuthed ? "선택 경로 삭제" : "로그인 필요"}
+      >
+        경로 삭제
+      </button>
+
+    </div>
+  </LabelRow>
+)}
 
             <div className="form-group">
-              <label className="form-label" htmlFor="destInput">도착지</label>
-              <input
-                className="input"
-                id="destInput"
-                value={destInput}
-                onChange={(e) => setDestInput(e.target.value)}
-              />
-            </div>
+  <label className="form-label" htmlFor="originInput">출발지</label>
+  <input
+    className="input"
+    id="originInput"
+    list="originOptions"
+    value={originInput}
+    onChange={(e) => setOriginInput(e.target.value)}
+    placeholder="주소/장소/좌표"
+  />
+  <datalist id="originOptions">
+    {originOpts.map((s, i) => <option key={i} value={s} />)}
+  </datalist>
+</div>
+
+<div className="form-group">
+  <label className="form-label" htmlFor="destInput">도착지</label>
+  <input
+    className="input"
+    id="destInput"
+    list="destOptions"
+    value={destInput}
+    onChange={(e) => setDestInput(e.target.value)}
+    placeholder="주소/장소/좌표"
+  />
+  <datalist id="destOptions">
+    {destOpts.map((s, i) => <option key={i} value={s} />)}
+  </datalist>
+</div>
+
 
             <div className="btn-row" style={{ marginTop: 6 }}>
               <button className="btn btn-ghost" onClick={handleClearAll}>지우기</button>
