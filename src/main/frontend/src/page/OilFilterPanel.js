@@ -164,11 +164,11 @@ export default function OilFilterPanel({ setStations, handleOilFilterSearch, onC
             </div>
 
             {/* ── 유종 색상 기준 ─────────────────────────── */}
-<div style={{ marginBottom: "20px", paddingTop: "12px", borderTop: "1px solid #e5e7eb" }}>
+<div style={{paddingTop: "12px",paddingLeft:"20px",paddingRight:"20px"}}>
   <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "#111827", textAlign: "center" }}>
     유종 색상 기준
   </h4>
-  <div style={{ display: "flex", gap: 8 }}>
+  <div style={{ display: "flex", gap: 8, }}>
     <SmallToggle active={basis === "B027"} onClick={() => sendBasis("B027")}>휘발유</SmallToggle>
     <SmallToggle active={basis === "D047"} onClick={() => sendBasis("D047")}>경유</SmallToggle>
     <SmallToggle active={basis === "K015"} onClick={() => sendBasis("K015")}>LPG</SmallToggle>

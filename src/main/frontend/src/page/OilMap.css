@@ -303,7 +303,7 @@
 }
 
 /* body layout: 좌(작성) / 우(목록) */
-.review-modal__body{ padding:16px; overflow:auto; }
+.review-modal__body{ padding:16px; }
 .review-layout{
   display:grid; grid-template-columns: 360px 1fr; gap:20px;
 }
@@ -330,9 +330,11 @@
 
 /* 입력 */
 .review-textarea{
-  width:100%; min-height:120px; resize:vertical;
+  width:95%; min-height:20px; resize:vertical;
   border:1px solid #e5e7eb; border-radius:10px; padding:10px 12px;
   font-size:14px; outline:none; background:#fff;
+  height:30px;
+  max-height:40vh;
 }
 .review-textarea:focus{
   border-color:#94a3b8; box-shadow:0 0 0 3px rgba(148,163,184,.15);
