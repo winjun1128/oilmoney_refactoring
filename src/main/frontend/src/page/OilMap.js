@@ -15,6 +15,22 @@ const MAX_LEVEL = 12;
 const PRICE_DIFF_THRESH = 30;                     // 임계값(원)
 const BASIS_KEY = "route.priceBasis.v1";
 
+// 공통: 주유소 ID(가격 조회용) 추출
+// 공통: 주유소 ID(가격 조회용) 추출 — 일반/주변 응답 모두 커버
+// ✅ 주유소 가격 ID(UNI) 뽑기: 6~12자리 숫자만 인정
+// 파일 상단 헬퍼 근처에 추가
+const getOilId = (o) => {
+  if (!o) return "";
+  const keys = ["stationId","STATION_ID","uni","UNI","UNI_CD","uniCd","id","ID"];
+  for (const k of keys) {
+    const v = o?.[k];
+    if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
+  }
+  return "";
+};
+
+
+
 
 
 // JSON→Map 정규화 (RouteMap의 함수 그대로)
@@ -172,9 +188,9 @@ const coordKey = (lat, lng) => `${Number(lat).toFixed(6)},${Number(lng).toFixed(
 const favKeyOf = (station, mode) => {
   if (!station) return "";
   if (mode === "oil") {
-    const uni = station?.stationId || station?.uni || station?.UNI_CD;
-    return uni ? `oil:${uni}` : `oil@${coordKey(station.lat ?? station.LAT, station.lon ?? station.LON ?? station.lng)}`;
-  }
+   const id = getOilId(station);
+   return id ? `oil:${id}` : `oil@${coordKey(station.lat ?? station.LAT, station.lon ?? station.LON ?? station.lng)}`;
+   }
   // mode === 'ev'
   const sid = station?.statId || station?.STAT_ID || "";
   return sid ? `ev:${String(sid)}` : `ev@${coordKey(station.lat ?? station.LAT, station.lon ?? station.LON ?? station.lng)}`;
@@ -422,9 +438,10 @@ export default function OilMap({ stations, handleLocationSearch }) {
     if (!window.kakao || !mapRef.current) return;
     markersRef.current.forEach((m, idx) => {
       const s0 = stations?.[idx]; if (!s0) return;
-      const uni = String(s0.stationId ?? s0.uni ?? s0.UNI_CD ?? "");
+      const uni = getOilId(s0);
       const extra = uni ? (avgMap.get(uni) || {}) : {};
-      const s = { ...s0, uni, avg: extra.avg || {}, diff: extra.diff || {} };
+      // stationId가 없던 nearby 데이터도 이후 로직에서 동일 키로 쓰도록 보정
+  const s = { ...s0, uni, stationId: uni, prices: extra.prices || {}, avg: extra.avg || {}, diff: extra.diff || {}, updatedAt: extra.updatedAt };
       const isCharge = !!s.statId;
       if (isCharge) return; // EV는 그대로
       const cat = ((s.lpgYN ?? s.LPG_YN) === "Y") ? "lpg" : "oil";
@@ -482,8 +499,27 @@ export default function OilMap({ stations, handleLocationSearch }) {
 
   ////평균유가
   // ✅ 마커 표시
+  
+
+  // ★ 주유소/충전소 공통 정규화
+const normalizeStation = (s0 = {}) => {
+  const stationId =
+    s0.stationId ?? s0.UNI_CD ?? s0.uni ?? s0.UNI ?? s0.UNI_ID ?? s0.id ?? s0.ID ?? "";
+
+  return {
+    ...s0,
+    stationId,                                 // 주유소 가격조회용 ID를 확실히 채움
+    statId: s0.statId ?? s0.STAT_ID ?? "",     // EV도 통일
+    lat: Number(s0.lat ?? s0.LAT),
+    lon: Number(s0.lon ?? s0.LON ?? s0.lng),
+  };
+};
+
   useEffect(() => {
     if (!window.kakao || !mapRef.current) return;
+
+    console.log('[nearby]', stations.slice(0,3).map(s => ({ name: s.name||s.NAME, id: getOilId(s) })));
+
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
@@ -493,45 +529,48 @@ export default function OilMap({ stations, handleLocationSearch }) {
     const centerCoord = selectedCoord ?? MY_COORD;
 
     stations.forEach((s0) => {
-      // uni 추출(프로젝트에 맞게 보정)
-      const uni = String(s0.stationId ?? s0.uni ?? s0.UNI_CD ?? "");
-      const extra = uni ? (avgMap.get(uni) || {}) : {};
-      const s = { ...s0, uni, prices: extra.prices || {}, avg: extra.avg || {}, diff: extra.diff || {}, updatedAt: extra.updatedAt };
-      const lat = Number(s.lat ?? s.LAT);
-      const lon = Number(s.lon ?? s.LON ?? s.lng);
-      if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+       const s = normalizeStation(s0);                 // ← 여기서 통일
+       // avgMap에서 평균/차이 붙이기
+  const uni   = getOilId(s);
+  const extra = uni ? (avgMap.get(uni) || {}) : {};
+  const sPlus = {
+    ...s,
+    uni,
+    stationId: uni || s.stationId,
+    prices:   extra.prices || {},
+    avg:      extra.avg    || {},
+    diff:     extra.diff   || {},
+    updatedAt: extra.updatedAt || s.updatedAt,
+  };
+  if (!Number.isFinite(sPlus.lat) || !Number.isFinite(sPlus.lon)) return;
+  const pos = new window.kakao.maps.LatLng(sPlus.lat, sPlus.lon);
+  const isCharge = !!sPlus.statId;
 
-      const pos = new window.kakao.maps.LatLng(lat, lon);
+  const favKey = favKeyOf(sPlus, isCharge ? "ev" : "oil");
+  const isFav = !!(favKey && favSetRef.current?.has(favKey));
+  // 평균/차이에 따라 마커색 결정
+  const cat  = ((sPlus.lpgYN ?? sPlus.LPG_YN) === "Y") ? "lpg" : "oil";
+  const type = isCharge ? "ev" : markerTypeByBasis(sPlus, cat, priceBasis);
+  const markerImage = isFav
+    ? getStarMarkerImage(window.kakao)
+    : getMarkerImage(type, window.kakao);
 
-      const isCharge = !!s.statId;
-      // 주유/LPG의 기본 분류
-      const cat = ((s.lpgYN ?? s.LPG_YN) === "Y") ? "lpg" : "oil";
-      // 평균 대비 색상 반영
-      const oilMarkerType = markerTypeByBasis(s, cat, priceBasis);
-      // const markerImage = getMarkerImage(isCharge ? "ev" : "oil", window.kakao);
-      const favKey = favKeyOf(s, isCharge ? "ev" : "oil");
-      const isFav = !!(favKey && favSetRef.current?.has(favKey));
-      const markerImage = isFav
-        ? getStarMarkerImage(window.kakao)
-        : getMarkerImage(isCharge ? "ev" : oilMarkerType, window.kakao);
-
-      // const marker = new window.kakao.maps.Marker({ position: pos, zIndex: 5, image: markerImage });
-      const marker = new window.kakao.maps.Marker({
-        position: pos,
-        zIndex: isFav ? 7 : 5,
-        image: markerImage
-      });
-      marker.setMap(mapRef.current);
-      newMarkers.push(marker);
-      bounds.extend(pos);
+  const marker = new window.kakao.maps.Marker({
+    position: pos,
+    zIndex: isFav ? 7 : 5,
+    image: markerImage,
+  });
+  marker.setMap(mapRef.current);
+  newMarkers.push(marker);
+  bounds.extend(pos);
 
       window.kakao.maps.event.addListener(marker, "click", async () => {
-        if (isCharge) {
-          // ───────────────── EV 인포윈도우 ─────────────────
-          const mode = "ev";
-          const favKey = favKeyOf(s, mode);
-          const starredNow = !!(favKey && favSetRef.current?.has(favKey));
-          const favBtnHtml = (on) => `
+  if (isCharge) {
+    // ───────── EV 인포윈도우 ─────────
+    const mode = "ev";
+    const favKey = favKeyOf(sPlus, mode);
+    const starredNow = !!(favKey && favSetRef.current?.has(favKey));
+    const favBtnHtml = (on) => `
       <button class="fav-btn ${on ? "on" : ""}"
               ${isLoggedIn() ? "" : "disabled"}
               title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
@@ -539,78 +578,78 @@ export default function OilMap({ stations, handleLocationSearch }) {
         ${on ? "★" : "☆"}
       </button>`;
 
-          // 1) 즉시 기본 화면
-          const baseHtml = `
+    // 1) 기본 화면
+    const baseHtml = `
       <div class="info-window">
         <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
           <div style="flex:1;min-width:0;">
             <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              ${escapeHtml(s.statNm ?? "충전소")}
+              ${escapeHtml(sPlus.statNm ?? "충전소")}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:6px">
-        ${favBtnHtml(starredNow)}
-        <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
-      </div>
+            ${favBtnHtml(starredNow)}
+            <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
+          </div>
         </div>
-        ${s.addr ? `<div class="info-row">📍 ${escapeHtml(s.addr)}</div>` : ""}
-        ${s.useTime ? `<div class="info-row">⏰ ${escapeHtml(s.useTime)}</div>` : ""}
-        ${s.busiNm ? `<div class="info-row">👤 운영사: ${escapeHtml(s.busiNm)}</div>` : ""}
+        ${sPlus.addr ? `<div class="info-row">📍 ${escapeHtml(sPlus.addr)}</div>` : ""}
+        ${sPlus.useTime ? `<div class="info-row">⏰ ${escapeHtml(sPlus.useTime)}</div>` : ""}
+        ${sPlus.busiNm ? `<div class="info-row">👤 운영사: ${escapeHtml(sPlus.busiNm)}</div>` : ""}
         <div class="info-row" id="ev-status-line">상태 불러오는 중…</div>
       </div>`.trim();
 
-          setInfoHtml(baseHtml, marker, (root) => {
-            const btn = root.querySelector(".fav-btn");
-            if (!btn || btn.disabled) { /* 비로그인시 즐겨찾기 비활성 */ }
-            else {
-              btn.addEventListener("click", async (e) => {
-                e.stopPropagation();
-                await toggleFavForStation(s, "ev");
-                const on = favSetRef.current?.has(favKeyOf(s, "ev"));
-                btn.textContent = on ? "★" : "☆";
-                btn.classList.toggle("on", on);
-                setMarkerIconByFav(marker, /*isCharge=*/true, on, window.kakao);
-              });
-            }
+    setInfoHtml(baseHtml, marker, (root) => {
+      const btn = root.querySelector(".fav-btn");
+      if (btn && !btn.disabled) {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          await toggleFavForStation(sPlus, "ev");
+          const on = favSetRef.current?.has(favKeyOf(sPlus, "ev"));
+          btn.textContent = on ? "★" : "☆";
+          btn.classList.toggle("on", on);
+          setMarkerIconByFav(marker, true, on, window.kakao);
+        });
+      }
+      const rvBtn = root.querySelector(".review-btn");
+      if (rvBtn) {
+        rvBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          setReviewModal({ open: true, mode: "ev", station: sPlus });
+        });
+      }
+    });
 
-            const rvBtn = root.querySelector(".review-btn");
-            if (rvBtn) {
-              rvBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                setReviewModal({ open: true, mode: "ev", station: s });
-              });
-            }
-          });
+    // 2) 상태 비동기 로딩 → 갱신
+    try {
+      const statId = String(sPlus.statId || "");
+      if (!statId) throw new Error("STAT_ID 없음");
+      const url = `/api/route/ev/status/by-station?statIds=${encodeURIComponent(statId)}`;
+      const j = await (await fetch(url)).json();
+      const list = normalizeEvStatusList(j);
 
-          // 2) 상태 비동기 로딩 → 갱신
-          try {
-            const statId = String(s.statId || "");
-            if (!statId) throw new Error("STAT_ID 없음");
-            const url = `/api/route/ev/status/by-station?statIds=${encodeURIComponent(statId)}`;
-            const j = await (await fetch(url)).json();
-            const list = normalizeEvStatusList(j);
+      const available = list.filter(c => String(c.status) === "2").length;
+      const hasDc = list.some(c => ["01","03","04","05","06","08","09"].includes(String(c.type).padStart(2,"0")));
+      const hasAc = list.some(c => ["02","03","06","07","08"].includes(String(c.type).padStart(2,"0")));
+      let latest = "";
+      for (const c of list) {
+        const t = String(c.lastTs || "");
+        if (!t) continue;
+        if (!latest || new Date(t.replace(" ","T")) > new Date(latest.replace(" ","T"))) latest = t;
+      }
 
-            const available = list.filter(c => String(c.status) === "2").length;
-            const hasDc = list.some(c => ["01", "03", "04", "05", "06", "08", "09"].includes(String(c.type).padStart(2, "0")));
-            const hasAc = list.some(c => ["02", "03", "06", "07", "08"].includes(String(c.type).padStart(2, "0")));
-            let latest = "";
-            for (const c of list) {
-              const t = String(c.lastTs || "");
-              if (!t) continue;
-              if (!latest || new Date(t.replace(" ", "T")) > new Date(latest.replace(" ", "T"))) latest = t;
-            }
+      const statusText = (s) =>
+        ({ "1":"통신이상","2":"충전가능","3":"충전중","4":"운영중지","5":"점검중","9":"미확인","0":"미확인" }[String(s ?? "9")] || "미확인");
+      const statusPill = (v) => {
+        const code = String(v ?? "9");
+        let bg = "#999";
+        if (code === "2") bg = "#27ae60";
+        else if (code === "3") bg = "#f59e0b";
+        else if (code === "5") bg = "#e74c3c";
+        else if (["1","4","9","0"].includes(code)) bg = "#7f8c8d";
+        return `<span style="display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;color:#fff;background:${bg};">${escapeHtml(statusText(code))}</span>`;
+      };
 
-            const statusPill = (s) => {
-              const code = String(s ?? "9");
-              let bg = "#999";
-              if (code === "2") bg = "#27ae60";
-              else if (code === "3") bg = "#f59e0b";
-              else if (code === "5") bg = "#e74c3c";
-              else if (["1", "4", "9", "0"].includes(code)) bg = "#7f8c8d";
-              return `<span style="display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;color:#fff;background:${bg};">${escapeHtml(statusText(code))}</span>`;
-            };
-
-            const rowsHtml = list.map(c => `
+      const rowsHtml = list.map(c => `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0;padding:8px 10px;border:1px solid #f0f0f0;border-radius:10px;background:#fafafa;">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
             <span style="display:inline-block;min-width:44px;text-align:center;font-weight:700;color:#444;background:#fff;border:1px solid #eaeaea;padding:4px 8px;border-radius:8px;">#${escapeHtml(c.chgerId)}</span>
@@ -620,23 +659,23 @@ export default function OilMap({ stations, handleLocationSearch }) {
         </div>
       `).join("");
 
-            const nowStar = !!(favKey && favSetRef.current?.has(favKey));
-            const html2 = `
+      const nowStar = !!(favKey && favSetRef.current?.has(favKey));
+      const html2 = `
         <div class="info-window">
           <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
             <div style="flex:1;min-width:0;">
               <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                ${escapeHtml(s.statNm ?? "충전소")}
+                ${escapeHtml(sPlus.statNm ?? "충전소")}
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:6px">
-        ${favBtnHtml(nowStar)}
-        <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
-      </div>
+              ${favBtnHtml(nowStar)}
+              <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
+            </div>
           </div>
-          ${s.addr ? `<div class="info-row">📍 ${escapeHtml(s.addr)}</div>` : ""}
-          ${s.useTime ? `<div class="info-row">⏰ ${escapeHtml(s.useTime)}</div>` : ""}
-          ${s.busiNm ? `<div class="info-row">👤 운영사: ${escapeHtml(s.busiNm)}</div>` : ""}
+          ${sPlus.addr ? `<div class="info-row">📍 ${escapeHtml(sPlus.addr)}</div>` : ""}
+          ${sPlus.useTime ? `<div class="info-row">⏰ ${escapeHtml(sPlus.useTime)}</div>` : ""}
+          ${sPlus.busiNm ? `<div class="info-row">👤 운영사: ${escapeHtml(sPlus.busiNm)}</div>` : ""}
           <div class="info-flags">
             <span class="flag ${available ? "on" : ""}">충전가능 ${available}기</span>
             ${hasDc ? `<span class="flag on">⚡ 급속(DC)</span>` : `<span class="flag">급속 없음</span>`}
@@ -650,47 +689,46 @@ export default function OilMap({ stations, handleLocationSearch }) {
             </div>` : ""}
         </div>`.trim();
 
-            setInfoHtml(html2, marker, (root) => {
-              const btn = root.querySelector(".fav-btn");
-              if (!btn || btn.disabled) { /* skip */ }
-              else {
-                btn.addEventListener("click", async (e) => {
-                  e.stopPropagation();
-                  await toggleFavForStation(s, "ev");
-                  const on = favSetRef.current?.has(favKeyOf(s, "ev"));
-                  btn.textContent = on ? "★" : "☆";
-                  btn.classList.toggle("on", on);
-                  setMarkerIconByFav(marker, /*isCharge=*/true, on, window.kakao);
-                });
-              }
-
-              const rvBtn = root.querySelector(".review-btn");
-              if (rvBtn) {
-                rvBtn.addEventListener("click", (e) => {
-                  e.stopPropagation();
-                  setReviewModal({ open: true, mode: "ev", station: s });
-                });
-              }
-            });
-          } catch (e) {
-            const fail = `
+      setInfoHtml(html2, marker, (root) => {
+        const btn = root.querySelector(".fav-btn");
+        if (btn && !btn.disabled) {
+          btn.addEventListener("click", async (e) => {
+            e.stopPropagation();
+            await toggleFavForStation(sPlus, "ev");
+            const on = favSetRef.current?.has(favKeyOf(sPlus, "ev"));
+            btn.textContent = on ? "★" : "☆";
+            btn.classList.toggle("on", on);
+            setMarkerIconByFav(marker, true, on, window.kakao);
+          });
+        }
+        const rvBtn = root.querySelector(".review-btn");
+        if (rvBtn) {
+          rvBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            setReviewModal({ open: true, mode: "ev", station: sPlus });
+          });
+        }
+      });
+    } catch (e) {
+      const fail = `
         <div class="info-window">
-          <div class="info-title">${escapeHtml(s.statNm ?? "충전소")}</div>
-          ${s.addr ? `<div class="info-row">📍 ${escapeHtml(s.addr)}</div>` : ""}
+          <div class="info-title">${escapeHtml(sPlus.statNm ?? "충전소")}</div>
+          ${sPlus.addr ? `<div class="info-row">📍 ${escapeHtml(sPlus.addr)}</div>` : ""}
           <div class="info-row" style="color:#c0392b">⚠️ 상태 조회 실패</div>
         </div>`.trim();
-            setInfoHtml(fail, marker);
-          }
-        } else {
-          // ───────────────── 주유소 인포윈도우 ─────────────────
-          const mode = "oil";
-          const stationName = s.name ?? s.NAME ?? "이름없음";
-          const addr = s.address ?? s.ADDR ?? s.ADDRESS ?? "";
-          const brand = s.brand ?? s.BRAND ?? "";
+      setInfoHtml(fail, marker);
+    }
+  } else {
+    // ───────── 주유소 인포윈도우 ─────────
+    const mode = "oil";
+    const stationName = sPlus.name ?? sPlus.NAME ?? "이름없음";
+    const addr  = sPlus.address ?? sPlus.ADDR ?? sPlus.ADDRESS ?? "";
+    const brand = sPlus.brand ?? sPlus.BRAND ?? "";
+    const isLpg = (sPlus.lpgYN ?? sPlus.LPG_YN) === "Y";
 
-          const favKey = favKeyOf(s, mode);
-          const starredNow = !!(favKey && favSetRef.current?.has(favKey));
-          const favBtnHtml = (on) => `
+    const favKey = favKeyOf(sPlus, mode);
+    const starredNow = !!(favKey && favSetRef.current?.has(favKey));
+    const favBtnHtml = (on) => `
       <button class="fav-btn ${on ? "on" : ""}"
               ${isLoggedIn() ? "" : "disabled"}
               title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
@@ -698,9 +736,8 @@ export default function OilMap({ stations, handleLocationSearch }) {
         ${on ? "★" : "☆"}
       </button>`;
 
-          // 1) 가격 로딩 전 화면
-          const isLpg = (s.lpgYN ?? s.LPG_YN) === "Y";
-          const baseHtml = `
+    // (가격 로딩 전 화면)
+    const baseHtml = `
       <div class="info-window">
         <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
           <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
@@ -710,72 +747,72 @@ export default function OilMap({ stations, handleLocationSearch }) {
             ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
           </div>
           <div style="display:flex;align-items:center;gap:6px">
-        ${favBtnHtml(starredNow)}
-        <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
-      </div>
+            ${favBtnHtml(starredNow)}
+            <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
+          </div>
         </div>
         ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
-      ${oilAvgPairPanel(s, { lpgOnly: isLpg })}
+        ${oilAvgPairPanel(sPlus, { lpgOnly: isLpg })}
         <div class="price-box">가격 불러오는 중…</div>
         <div class="info-flags">
           ${[
-              ["세차장", (s.carWash ?? s.CAR_WASH_YN) === "Y"],
-              ["편의점", (s.store ?? s.CVS_YN ?? s.CONVENIENCE_YN) === "Y"],
-              ["경정비", (s.repair ?? s.MAINT_YN) === "Y"],
-              ["셀프주유소", (s.self ?? s.SELF_YN) === "Y"],
-              ["품질인증주유소", (s.quality ?? s.KPETRO_YN ?? s.QUAL_YN) === "Y"],
-              ["24시간", (s.twentyFour ?? s.OPEN_24H_YN ?? s.TWENTY_FOUR_YN) === "Y"],
-              ["LPG충전소", (s.lpgYN ?? s.LPG_YN) === "Y"],
-            ].map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`).join("")}
+            ["세차장", (sPlus.carWash ?? sPlus.CAR_WASH_YN) === "Y"],
+            ["편의점", (sPlus.store ?? sPlus.CVS_YN ?? sPlus.CONVENIENCE_YN) === "Y"],
+            ["경정비", (sPlus.repair ?? sPlus.MAINT_YN) === "Y"],
+            ["셀프주유소", (sPlus.self ?? sPlus.SELF_YN) === "Y"],
+            ["품질인증주유소", (sPlus.quality ?? sPlus.KPETRO_YN ?? sPlus.QUAL_YN) === "Y"],
+            ["24시간", (sPlus.twentyFour ?? sPlus.OPEN_24H_YN ?? sPlus.TWENTY_FOUR_YN) === "Y"],
+            ["LPG충전소", (sPlus.lpgYN ?? sPlus.LPG_YN) === "Y"],
+          ].map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`).join("")}
         </div>
       </div>`.trim();
 
-          setInfoHtml(baseHtml, marker, (root) => {
-            const btn = root.querySelector(".fav-btn");
-            if (!btn || btn.disabled) { /* skip */ }
-            else {
-              btn.addEventListener("click", async (e) => {
-                e.stopPropagation();
-                await toggleFavForStation(s, "oil");
-                const on = favSetRef.current?.has(favKeyOf(s, "oil"));
-                btn.textContent = on ? "★" : "☆";
-                btn.classList.toggle("on", on);
-                setMarkerIconByFav(marker, /*isCharge=*/false, on, window.kakao);
-              });
-            }
+    setInfoHtml(baseHtml, marker, (root) => {
+      const btn = root.querySelector(".fav-btn");
+      if (btn && !btn.disabled) {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          await toggleFavForStation(sPlus, "oil");
+          const on = favSetRef.current?.has(favKeyOf(sPlus, "oil"));
+          btn.textContent = on ? "★" : "☆";
+          btn.classList.toggle("on", on);
+          setMarkerIconByFav(marker, false, on, window.kakao);
+        });
+      }
+      const rvBtn = root.querySelector(".review-btn");
+      if (rvBtn) {
+        rvBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          setReviewModal({ open: true, mode: "oil", station: sPlus });
+        });
+      }
+    });
 
-            const rvBtn = root.querySelector(".review-btn");
-            if (rvBtn) {
-              rvBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                setReviewModal({ open: true, mode: "oil", station: s });
-              });
-            }
-          });
+    // 가격 조회
+    let oilHtml = "";
+    const priceId = getOilId(sPlus);
+    if (!priceId) {
+      oilHtml = `<div class="price-error">⚠️ 가격 조회용 ID가 없어 가격을 불러올 수 없습니다.</div>`;
+    } else {
+      try {
+        const res = await axios.get("/api/oil/price", { params: { id: priceId } });
+        const prices = res.data || {};
+        const won = (n) => Number(n).toLocaleString();
+        oilHtml = (prices["휘발유"] || prices["경유"] || prices["LPG"] || prices["등유"])
+          ? `<div class="price-box">
+               ${prices["휘발유"] ? `<div class="price-row"><span>⛽ 휘발유</span><b>${won(prices["휘발유"])}원</b></div>` : ""}
+               ${prices["경유"] ? `<div class="price-row"><span>🛢 경유</span><b>${won(prices["경유"])}원</b></div>` : ""}
+               ${prices["등유"] ? `<div class="price-row"><span>🏠 등유</span><b>${won(prices["등유"])}원</b></div>` : ""}
+               ${prices["LPG"] ? `<div class="price-row"><span>🔥 LPG</span><b>${won(prices["LPG"])}원</b></div>` : ""}
+             </div>`
+          : `<div class="price-box">⚠️ 가격 등록이 안됐습니다.</div>`;
+      } catch {
+        oilHtml = `<div class="price-error">⚠️ 가격 정보를 불러오지 못했습니다.</div>`;
+      }
+    }
 
-          // 2) 가격 로딩 → 갱신
-          let oilHtml = "";
-          try {
-            const res = await axios.get("/api/oil/price", { params: { id: s.stationId } });
-            const prices = res.data || {};
-            if (prices["휘발유"] || prices["경유"] || prices["LPG"] || prices["등유"]) {
-              const won = (n) => Number(n).toLocaleString();
-              oilHtml = `
-          <div class="price-box">
-            ${prices["휘발유"] ? `<div class="price-row"><span>⛽ 휘발유</span><b>${won(prices["휘발유"])}원</b></div>` : ""}
-            ${prices["경유"] ? `<div class="price-row"><span>🛢 경유</span><b>${won(prices["경유"])}원</b></div>` : ""}
-            ${prices["등유"] ? `<div class="price-row"><span>🏠 등유</span><b>${won(prices["등유"])}원</b></div>` : ""}
-            ${prices["LPG"] ? `<div class="price-row"><span>🔥 LPG</span><b>${won(prices["LPG"])}원</b></div>` : ""}
-          </div>`;
-            } else {
-              oilHtml = `<div class="price-box">⚠️ 가격 등록이 안됐습니다.</div>`;
-            }
-          } catch {
-            oilHtml = `<div class="price-error">⚠️ 가격 정보를 불러오지 못했습니다.</div>`;
-          }
-
-          const nowStar = !!(favKey && favSetRef.current?.has(favKey));
-          const html = `
+    // (가격 로딩 후 최종 화면)
+    const html = `
       <div class="info-window">
         <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
           <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
@@ -785,53 +822,52 @@ export default function OilMap({ stations, handleLocationSearch }) {
             ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
           </div>
           <div style="display:flex;align-items:center;gap:6px">
-        ${favBtnHtml(nowStar)}
-        <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
-      </div>
+            ${favBtnHtml(starredNow)}
+            <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
+          </div>
         </div>
         ${addr ? `<div class="info-row">📍 ${escapeHtml(addr)}</div>` : ""}
-      ${oilAvgPairPanel(s, { lpgOnly: isLpg })}
+        ${oilAvgPairPanel(sPlus, { lpgOnly: isLpg })}
         ${oilHtml}
         <div class="info-flags">
           ${[
-              ["세차장", (s.carWash ?? s.CAR_WASH_YN) === "Y"],
-              ["편의점", (s.store ?? s.CVS_YN ?? s.CONVENIENCE_YN) === "Y"],
-              ["경정비", (s.repair ?? s.MAINT_YN) === "Y"],
-              ["셀프주유소", (s.self ?? s.SELF_YN) === "Y"],
-              ["품질인증주유소", (s.quality ?? s.KPETRO_YN ?? s.QUAL_YN) === "Y"],
-              ["24시간", (s.twentyFour ?? s.OPEN_24H_YN ?? s.TWENTY_FOUR_YN) === "Y"],
-              ["LPG충전소", (s.lpgYN ?? s.LPG_YN) === "Y"],
-            ].map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`).join("")}
+            ["세차장", (sPlus.carWash ?? sPlus.CAR_WASH_YN) === "Y"],
+            ["편의점", (sPlus.store ?? sPlus.CVS_YN ?? sPlus.CONVENIENCE_YN) === "Y"],
+            ["경정비", (sPlus.repair ?? sPlus.MAINT_YN) === "Y"],
+            ["셀프주유소", (sPlus.self ?? sPlus.SELF_YN) === "Y"],
+            ["품질인증주유소", (sPlus.quality ?? sPlus.KPETRO_YN ?? sPlus.QUAL_YN) === "Y"],
+            ["24시간", (sPlus.twentyFour ?? sPlus.OPEN_24H_YN ?? sPlus.TWENTY_FOUR_YN) === "Y"],
+            ["LPG충전소", (sPlus.lpgYN ?? sPlus.LPG_YN) === "Y"],
+          ].map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`).join("")}
         </div>
       </div>`.trim();
 
-          setInfoHtml(html, marker, (root) => {
-            const btn = root.querySelector(".fav-btn");
-            if (!btn || btn.disabled) { /* skip */ }
-            else {
-              btn.addEventListener("click", async (e) => {
-                e.stopPropagation();
-                await toggleFavForStation(s, "oil");
-                const on = favSetRef.current?.has(favKeyOf(s, "oil"));
-                btn.textContent = on ? "★" : "☆";
-                btn.classList.toggle("on", on);
-                setMarkerIconByFav(marker, /*isCharge=*/false, on, window.kakao);
-              });
-            }
+    setInfoHtml(html, marker, (root) => {
+      const btn = root.querySelector(".fav-btn");
+      if (btn && !btn.disabled) {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          await toggleFavForStation(sPlus, "oil");
+          const on = favSetRef.current?.has(favKeyOf(sPlus, "oil"));
+          btn.textContent = on ? "★" : "☆";
+          btn.classList.toggle("on", on);
+          setMarkerIconByFav(marker, false, on, window.kakao);
+        });
+      }
+      const rvBtn = root.querySelector(".review-btn");
+      if (rvBtn) {
+        rvBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          setReviewModal({ open: true, mode: "oil", station: sPlus });
+        });
+      }
+    });
+  }
 
-            const rvBtn = root.querySelector(".review-btn");
-            if (rvBtn) {
-              rvBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                setReviewModal({ open: true, mode: "oil", station: s });
-              });
-            }
-          });
-        }
+  // 포커싱 이동
+  mapRef.current.panTo(pos);
+});
 
-        // 포커싱 이동
-        mapRef.current.panTo(pos);
-      });
 
     });
 
@@ -840,6 +876,7 @@ export default function OilMap({ stations, handleLocationSearch }) {
       // 현재 표시되는 모든 포인트(lat/lon) 수집
       const pts = [];
       stations.forEach((s0) => {
+        const s = { ...s0, stationId: getOilId(s0) || s0.stationId };
         const lat = Number(s0.lat ?? s0.LAT);
         const lon = Number(s0.lon ?? s0.LON ?? s0.lng);
         if (Number.isFinite(lat) && Number.isFinite(lon)) pts.push({ lat, lon });
@@ -851,7 +888,7 @@ export default function OilMap({ stations, handleLocationSearch }) {
       try { mapRef.current.setLevel(6, { animate: false }); } catch { mapRef.current.setLevel(6); }
       if (bestCenter) mapRef.current.panTo(bestCenter);
     }
-  }, [stations, favSet]);
+  }, [stations, favSet, avgMap, priceBasis]);
 
   // ✅ 내 위치 이동
   const goMyPosition = () => {

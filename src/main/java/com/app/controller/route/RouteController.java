@@ -72,10 +72,18 @@ public class RouteController {
             @RequestParam("o") String originLabel,
             @RequestParam(value = "d", required = false) String destLabel,
             HttpServletRequest http) {
-    	
-    	System.out.print("!!!!");
 
-        int n = routeService.deleteByLabels(userId(http), originLabel, destLabel); // ← String
-        return (n > 0) ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+        String d = normalize(destLabel);
+        int n = routeService.deleteByLabels(userId(http), originLabel.trim(), d);
+        // 삭제는 멱등성이 맞아요: 없으면 204 반환해도 OK
+        return ResponseEntity.noContent().build();
     }
+    private static String normalize(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        if (t.isEmpty()) return null;
+        if ("null".equalsIgnoreCase(t) || "undefined".equalsIgnoreCase(t)) return null;
+        return t;
+    }
+
 }
