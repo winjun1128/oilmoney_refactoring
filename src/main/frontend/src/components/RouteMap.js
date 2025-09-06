@@ -51,6 +51,25 @@ const escapeHtml = (s) =>
 const HOME_KEY = "route.home.coord.v1";
 const KAKAO_STAR_IMG = "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png";
 
+const SHOW_HOME_LABEL = false; // ← 원점 글자 숨김
+
+
+// ✅ 내 위치(원점) 아이콘
+const MY_LOC_ICON_URL = process.env.PUBLIC_URL
+  ? `${process.env.PUBLIC_URL}/images/location3.png`
+  : "/images/location3.png";
+
+const getMyLocationImage = (kakao) => {
+  if (markerImgCache.my) return markerImgCache.my;
+  // 원형 아이콘 기준: 좌표를 중앙으로 맞춤
+  const size = new kakao.maps.Size(36, 36);
+  const offset = new kakao.maps.Point(22, 22); // 필요시 18,18로 조정
+  const img = new kakao.maps.MarkerImage(MY_LOC_ICON_URL, size, { offset });
+  markerImgCache.my = img;
+  return img;
+};
+
+
 /** ✅ 카카오 Developers "JavaScript 키" (REST 키 아님) */
 const KAKAO_JS_KEY = "01a51f847b68dacc1745dde38509991d";
 
@@ -249,11 +268,7 @@ const getMarkerImage = (type, kakao, starred = false, scale = 1) => {
 
     // ⭐️ 원점(홈)은 카카오 제공 star 마커를 항상 사용
   if (type === "home") {
-    const img = new kakao.maps.MarkerImage(
-      KAKAO_STAR_IMG,
-      new kakao.maps.Size(24 * scale, 35 * scale),
-      { offset: new kakao.maps.Point(12 * scale, 35 * scale) }
-    );
+    const img = getMyLocationImage(kakao);
     markerImgCache[key] = img;
     return img;
   }
@@ -408,12 +423,14 @@ const zoomOut = () => {
     homeMarkerRef.current = new kakao.maps.Marker({
       map: mapRef.current,
       position: pos,
-      image: getMarkerImage("home", kakao, false, 1),
-      zIndex: 60,
-      title: "원점",
+      image: getMyLocationImage(kakao), // 커스텀 아이콘 사용 중이라면 이대로
+    zIndex: 60,
+    title: SHOW_HOME_LABEL ? "원점" : undefined, // 툴팁도 숨김
     });
-    homeLabelRef.current = makeNameOverlay(kakao, { name: "원점", lat, lng });
-    homeLabelRef.current.setMap(mapRef.current);
+    if (SHOW_HOME_LABEL) {
+      homeLabelRef.current = makeNameOverlay(kakao, { name: "원점", lat, lng });
+      homeLabelRef.current.setMap(mapRef.current);
+    }
   };
 
   // 저장+그리기
@@ -465,7 +482,7 @@ const zoomOut = () => {
 
   // 입력/요약
   const [originInput, setOriginInput] = useState("휴먼교육센터");
-  const [destInput, setDestInput] = useState("천안아산역");
+  const [destInput, setDestInput] = useState("");
   const [summary, setSummary] = useState("");
   const [detourSummary, setDetourSummary] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1694,7 +1711,7 @@ kakao.maps.event.addListener(map, "zoom_changed", updateZoomBar);
   const resetAllToInitial = () => {
     clearRouteOnly();
     setOriginInput("휴먼교육센터");
-    setDestInput("천안아산역");
+    setDestInput("");
     setSummary("");
     setDetourSummary("");
     setActiveCat("oil");

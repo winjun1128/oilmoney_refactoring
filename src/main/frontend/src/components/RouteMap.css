@@ -178,13 +178,14 @@
 .icon-btn:active{ transform: translateY(1px); }
 .close-btn{ font-weight: 700; }
 
+/* 경로 안내창 구 버전 */
 .map-summary {
   position: absolute;
   top: 12px;
   right: 12px;
-  z-index: 1000;                 /* 지도 위로 */
+  z-index: 1000;                 
   max-width: min(66vw, 420px);
-  pointer-events: none;          /* 지도 드래그/클릭 방해 X */
+  pointer-events: none;          
 }
 
 .map-summary__card {
@@ -193,13 +194,54 @@
   border-radius: 10px;
   box-shadow: 0 8px 24px rgba(0,0,0,.12);
   padding: 10px 12px;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.5;
 }
 
 .map-summary__row + .map-summary__row {
   margin-top: 4px;
 }
+
+/* ▷ 경로 안내 박스 크기/글씨 키우기 */
+/* .map-summary {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  z-index: 10000;
+}
+
+
+.map-summary__card {
+  --summary-font: 18px;   
+  --summary-line: 1.6;    
+  --summary-width: 460px;  
+
+  font-size: var(--summary-font);
+  line-height: var(--summary-line);
+  min-width: var(--summary-width);
+  max-width: 600px;
+
+  padding: 14px 18px;      
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 6px 24px rgba(0,0,0,.15);
+}
+
+.map-summary__row {
+  font-weight: 600;
+  margin: 6px 0;       
+}
+
+
+@media (max-width: 640px) {
+  .map-summary__card {
+    --summary-font: 16px;
+    --summary-width: min(90vw, 380px);
+    padding: 12px 14px;
+  }
+} */
+
 /***************통일 모달*************/
 .info-window { font-size:13px; line-height:1.5; max-width:280px; }
 .info-header { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
