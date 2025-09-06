@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MyPage from "../../page/mypage/MyPage";
-import Auth from "../auth/Auth";
-import LoginRequired from "../auth/LoginRequired";
 import MyPageSideBar from "./MyPageSideBar";
+import LoginModal from "../auth/LoginModal";
 
 export default function MyPageWrapper() {
 
@@ -11,7 +10,12 @@ export default function MyPageWrapper() {
     const [isLogin, setIsLogin] = useState(!!token);
     const [userInfo, setUserInfo] = useState({});
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-    const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
+
+    useEffect(() => {
+        if (!isLogin) {
+            setIsLoginModalOpen(true);
+        }
+    }, [isLogin, setIsLoginModalOpen]);
 
     return (
         <div style={{ display: "flex", height: "100vh" }}>
@@ -19,23 +23,15 @@ export default function MyPageWrapper() {
                 <MyPageSideBar isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />
             </div>
 
-            <Auth
-                isLoginModalOpen={isLoginModalOpen}
-                setIsLoginModalOpen={setIsLoginModalOpen}
-                isSignUpModalOpen={isSignUpModalOpen}
-                setIsSignUpModalOpen={setIsSignUpModalOpen}
-                setIsLogin={setIsLogin}
-                setUserInfo={setUserInfo}
-            />
-
             {isLogin ? (
-                <MyPage
-                    userInfo={userInfo}
-                    setUserInfo={setUserInfo}
-                    setIsLogin={setIsLogin}
-                />
+                <MyPage userInfo={userInfo} setUserInfo={setUserInfo} setIsLogin={setIsLogin} />
             ) : (
-                <MyPageSideBar setIsLoginModalOpen={setIsLoginModalOpen} />
+                <LoginModal
+                    isOpen={isLoginModalOpen}
+                    onClose={() => setIsLoginModalOpen(false)}
+                    setIsLogin={setIsLogin}
+                    setUserInfo={setUserInfo}
+                />
             )}
         </div>
     );

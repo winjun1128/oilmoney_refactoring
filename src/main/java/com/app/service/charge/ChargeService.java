@@ -17,5 +17,7 @@ public interface ChargeService {
 
 	List<ChargeDTO> chargeFilter(ChargeSearchDTO dto);
 
+	List<ChargeDTO> findChargeNearby(Double lat, Double lng, Double radius);
+
 
 }

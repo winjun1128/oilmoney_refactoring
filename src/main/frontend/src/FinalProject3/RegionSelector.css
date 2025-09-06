@@ -1,0 +1,30 @@
+/* RegionSelector.css */
+.region-selector {
+    min-width: 450px;
+}
+
+.sigun-select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    font-size: 1rem;
+    box-sizing: border-box;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>') no-repeat right 10px center;
+    background-size: 16px;
+}
+
+.sigun-select:focus {
+    outline: none;
+    border-color: #4a90e2;
+}
+
+.gas-station-list {
+    max-height: 400px;
+    overflow-y: auto;
+}

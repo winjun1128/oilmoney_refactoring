@@ -75,5 +75,36 @@
   </where>
 </select>
 
+<select id="findChargeNearby" parameterType="map" resultType="com.app.dto.ChargeDTO">
+      <![CDATA[
+  SELECT
+    s.STATID     AS statId,
+    s.STATNM     AS statNm,
+    s.ADDR       AS addr,
+    TO_CHAR(s.LAT) AS lat,
+    TO_CHAR(s.LNG) AS lng,
+    s.USETIME    AS useTime,
+    s.ZCODE      AS zcode,
+    s.SCODE      AS scode,
+    s.FLOORNUM   AS floorNum,
+    s.FLOORTYPE  AS floorType,
+    s.BUSID      AS busId,
+    s.BUSINM     AS busiNm,
+    s.BUSICALL   AS busiCall,
+    TO_CHAR(s.UPDATED_AT,'YYYY-MM-DD HH24:MI:SS') AS updatedAt
+  FROM T_CHARGE s
+  WHERE (
+    6371 * 2 * ASIN(
+      SQRT(
+        POWER(SIN(((#{lat} * (ACOS(-1)/180)) - (TO_NUMBER(s.LAT) * (ACOS(-1)/180))) / 2), 2) +
+        COS(#{lat} * (ACOS(-1)/180)) * COS(TO_NUMBER(s.LAT) * (ACOS(-1)/180)) *
+        POWER(SIN(((#{lng} * (ACOS(-1)/180)) - (TO_NUMBER(s.LNG) * (ACOS(-1)/180))) / 2), 2)
+      )
+    )
+  ) <= #{radius}
+  ORDER BY updatedAt DESC
+  ]]>
+</select>
+
 
 </mapper>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import './MyPage.css';
 import axios from 'axios';
 
-function CarRegist({ cars, setCars }) {
+function CarRegist({ cars, setCars, userInfo, fetchCars }) {
 
     const [isRegisting, setIsRegisting] = useState(false);
     const [carType, setCarType] = useState("");
@@ -56,21 +56,23 @@ function CarRegist({ cars, setCars }) {
                     "Authorization": "Bearer " + token
                 }
             });
-            const { newCar, carCount } = res.data;
-            setCars(prevCars => [...prevCars, newCar]);
-            setCarCount(carCount);
+            fetchCars();
             setCarType("");
             setFuelType("휘발유");
             setIsRegisting(false);
-            //alert("등록 성공!");
         } catch (error) {
             console.log(error);
             alert("등록 실패!");
         }
     };
 
-    const handleDelete = async (index, car) => {
-        if (!window.confirm("정말 삭제하시겠습니까?")) return;
+    const handleDelete = async (car) => {
+        if (car.isMain === 'Y') {
+            alert("대표차는 삭제할 수 없습니다. 다른 차를 대표차로 설정 후 삭제해주세요.");
+            return;
+        }
+
+        if (!window.confirm(car.carType + "(" + car.fuelType + ")를 삭제하시겠습니까?")) return;
 
         try {
             const token = localStorage.getItem("token");
@@ -79,11 +81,25 @@ function CarRegist({ cars, setCars }) {
                 { carId: car.carId },
                 { headers: { "Authorization": "Bearer " + token } }
             );
-
-            setCars(prevCars => prevCars.filter((_, i) => i !== index));
+            setCars(prev => prev.filter(c => c.carId !== car.carId));
         } catch (error) {
             console.log(error);
             alert("삭제 실패!");
+        }
+    };
+
+    const setMainCar = async (car, carId) => {
+        const confirmed = window.confirm(car.carType + "(" + car.fuelType + ")으로 설정하시겠습니까?");
+        if (!confirmed) return;
+        try {
+            const res = await axios.post("/setmain", null, {
+                params: { userId: userInfo.userId, carId }
+            });
+            // alert(res.data.message);
+            fetchCars();
+        } catch (err) {
+            console.error(err);
+            alert("대표차 변경 실패");
         }
     };
 
@@ -100,15 +116,23 @@ function CarRegist({ cars, setCars }) {
                             {cars.length === 0 ? (
                                 <span className='mypage-regist-info'>등록된 차량이 없습니다.</span>
                             ) : (
-                                cars.map((car, index) => (
-                                    <div key={car.carId || index} className='mypage-car-item'>
-                                        <div>
-                                            <span>차종 : {car.carType || "-"}</span><br></br>
-                                            <span>연료 : {car.fuelType}</span>
+                                cars.map(car => (
+                                    <div key={car.carId} className='mypage-car-item'>
+                                        <div className={`car-info ${car.isMain === 'Y' ? 'main-car' : ''}`}>
+                                            <span>차종: {car.carType || "-"}</span><br />
+                                            <span>연료: {car.fuelType}</span>
+                                            {car.isMain === 'Y' && <span className="main-label">대표차</span>}
                                         </div>
-                                        <button type="button" onClick={() => handleDelete(index, car)} className='car-delete-btn'>
-                                            <i className="fa-solid fa-xmark"></i>
-                                        </button>
+                                        <div className="car-buttons">
+                                            {car.isMain !== 'Y' && (
+                                                <button type="button" onClick={() => setMainCar(car, car.carId)} className="set-main-btn">
+                                                    대표차로 설정
+                                                </button>
+                                            )}
+                                            <button type="button" onClick={() => handleDelete(car)} className='car-delete-btn'>
+                                                <i className="fa-solid fa-xmark"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 ))
                             )}
