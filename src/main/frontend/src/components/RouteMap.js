@@ -1812,6 +1812,7 @@ const handleResetHome = () => {
           origin: ctx.origin, dest: null,
           baseMeters: 0, baseSeconds: 0,
           path: null, destFixed: false,
+          previewTopN: true,          // ← Top-N 유지!
           destKey: undefined, viaKey: undefined,
         };
         setSummary(`출발지 설정됨 · 가까운 추천 ${nearestCountRef.current}개 표시`);
@@ -1843,6 +1844,7 @@ const handleResetHome = () => {
           baseMeters: route.distance, baseSeconds: route.duration,
           path,
           destFixed: false,          // ✨ 절대 고정하지 않음!
+          previewTopN: true,          // ← Top-N 유지!
           destKey: markerKey,        // 현재 선택된 목적지의 키만 기억
           viaKey: undefined,
         };
@@ -1872,7 +1874,7 @@ const handleResetHome = () => {
       routeCtxRef.current = {
         origin: ctx.origin, dest: null,
         baseMeters: 0, baseSeconds: 0, path: null,
-        destFixed: false, destKey: undefined, viaKey: undefined,
+        destFixed: false, previewTopN: true, destKey: undefined, viaKey: undefined,
       };
       setSummary(`출발지 설정됨 · 가까운 추천 ${nearestCountRef.current}개 표시`);
       setDetourSummary("");
