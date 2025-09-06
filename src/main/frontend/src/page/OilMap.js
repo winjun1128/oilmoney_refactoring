@@ -153,14 +153,17 @@ const getMyLocationImage = (kakao) => {
   return img;
 };
 
+
 // ★ 즐겨찾기 상태에 따라 마커 이미지/우선순위 바꾸기
 const setMarkerIconByFav = (marker, isCharge, isFav, kakao) => {
-  const img = isFav
+  const on = isLoggedIn() && isFav;  // ✅ 로그아웃이면 항상 false
+  const img = on
     ? getStarMarkerImage(kakao)
     : getMarkerImage(isCharge ? "ev" : "oil", kakao);
   marker.setImage(img);
-  marker.setZIndex(isFav ? 7 : 5);
+  marker.setZIndex(on ? 7 : 5);
 };
+
 //// 즐겨찾기
 // ✅ html escape (파일 하단의 escapeHtml가 이미 있다면, 아래 것으로 교체하고 하단 것은 삭제)
 const escapeHtml = (s) =>
@@ -168,6 +171,29 @@ const escapeHtml = (s) =>
 
 // ✅ 즐겨찾기/로그인 관련 (RouteMap 동일 로직의 경량 버전)
 const FAV_KEY = "route.favorites.v1";
+
+// 즐겨찾기/로그인 관련 바로 아래에 추가
+const favStorageKey = () => {
+  const t = getToken();
+  if (!t || !isTokenAlive(t)) return "";
+
+  const p = parseJwt(t) || {};
+  const uid =
+    p.sub || p.userId || p.uid || p.id ||
+    (p.email ? String(p.email).split("@")[0] : "");
+
+  // ✅ JWT가 아니거나 식별자가 없을 때 토큰 해시로 구분
+  const hash = (s) => {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return h.toString(36);
+  };
+
+  const suffix = uid ? String(uid) : `tok-${hash(t)}`;
+  return `${FAV_KEY}:${suffix}`;
+};
+
+
 
 const parseJwt = (t = "") => {
   try {
@@ -231,6 +257,18 @@ export default function OilMap({ stations, handleLocationSearch }) {
     setAvgMap(normalizeOilAvgMap(j));
   };
   useEffect(() => { fetchOilWithAverage().catch(() => { }); }, []);
+
+useEffect(() => {
+  const prefix = "route.favorites.v1";
+  const del = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(prefix)) del.push(k);
+  }
+  del.forEach(k => localStorage.removeItem(k));
+}, []);
+
+
 
   // ✅ 미세먼지 등급
   const pmGrade = (v, type) => {
@@ -297,71 +335,79 @@ export default function OilMap({ stations, handleLocationSearch }) {
   // ... 기존 refs/state ...
 
   // ✅ 즐겨찾기 상태 (서버 동기화 + 로컬 캐시)
-  const [favSet, setFavSet] = useState(() => {
-    try {
-      const arr = JSON.parse(localStorage.getItem(FAV_KEY) || "[]");
-      return new Set(Array.isArray(arr) ? arr : []);
-    } catch { return new Set(); }
-  });
+ const [favSet, setFavSet] = useState(() => {
+  if (!isLoggedIn()) return new Set();
+  try {
+    const k = favStorageKey();
+    const arr = JSON.parse(localStorage.getItem(k) || "[]");
+    return new Set(Array.isArray(arr) ? arr : []);
+  } catch { return new Set(); }
+});
+
   const favSetRef = useRef(favSet);
   useEffect(() => { favSetRef.current = favSet; }, [favSet]);
 
   // 최초 1회 서버 → 로컬 동기화 (로그인 시)
-  useEffect(() => {
-    (async () => {
-      try {
-        const token = getToken();
-        if (!isTokenAlive(token)) return;
-        const res = await fetch("/api/route/favs", { headers: { Authorization: `Bearer ${token}` } });
-        if (!res.ok) return;
-        const json = await res.json();
-        const keys = (json.items || []).map((it) => it.key);
-        setFavSet(new Set(keys));
-        localStorage.setItem(FAV_KEY, JSON.stringify(keys));
-      } catch { /* ignore */ }
-    })();
-  }, []);
-
-  // 즐겨찾기 토글 (optimistic 업데이트, 실패 시 롤백)
-  const toggleFavForStation = async (station, mode) => {
-    const key = favKeyOf(station, mode);
-    if (!key) return;
-    if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
-
-    const wasFav = favSetRef.current?.has(key);
-    // optimistic
-    setFavSet(prev => {
-      const next = new Set(prev);
-      wasFav ? next.delete(key) : next.add(key);
-      localStorage.setItem(FAV_KEY, JSON.stringify([...next]));
-      return next;
-    });
-
+ useEffect(() => {
+  (async () => {
     try {
       const token = getToken();
-      const method = wasFav ? "DELETE" : "POST";
-      const url = method === "POST" ? "/api/route/favs" : `/api/route/favs/${encodeURIComponent(key)}`;
-      const body = method === "POST"
-        ? JSON.stringify({ key, label: station?.statNm || station?.name || "", lat: station?.lat, lng: station?.lon ?? station?.lng, mode })
-        : undefined;
+      if (!isTokenAlive(token)) return;
+      const res = await fetch("/api/route/favs", { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return;
+      const json = await res.json();
+      const keys = (json.items || []).map((it) => it.key);
+      setFavSet(new Set(keys));
+      const k = favStorageKey();
+      if (k) localStorage.setItem(k, JSON.stringify(keys));  // ✅ 사용자별 저장
+    } catch { /* ignore */ }
+  })();
+}, []);
 
-      const r = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body,
-      });
-      if (!r.ok) throw new Error("즐겨찾기 동기화 실패");
-    } catch (e) {
-      // rollback
-      setFavSet(prev => {
-        const rollback = new Set(prev);
-        wasFav ? rollback.add(key) : rollback.delete(key);
-        localStorage.setItem(FAV_KEY, JSON.stringify([...rollback]));
-        return rollback;
-      });
-      alert("즐겨찾기 저장에 실패했습니다.");
-    }
-  };
+
+  // 즐겨찾기 토글 (optimistic 업데이트, 실패 시 롤백)
+ const toggleFavForStation = async (station, mode) => {
+  const key = favKeyOf(station, mode);
+  if (!key) return;
+  if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
+
+  const wasFav = favSetRef.current?.has(key);
+
+  setFavSet(prev => {
+    const next = new Set(prev);
+    wasFav ? next.delete(key) : next.add(key);
+    const k = favStorageKey();
+    if (k) localStorage.setItem(k, JSON.stringify([...next]));  // ✅
+    return next;
+  });
+
+  try {
+    const token = getToken();
+    const method = wasFav ? "DELETE" : "POST";
+    const url = method === "POST" ? "/api/route/favs" : `/api/route/favs/${encodeURIComponent(key)}`;
+    const body = method === "POST"
+      ? JSON.stringify({ key, label: station?.statNm || station?.name || "", lat: station?.lat, lng: station?.lon ?? station?.lng, mode })
+      : undefined;
+
+    const r = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body,
+    });
+    if (!r.ok) throw new Error("즐겨찾기 동기화 실패");
+  } catch (e) {
+    // 롤백
+    setFavSet(prev => {
+      const rollback = new Set(prev);
+      wasFav ? rollback.add(key) : rollback.delete(key);
+      const k = favStorageKey();
+      if (k) localStorage.setItem(k, JSON.stringify([...rollback])); // ✅
+      return rollback;
+    });
+    alert("즐겨찾기 저장에 실패했습니다.");
+  }
+};
+
   /////
 
 
@@ -434,21 +480,55 @@ export default function OilMap({ stations, handleLocationSearch }) {
   };
 
   ////평균유가-기준 바뀌면 현재 마커 이미지만 재칠하기
-  useEffect(() => {
-    if (!window.kakao || !mapRef.current) return;
-    markersRef.current.forEach((m, idx) => {
-      const s0 = stations?.[idx]; if (!s0) return;
-      const uni = getOilId(s0);
-      const extra = uni ? (avgMap.get(uni) || {}) : {};
-      // stationId가 없던 nearby 데이터도 이후 로직에서 동일 키로 쓰도록 보정
-  const s = { ...s0, uni, stationId: uni, prices: extra.prices || {}, avg: extra.avg || {}, diff: extra.diff || {}, updatedAt: extra.updatedAt };
-      const isCharge = !!s.statId;
-      if (isCharge) return; // EV는 그대로
-      const cat = ((s.lpgYN ?? s.LPG_YN) === "Y") ? "lpg" : "oil";
-      const t = markerTypeByBasis(s, cat, priceBasis);
-      m.setImage(getMarkerImage(t, window.kakao));
-    });
-  }, [priceBasis, avgMap, stations]);
+useEffect(() => {
+  if (!window.kakao || !mapRef.current) return;
+  markersRef.current.forEach((m, idx) => {
+    const s0 = stations?.[idx]; if (!s0) return;
+    const uni = getOilId(s0);
+    const extra = uni ? (avgMap.get(uni) || {}) : {};
+    const s = { ...s0, uni, stationId: uni, prices: extra.prices || {}, avg: extra.avg || {}, diff: extra.diff || {}, updatedAt: extra.updatedAt };
+    const isCharge = !!s.statId;
+    if (isCharge) return; // EV는 그대로
+    const cat = ((s.lpgYN ?? s.LPG_YN) === "Y") ? "lpg" : "oil";
+    const t = markerTypeByBasis(s, cat, priceBasis);
+
+    const favKey = favKeyOf(s, "oil");
+    const favOn = isLoggedIn() && favSetRef.current?.has(favKey);  // ✅
+    m.setImage(favOn ? getStarMarkerImage(window.kakao)
+                     : getMarkerImage(t, window.kakao));
+    m.setZIndex(favOn ? 7 : 5);                                    // ✅
+  });
+}, [priceBasis, avgMap, stations /* 필요하면 favSet도 추가 가능 */]);
+
+const [authToken, setAuthToken] = useState(getToken());
+
+// 토큰 변경 감지 (탭 내 폴링 + 다른 탭 storage 이벤트 대응)
+useEffect(() => {
+  const onStorage = (e) => { if (e.key === "token") setAuthToken(getToken()); };
+  window.addEventListener("storage", onStorage);
+  const id = setInterval(() => {
+    const t = getToken();
+    if (t !== authToken) setAuthToken(t);
+  }, 1000);
+  return () => { window.removeEventListener("storage", onStorage); clearInterval(id); };
+}, [authToken]);
+
+// 토큰이 바뀌면 즐겨찾기 셋을 다시 로드 (로그아웃이면 비움)
+useEffect(() => {
+  if (!isTokenAlive(authToken)) {
+    setFavSet(new Set());                // ✅ 로그아웃 즉시 전체 ⭐ 제거
+    return;
+  }
+  try {
+    const k = favStorageKey();
+    const arr = JSON.parse(localStorage.getItem(k) || "[]");
+    setFavSet(new Set(Array.isArray(arr) ? arr : []));
+  } catch {
+    setFavSet(new Set());
+  }
+}, [authToken]);
+
+
 
   ////평균유가-사이드바에서 보낼 커스텀 이벤트 수신
   useEffect(() => {
@@ -548,16 +628,17 @@ const normalizeStation = (s0 = {}) => {
 
   const favKey = favKeyOf(sPlus, isCharge ? "ev" : "oil");
   const isFav = !!(favKey && favSetRef.current?.has(favKey));
+  const favOn = isLoggedIn() && isFav;                     // ✅
   // 평균/차이에 따라 마커색 결정
   const cat  = ((sPlus.lpgYN ?? sPlus.LPG_YN) === "Y") ? "lpg" : "oil";
   const type = isCharge ? "ev" : markerTypeByBasis(sPlus, cat, priceBasis);
-  const markerImage = isFav
+  const markerImage = favOn
     ? getStarMarkerImage(window.kakao)
     : getMarkerImage(type, window.kakao);
 
   const marker = new window.kakao.maps.Marker({
     position: pos,
-    zIndex: isFav ? 7 : 5,
+    zIndex: favOn ? 7 : 5,
     image: markerImage,
   });
   marker.setMap(mapRef.current);

@@ -3,6 +3,41 @@ import "./RouteMap.css";
 import { useEffect, useRef, useState } from "react";
 import proj4 from "proj4";
 
+// ---- auth helpers (must be above first use) ----
+function getToken() {
+  try { return localStorage.getItem("token") || ""; } catch { return ""; }
+}
+function parseJwt(t = "") {
+  try {
+    const b64url = t.split(".")[1] || "";
+    const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/")
+                      .padEnd(Math.ceil(b64url.length / 4) * 4, "=");
+    return JSON.parse(atob(b64)) || {};
+  } catch { return {}; }
+}
+
+function isTokenAlive(t) {
+  if (!t) return false;
+  const { exp } = parseJwt(t);
+  return typeof exp === "number" ? Date.now() < exp * 1000 : true;
+}
+function isLoggedIn() {
+  return isTokenAlive(getToken());
+}
+
+const myUid = () => {
+  const p = parseJwt(getToken()) || {};
+  return (
+    p.sub || p.userId || p.uid || p.id ||
+    (p.email ? String(p.email).split("@")[0] : "")
+  ) || "";
+};
+
+const favStorageKey = () => {
+  const uid = myUid();
+  return `route.favorites.v1:${uid || "anon"}`;
+};
+
 const INFOWIN_Z = 20000; // 마커(9999)보다 충분히 큼
 
 //////////통일 모달
@@ -300,6 +335,9 @@ const addLabeledMarker = ({ map, kakao, type, lat, lng, name, onClick, labelAlwa
 /* ───────────────────────────────────────────────────────────────────── */
 
 export default function RouteMap() {
+  //로그인
+  const [isAuthed, setIsAuthed] = useState(() => isTokenAlive(getToken()));
+
   ////통일 모달 
   // 문자열 html을 DOM 노드로 바꿔 넣고, 필요하면 앵커(marker)에 열기
 // infoWindow에 HTML을 넣고, 마운트 직후 바인딩 콜백 실행
@@ -544,25 +582,31 @@ const oilAvgPairPanel = (gs, { lpgOnly = false } = {}) => {
 
 
   // 즐겨찾기 동작
-  const FAV_KEY = "route.favorites.v1";
-  const getToken = () => localStorage.getItem("token")||"";
-  const [favSet, setFavSet] = useState(() => {
-    try {
-      const arr = JSON.parse(localStorage.getItem(FAV_KEY) || "[]");
-      return new Set(Array.isArray(arr) ? arr : []);
-    } catch { return new Set(); }
-  });
+const [favSet, setFavSet] = useState(() => {
+   try {
+     const s = localStorage.getItem(favStorageKey()) || "[]";
+     const arr = JSON.parse(s);
+     return new Set(Array.isArray(arr) ? arr : []);
+   } catch { return new Set(); }
+ });
   useEffect(() => {
     (async () => {
       try {
         const token = getToken();
         if (!token) return;
-        const res = await fetch("/api/route/favs", { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch("/api/route/favs?mine=1", { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) throw new Error("즐겨찾기 로드 실패");
         const json = await res.json();
-        const keys = (json.items || []).map((it) => it.key);
+        const me = myUid();
+     const items = (json.items || []).filter(it => {
+       const owner =
+         it.uid ?? it.userId ?? it.owner ?? it.user ??
+         (it.email ? String(it.email).split("@")[0] : "");
+       return !owner || String(owner) === me; // 서버가 필터 안 해도 방어
+     });
+     const keys = items.map(it => it.key).filter(Boolean);
         setFavSet(new Set(keys));
-        localStorage.setItem(FAV_KEY, JSON.stringify(keys));
+        localStorage.setItem(favStorageKey(), JSON.stringify(keys));
       } catch (e) {
         console.warn(e);
       }
@@ -578,7 +622,8 @@ const oilAvgPairPanel = (gs, { lpgOnly = false } = {}) => {
       : (station?.statId ? String(station.statId) : coordKey(station.lat, station.lng));
     return `ev:${ids}`;
   };
-  const isFavStation = (st, mode = modalMode) => !!favKeyOf(st, mode) && favSet.has(favKeyOf(st, mode));
+  const isFavStation = (st, mode = modalMode) =>
+   isLoggedIn() && !!favKeyOf(st, mode) && favSet.has(favKeyOf(st, mode));
 
   const toggleFav = async () => {
     const key = favKeyOf(modalStation, modalMode);
@@ -592,7 +637,7 @@ const oilAvgPairPanel = (gs, { lpgOnly = false } = {}) => {
    setFavSet((prev) => {
      const next = new Set(prev);
      next.has(key) ? next.delete(key) : next.add(key);
-     localStorage.setItem(FAV_KEY, JSON.stringify([...next]));
+     localStorage.setItem(favStorageKey(), JSON.stringify([...next]));
      return next;
    });
 
@@ -619,7 +664,7 @@ const oilAvgPairPanel = (gs, { lpgOnly = false } = {}) => {
       setFavSet((prev) => {
         const revert = new Set(prev);
         if (revert.has(key)) revert.delete(key); else revert.add(key);
-        localStorage.setItem(FAV_KEY, JSON.stringify([...revert]));
+        localStorage.setItem(favStorageKey(), JSON.stringify([...revert]));
         return revert;
       });
       alert("즐겨찾기 저장에 실패했습니다.");
@@ -643,7 +688,7 @@ const toggleFavForStation = async (station, mode) => {
   setFavSet(prev => {
     const next = new Set(prev);
     wasFav ? next.delete(key) : next.add(key);
-    localStorage.setItem(FAV_KEY, JSON.stringify([...next]));
+    localStorage.setItem(favStorageKey(), JSON.stringify([...next]));
     return next;
   });
 
@@ -671,7 +716,7 @@ const toggleFavForStation = async (station, mode) => {
     setFavSet(prev => {
       const rollback = new Set(prev);
       wasFav ? rollback.add(key) : rollback.delete(key);
-      localStorage.setItem(FAV_KEY, JSON.stringify([...rollback]));
+      localStorage.setItem(favStorageKey(), JSON.stringify([...rollback]));
       return rollback;
     });
     alert("즐겨찾기 저장에 실패했습니다.");
@@ -685,13 +730,13 @@ const toggleFavForStation = async (station, mode) => {
     const { kakao } = window;
     if (!kakao?.maps) return;
     allMarkersRef.current.forEach((o) => {
-      const starred = !!(o.favKey && favSet.has(o.favKey));
+      const starred = isAuthed && !!(o.favKey && favSet.has(o.favKey));
       const isActive = activeMarkerRef.current?.marker === o.marker;
       const scale = isActive ? ACTIVE_SCALE : 1;
       o.marker.setImage(getMarkerImage(o.type, kakao, starred, scale));
       o.marker.setZIndex(isActive ? 9999 : baseZ(o.type));
     });
-  }, [favSet]);
+  }, [favSet,isAuthed]);
 
   // 사이드바 토글 이벤트
   useEffect(() => {
@@ -797,23 +842,7 @@ const wasEdited = (createdAt, updatedAt) => {
   return Math.abs(u - c) > 1000; // 1초 초과 차이면 수정으로 간주
 };
 
-  // utils (RouteMap.jsx 상단 아무데나)
-const parseJwt = (t="") => {
-  try {
-    const b64 = t.split(".")[1]?.replace(/-/g, "+").replace(/_/g, "/") || "";
-    return JSON.parse(atob(b64)) || {};
-  } catch { return {}; }
-};
 
-const isTokenAlive = (t) => {
-  if (!t) return false;
-  const { exp } = parseJwt(t);
-  // exp가 없으면(서버 설정에 따라) 일단 true 취급, 있으면 만료 체크
-  return typeof exp === "number" ? Date.now() < exp * 1000 : true;
-};
-
-//// 통일 모달
-const isLoggedIn = () => isTokenAlive(getToken());
 
 
 // requireJson 에 401 처리 추가 (이미 있는 함수에 아래 블록만 넣기)
@@ -873,7 +902,7 @@ const getClientId = () => {
 
 // 기존: const [isAuthed, setIsAuthed] = useState(!!getToken());
 // 교체
-const [isAuthed, setIsAuthed] = useState(() => isTokenAlive(getToken()));
+
 
 //// 경로
 // 헬퍼: d가 빈 문자열이면 '출발만' 항목을 매칭
@@ -2008,7 +2037,7 @@ const statIdsOfSite = (site) =>
 
     list.forEach((it) => {
       const favKey = favKeyOf(it, "ev");
-      const starred0 = !!(favKey && favSetRef.current?.has(favKey));
+      const starred0 = isLoggedIn() && !!(favKey && favSetRef.current?.has(favKey));
       const label = it.chargerCount ? `${it.name || "EV"} (${it.chargerCount}기)` : (it.name || "EV");
 
      const { marker, overlay } = addLabeledMarker({
@@ -2022,7 +2051,7 @@ const statIdsOfSite = (site) =>
   const pos = new kakao.maps.LatLng(it.lat, it.lng);
 
   // 선택 마커 하이라이트 유지
-  const starredNow = !!(favKey && favSetRef.current?.has(favKey));
+  const starredNow = isLoggedIn() && !!(favKey && favSetRef.current?.has(favKey));
   //setActiveMarker({ marker, type: "ev", starred: starredNow, overlay });
 
     // A) 우측 상단 즐겨찾기 버튼 HTML
@@ -2263,7 +2292,7 @@ const statIdsOfSite = (site) =>
   let markerType = markerTypeByBasis(gs, cat, priceBasisRef.current);
 
     const favKey = favKeyOf(gs, "oil");
-    const starred0 = !!(favKey && favSetRef.current?.has(favKey));
+    const starred0 = isLoggedIn() && !!(favKey && favSetRef.current?.has(favKey));
 
     const { marker, overlay } = addLabeledMarker({
    map: markersVisibleRef.current ? mapRef.current : null, kakao, type: markerType,
@@ -2277,7 +2306,7 @@ const statIdsOfSite = (site) =>
   const pos = new kakao.maps.LatLng(gs.lat, gs.lng);
 
   // 선택 마커 하이라이트
-  const starredNow = !!(favKey && favSetRef.current?.has(favKey));
+  const starredNow = isLoggedIn() && !!(favKey && favSetRef.current?.has(favKey));
   {
     const basisNow = priceBasisRef.current;
     const curType = markerTypeByBasis(gs, cat, basisNow);
