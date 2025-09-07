@@ -58,6 +58,7 @@ export default function ChargeFilterPanel({ handleChargeFilterSearch, onClose })
 
     // ✅ 검색 실행
     const doSearch = () => {
+        
 
         // 1) 🔵 내 주변 충전소 모드
         if (nearbyMode) {
@@ -73,20 +74,23 @@ export default function ChargeFilterPanel({ handleChargeFilterSearch, onClose })
                 lat: myCoord.lat,
                 lng: myCoord.lon,
                 radius: Number(radius), // km
+              //method,
+              //chargerType,
             };
             console.log("📍 내 주변 충전소 검색:", payload);
             handleChargeFilterSearch(payload);
             return;
         }
-        const statusMap = { "01": "1", "02": "2", "03": "3" }; // T_CHARGER_STATUS.STAT 매핑
+        // const statusMap = { "01": "1", "02": "2", "03": "3" }; // T_CHARGER_STATUS.STAT 매핑
+        // ✅ 상태 매핑(가장 큰 원인) : 2=충전가능, 3=충전중, 5=점검중
 
         const payload = {
             region: selectedRegion || null,          // T_CHARGE.ZCODE (예: "44")
             city: selectedCity || null,            // T_CHARGE.SCODE (예: "44130")
-            methods: method,                        // ["AC완속","DC콤보", ...] (TYPE_NM 부분매칭)
-            chargerType,                            // ["완속","급속","초급속"] → 출력구간 OR 매칭
+           method,                      // ex) ["02","07","04","05"...]
+        chargerType,
             minOutput: minOutput ? Number(minOutput) : null, // g.OUTPUT_KW >= minOutput
-            status: statusMap[status] || null,      // T_CHARGER_STATUS.STAT (1/2/3)
+            status: status,
             twentyFour,                             // USETIME 24시 여부
             floorType: floorType || null            // T_CHARGE.FLOORTYPE ('G'/'B' 등)
         };
@@ -180,12 +184,13 @@ export default function ChargeFilterPanel({ handleChargeFilterSearch, onClose })
                     {/* ✅ 충전 가능 여부 */}
                     <div style={{ marginBottom: "20px" }}>
                         <h4 style={titleStyle}>충전 가능 여부</h4>
-                        <select value={status} onChange={(e) => setStatus(e.target.value)} style={selectStyle}>
-                            <option value="">전체</option>
-                            <option value="01">충전 가능</option>
-                            <option value="02">충전 중</option>
-                            <option value="03">점검 중</option>
-                        </select>
+                <select value={status} onChange={(e) => setStatus(e.target.value)} style={selectStyle}>
+                    <option value="">전체</option>
+                    <option value="2">충전 가능</option>
+                    <option value="3">충전 중</option>
+                    <option value="5">점검 중</option>
+                </select>
+
                     </div>
 
                     {/* ✅ 운영 시간 */}
@@ -207,7 +212,7 @@ export default function ChargeFilterPanel({ handleChargeFilterSearch, onClose })
                         <h4 style={titleStyle}>설치 위치</h4>
                         <select value={floorType} onChange={(e) => setFloorType(e.target.value)} style={selectStyle}>
                             <option value="">전체</option>
-                            <option value="G">지상</option>
+                            <option value="F">지상</option>
                             <option value="B">지하</option>
                         </select>
                     </div>

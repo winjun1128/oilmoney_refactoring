@@ -1737,6 +1737,7 @@ kakao.maps.event.addListener(map, "zoom_changed", updateZoomBar);
         return;
       }
       resetAllToInitial();
+      setClickMode("");          // ✅ 지도 클릭 상태 해제 (crosshair도 기본 커서로 복귀)
       // ✅ 저장된 원점으로 카메라 이동 (없으면 기본값)
       const { lat, lng } = homeCoord || { lat: 36.807313, lng: 127.147169 };
       mapRef.current.setLevel(7);
