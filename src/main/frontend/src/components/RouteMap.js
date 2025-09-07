@@ -1584,6 +1584,13 @@ kakao.maps.event.addListener(map, "zoom_changed", updateZoomBar);
   // 색상만 바뀌므로 applyFiltersToMarkers()는 필요 없음
 }, [priceBasis]);
 
+ // 처음 마운트 시 이 화면의 기본은 '주유소/휘발유'가 되도록 보정
+ useEffect(() => {
+   if (priceBasisRef.current !== "B027") setPriceBasis("B027");
+   // activeCat 기본값이 'oil'이므로 여기서 한 번만 휘발유로 고정
+ }, []);
+
+
 
   /* ───────── 공통 유틸 ───────── */
   // Kakao Geocoder Promises
@@ -3035,6 +3042,9 @@ try {
       oil: { ...v.oil, enabled: val === "oil" },
       lpg: { ...v.lpg, enabled: val === "lpg" },
     }));
+   // 카테고리 전환 시 유종 색상 기준 동기화
+ if (val === "lpg" && priceBasisRef.current !== "K015") setPriceBasis("K015"); // LPG로 갔을 때는 K015
+ if (val === "oil" && priceBasisRef.current !== "B027") setPriceBasis("B027"); // LPG → 주유소로 오면 기본값(휘발유)로 복귀
     if (val !== "ev") setEvAvailSet(null);
     setTimeout(() => applyFiltersToMarkers(), 0);
   };
@@ -3298,30 +3308,35 @@ const ReviewsSection = () => (
                 <option value="lpg">LPG 충전소</option>
               </select>
 
-              <span className="form-label">유종 색상 기준</span>
-  <div className="btn-row compact">
-    <button
-      className={`btnrow btn-toggle ${priceBasis === "B027" ? "on" : ""}`}
-      onClick={() => setPriceBasis("B027")}
-      title="휘발유 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
-    >
-      휘발유
-    </button>
-    <button
-      className={`btnrow btn-toggle ${priceBasis === "D047" ? "on" : ""}`}
-      onClick={() => setPriceBasis("D047")}
-      title="경유 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
-    >
-      경유
-    </button>
-    <button
-      className={`btnrow btn-toggle ${priceBasis === "K015" ? "on" : ""}`}
-      onClick={() => setPriceBasis("K015")}
-      title="LPG 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
-    >
-      LPG
-    </button>
-  </div>
+              {/* ⚡ 충전소가 아닐 때만 유종 색상 기준 노출 */}
+  {activeCat !== "ev" && (
+    <>
+      <span className="form-label">유종 색상 기준</span>
+      <div className="btn-row compact">
+        <button
+          className={`btnrow btn-toggle ${priceBasis === "B027" ? "on" : ""}`}
+          onClick={() => setPriceBasis("B027")}
+          title="휘발유 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
+        >
+          휘발유
+        </button>
+        <button
+          className={`btnrow btn-toggle ${priceBasis === "D047" ? "on" : ""}`}
+          onClick={() => setPriceBasis("D047")}
+          title="경유 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
+        >
+          경유
+        </button>
+        <button
+          className={`btnrow btn-toggle ${priceBasis === "K015" ? "on" : ""}`}
+          onClick={() => setPriceBasis("K015")}
+          title="LPG 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
+        >
+          LPG
+        </button>
+      </div>
+    </>
+  )}
   
             </div>
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 
 export default function OilFilterPanel({ setStations, handleOilFilterSearch, onClose }) {
     const [nearbyMode, setNearbyMode] = useState(false); // ✅ 내 주변 주유소 모드 ON/OFF
@@ -106,6 +106,12 @@ export default function OilFilterPanel({ setStations, handleOilFilterSearch, onC
 
     // ✅ 검색 실행
     const doSearch = () => {
+        // ✅ 검색 시: LPG가 켜지면 K015로 강제, 꺼지면 기본값(휘발유 B027)로 복귀
+  if (extras.lpg) {
+    if (basis !== "K015") sendBasis("K015");
+  } else {
+    if (basis !== "B027") sendBasis("B027");
+  }
         // 1️⃣ 내 주변 주유소 모드
         if (nearbyMode && radius) {
             const savedCoord = localStorage.getItem("savedCoord");
@@ -168,11 +174,29 @@ export default function OilFilterPanel({ setStations, handleOilFilterSearch, onC
   <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "#111827", textAlign: "center" }}>
     유종 색상 기준
   </h4>
-  <div style={{ display: "flex", gap: 8, }}>
-    <SmallToggle active={basis === "B027"} onClick={() => sendBasis("B027")}>휘발유</SmallToggle>
-    <SmallToggle active={basis === "D047"} onClick={() => sendBasis("D047")}>경유</SmallToggle>
-    <SmallToggle active={basis === "K015"} onClick={() => sendBasis("K015")}>LPG</SmallToggle>
+  {/** LPG 필터가 켜지면 다른 기준은 선택 불가 */}
+  <div style={{ display: "flex", gap: 8 }}>
+    <SmallToggle
+      active={basis === "B027"}
+      onClick={() => sendBasis("B027")}
+    >
+      휘발유
+    </SmallToggle>
+    <SmallToggle
+      active={basis === "D047"}
+      onClick={() => sendBasis("D047")}
+    >
+      경유
+    </SmallToggle>
+    <SmallToggle
+      active={basis === "K015"}
+      onClick={() => sendBasis("K015")}
+      disabled={false}
+    >
+      LPG
+    </SmallToggle>
   </div>
+
 </div>
 
 
@@ -330,10 +354,11 @@ export default function OilFilterPanel({ setStations, handleOilFilterSearch, onC
     );
 }
 
-function SmallToggle({ active, onClick, children }) {
+function SmallToggle({ active, onClick, children, disabled }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={!!disabled}
       style={{
         flex: 1,
         padding: "8px 10px",
@@ -343,7 +368,8 @@ function SmallToggle({ active, onClick, children }) {
         color: active ? "#1d4ed8" : "#111827",
         fontSize: 12,
         fontWeight: 700,
-        cursor: "pointer",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
       }}
     >
       {children}
