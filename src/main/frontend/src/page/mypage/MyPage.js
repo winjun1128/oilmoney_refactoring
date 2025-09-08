@@ -24,6 +24,10 @@ function MyPage({ setIsLogin, setIsLoginModalOpen }) {
     const [reviewCount, serReviewCount] = useState(0);
     const [favStations, setFavStations] = useState([]);
 
+    const [profileFile, setProfileFile] = useState(null);
+    const [profilePreview, setProfilePreview] = useState(userInfo.profileUrl || "/images/mypage/profile.jpg");
+
+
     // 토큰 만료 시 setIsLoginModalOpen 오류 해결용
     useEffect(() => {
         const interceptor = axios.interceptors.response.use(
@@ -76,6 +80,45 @@ function MyPage({ setIsLogin, setIsLoginModalOpen }) {
             });
     }, [token, navigate]);
 
+    const handleProfileChange = async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setProfilePreview(URL.createObjectURL(file));
+            setProfileFile(file);
+
+            const formData = new FormData();
+            formData.append("profile", file); // profile만 전송
+            formData.append("email", userInfo.email || "");
+            formData.append("phoneNum", userInfo.phoneNum || "");
+            formData.append("addr", userInfo.addr || "");
+
+            try {
+                const token = localStorage.getItem("token");
+                await axios.post("/update", formData, {
+                    headers: {
+                        "Authorization": "Bearer " + token,
+                        "Content-Type": "multipart/form-data"
+                    }
+                });
+
+                // DB 반영 후 userInfo 갱신
+                setUserInfo(prev => ({ ...prev, profileUrl: URL.createObjectURL(file) }));
+            } catch (err) {
+                console.error(err);
+                alert("프로필 업로드 실패");
+            }
+        }
+    };
+
+
+    const handleEditProfile = () => {
+        document.getElementById("profileFileInput").click();
+    };
+
+    useEffect(() => {
+        setProfilePreview(userInfo.profileUrl || "/images/mypage/profile.jpg");
+    }, [userInfo]);
+
     const handleDeleteAccount = async () => {
         //sns 로그인 계정으로 탈퇴 시 비밀번호 없이 탈퇴
         const isSnsAccount = userInfo.userId.startsWith("google_");
@@ -126,30 +169,36 @@ function MyPage({ setIsLogin, setIsLoginModalOpen }) {
     };
 
     const fetchCars = async () => {
+        if (!userInfo?.userId) return;
         try {
             const token = localStorage.getItem("token");
             const res = await axios.get("/cars", {
                 params: { userId: userInfo.userId },
                 headers: { "Authorization": "Bearer " + token }
             });
-            setCars(res.data);           // 차량 목록 업데이트
-            setCarCount(res.data.length); // 차량 수 업데이트
+            setCars(res.data);
+            setCarCount(res.data.length);
         } catch (err) {
             console.error(err);
         }
     };
 
     useEffect(() => {
-        if (!token) return;
+        if (!token || !userInfo?.userId) return;
         fetchCars();
-    }, [token]);
+    }, [token, userInfo]);
+
 
     return (
         <div>
             <div className="mypage-container">
                 <div className="mypage-left">
                     <div className="mypage-left-profile">
-                        <img src={userInfo?.profileUrl ? userInfo.profileUrl : "/images/mypage/profile.jpg"} alt="프로필 사진" className="mypage-profile-img" />
+                        <div className="profile-img-wrapper">
+                            <img src={profilePreview} alt="프로필 사진" className="mypage-profile-img" />
+                            <button className="edit-icon" onClick={handleEditProfile}>✏️</button>
+                            <input type="file" id="profileFileInput" style={{ display: "none" }} accept="image/*" onChange={handleProfileChange} />
+                        </div>
                         <span>{userInfo.name}</span>
                         <span>{userInfo.email}</span>
                     </div>
