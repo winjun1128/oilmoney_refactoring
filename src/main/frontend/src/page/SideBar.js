@@ -4,76 +4,29 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { handleMyInfoClick } from "./utils/authHelpers";
+import "./SideBar.css";   // ✅ 외부 스타일 파일 연결
 import { UserContext } from "./contexts/UserContext";
 
 export default function SideBar({ onFilterChange, isLogin, setIsLoginModalOpen }) {
-    const navigate = useNavigate();   // ✅ 훅 선언
+    const navigate = useNavigate();
     const itemsTop = [
-        { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소", action: () => onFilterChange(prev => prev === "oil" ? null : "oil") },
-        { icon: <FontAwesomeIcon icon={faChargingStation} style={{ fontSize: "24px" }} />, label: "충전소", action: () => onFilterChange(prev => prev === "charge" ? null : "charge") },
-        { icon: <FontAwesomeIcon icon={faShare} style={{ fontSize: "24px" }} />, label: "목적지", action: () => navigate("/route") },
-        { icon: <FontAwesomeIcon icon={faChartSimple} style={{ fontSize: "24px" }} />, label: "유가정보", action: () => navigate("/oilPrice") },
+        { icon: <FontAwesomeIcon icon={faGasPump} />, label: "주유소", action: () => onFilterChange(prev => prev === "oil" ? null : "oil") },
+        { icon: <FontAwesomeIcon icon={faChargingStation} />, label: "충전소", action: () => onFilterChange(prev => prev === "charge" ? null : "charge") },
+        { icon: <FontAwesomeIcon icon={faShare} />, label: "목적지", action: () => navigate("/route") },
+        { icon: <FontAwesomeIcon icon={faChartSimple} />, label: "유가정보", action: () => navigate("/oilPrice") },
     ];
 
     const { userInfo } = useContext(UserContext);
 
     return (
-        <aside
-            style={{
-                zIndex: 1000,
-                width: 80,
-                height: "100vh",
-                borderRight: "1px solid #e5e7eb",
-                backgroundColor: "#ffffff",
-                display: "flex",
-                flexDirection: "column",
-            }}
-        >
-            {/* ✅ 위쪽 (로고 + 메뉴)  */}
-            <div
-                style={{
-                    display: "flex",
-                    width: "100%",
-                    flexDirection: "column",
-                    alignItems: "center",
-                }}
-            >
-                <div
-                    style={{
-                        width: 80,
-                        height: 80,
-                        flexShrink: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        overflow: "hidden",
-                        marginTop: 10,
-                        marginBottom: 30
-                    }}
-                >
-                    <img
-                        src="/images/logo_square.png"
-                        alt="로고"
-                        style={{
-                            width: "80px",
-                            height: "80px",
-                            objectFit: "contain",
-                            display: "block",
-                        }}
-                    />
+        <aside className="sidebar">
+            {/* ✅ 위쪽 (로고 + 메뉴) */}
+            <div className="sidebar-top">
+                <div className="sidebar-logo">
+                    <img src="/images/logo_square.png" alt="로고" />
                 </div>
 
-                <nav
-                    style={{
-                        marginTop: "0.5rem",
-                        display: "flex",
-                        width: "100%",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                    }}
-                >
-                    {/* 토글추가 */}
+                <nav className="sidebar-menu">
                     {itemsTop.map((it, idx) => (
                         <DockButton key={idx} label={it.label} onClick={it.action}>
                             {it.icon}
@@ -82,19 +35,10 @@ export default function SideBar({ onFilterChange, isLogin, setIsLoginModalOpen }
                 </nav>
             </div>
 
-            {/* ✅ 아래쪽 (내정보: mt-auto로 바닥에 고정) */}
-            <div
-                style={{
-                    marginTop: "auto",
-                    width: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                }}
-            >
-                <DockButton label={userInfo?.name ? `${userInfo.name}님` : "내정보"}
-                    onClick={() => handleMyInfoClick({ isLogin, setIsLoginModalOpen, navigate })}>
-                    <User style={{ width: "1.75rem", height: "1.75rem" }} />
+            {/* ✅ 아래쪽 (내정보) */}
+            <div className="sidebar-bottom">
+                <DockButton label={userInfo?.name ? `${userInfo.name}님` : "내정보"} onClick={() => handleMyInfoClick({ isLogin, setIsLoginModalOpen, navigate })}>
+                    <User />
                 </DockButton>
             </div>
         </aside>
@@ -103,34 +47,9 @@ export default function SideBar({ onFilterChange, isLogin, setIsLoginModalOpen }
 
 function DockButton({ children, label, onClick = () => { } }) {
     return (
-        <button
-            onClick={onClick}
-            style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "100%",
-                paddingTop: "1.5rem",
-                paddingBottom: "1.5rem",
-                color: "#1f2937",
-                background: "none",
-                border: "none",
-                outline: "none",
-                cursor: "pointer",
-                transition: "color 0.2s, background-color 0.2s",
-            }}
-            onMouseOver={(e) => {
-                e.currentTarget.style.color = "#2563eb";
-                e.currentTarget.style.backgroundColor = "#eff6ff";
-            }}
-            onMouseOut={(e) => {
-                e.currentTarget.style.color = "#1f2937";
-                e.currentTarget.style.backgroundColor = "transparent";
-            }}
-        >
-            <span style={{ fontSize: "15px", lineHeight: "1.75rem" }}>{children}</span>
-            <span style={{ fontSize: "15px", marginTop: "0.25rem", textAlign: "center" }}>{label}</span>
+        <button className="dock-btn" onClick={onClick}>
+            <span className="dock-icon">{children}</span>
+            <span className="dock-label">{label}</span>
         </button>
     );
 }

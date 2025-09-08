@@ -1,0 +1,29 @@
+/* RouteMap.css 또는 전역 css */
+.layout{
+  display:grid;
+  grid-template-columns:80px 1fr;
+  grid-template-rows:1fr;
+  grid-template-areas:"nav main";
+  height:100dvh; /* 모바일 주소창 높이 변동 대응 */
+}
+
+.app-nav{ grid-area:nav; background:#f3f4f6; border-right:1px solid #e5e7eb; }
+.app-main{ grid-area:main; position:relative; }
+
+/* 모바일(<=768px): nav를 맨 아래로 내림 */
+@media (max-width:768px){
+  .layout{
+    grid-template-columns:1fr;
+    grid-template-rows:1fr 56px;           /* 맨 아래 하단바 높이 */
+    grid-template-areas:"main" "nav";
+  }
+  .app-nav{
+    border-right:none;
+    border-top:1px solid #e5e7eb;
+    height:56px;
+    display:flex; align-items:center; justify-content:space-around;
+    position:sticky; bottom:0;            /* 툴바처럼 붙어있게 */
+    padding-bottom:env(safe-area-inset-bottom);
+    background:#f8fafc;
+  }
+}

@@ -1,0 +1,102 @@
+/* =========================
+   Root Dock (Desktop: Left)
+   ========================= */
+.root-dock{
+  position:fixed; left:0; top:0; z-index:1000;
+  width:80px; height:100vh;
+  border-right:1px solid #e5e7eb; background:#fff;
+  display:flex; flex-direction:column; align-items:center;
+  box-sizing:border-box;
+}
+.root-dock__top{ display:flex; flex-direction:column; align-items:center; width:100%; }
+.root-dock__logo{ width:80px; height:80px; flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; margin-top:10px; margin-bottom:30px; }
+.root-dock__logo img{ width:80px; height:80px; object-fit:contain; display:block; }
+
+.root-dock__nav{
+  flex:1; display:flex; flex-direction:column; justify-content:center;
+  align-items:center; gap:1.5rem; width:100%;
+}
+
+.root-dock__bottom{
+  margin-top:auto; width:100%;
+  display:flex; flex-direction:column; align-items:center; gap:1rem;
+}
+
+/* 버튼 (데스크탑) */
+.dock-item{
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  width:100%; padding:1rem 0;
+  color:#1f2937; background:none; border:none; outline:none; cursor:pointer;
+  transition:color .2s, background-color .2s;
+}
+.dock-item:hover{ color:#2563eb; background-color:#eff6ff; }
+.dock-item:focus-visible{ outline:2px solid #2563eb; outline-offset:-2px; }
+
+.icon-wrap{ line-height:1; }
+.icon{ width:24px; height:24px; display:inline-block; }
+.label{ font-size:14px; margin-top:.25rem; text-align:center; }
+
+/* =========================
+   Mobile (Bottom Tab Bar) — 1번처럼 꽉 찬 5등분
+   ========================= */
+/* =========================
+   Mobile (Bottom Tab Bar) — 1번 높이 맞춤
+   ========================= */
+/* =========================
+   Mobile (Bottom Tab Bar)
+   ========================= */
+/* =========================
+   Mobile (Bottom Tab Bar) — equal widths
+   ========================= */
+/* =========================
+   Mobile (Bottom Tab Bar) — narrower buttons
+   ========================= */
+/* =========================
+   Mobile (Bottom Tab Bar) — 1번과 동일하게 꽉 찬 5등분
+   ========================= */
+/* === MOBILE: make .root-dock look EXACTLY like .sidebar (共通化) === */
+@media (max-width:768px){
+
+  /* 바 자체: 동일 레이아웃/높이/여백 */
+  .root-dock,
+  .sidebar{
+    position: fixed; left: 0; right: 0; bottom: 0; top: auto;
+    width: 100%;
+    height: 60px;
+    border-top: 1px solid #e5e7eb; border-right: none; background: #fff;
+
+    /* 5칸 동일 너비 */
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: stretch;           /* 세로로 꽉 */
+    justify-items: stretch;         /* 가로로 꽉 */
+    padding: 0; margin: 0;
+    box-sizing: border-box;
+  }
+
+  /* 래퍼는 그리드에 녹여서 간격·정렬 영향 제거 */
+  .root-dock__logo, .sidebar-logo{ display:none; }
+  .root-dock__top, .root-dock__nav, .root-dock__bottom,
+  .sidebar-top, .sidebar-menu, .sidebar-bottom{ display: contents; }
+
+  /* 버튼: 가로/세로 100% 채움 (남아있는 제한/패딩 전부 제거) */
+  .dock-item, .dock-btn{
+    width:100%; height:100%;
+    padding:0 !important; margin:0; min-width:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    line-height:1; /* baseline 차이 제거 */
+    max-width:none; /* 과거 max/min-width 잔재 무력화 */
+  }
+
+  /* 아이콘 크기/정렬 통일 (FA 아이콘/루시드 SVG 모두 커버) */
+  .icon, .dock-icon{ font-size:24px; display:block; }
+  .dock-item svg, .dock-btn svg{ width:24px; height:24px; display:block; }
+
+  /* 라벨 크기/여백 통일 */
+  .label, .dock-label{ font-size:11px; line-height:1; margin-top:2px; }
+}
+
+
+
+
+

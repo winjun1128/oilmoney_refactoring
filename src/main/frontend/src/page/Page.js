@@ -5,7 +5,7 @@ import ChargeFilterPanel from "./ChargeFilterPanel";
 import OilMap from "./OilMap";
 import axios from "axios";
 
-export default function Page({isLogin, setIsLoginModalOpen}) {
+export default function Page({ isLogin, setIsLoginModalOpen }) {
     const [activeFilter, setActiveFilter] = useState(null);
     const [stations, setStations] = useState([]); // ✅ 주유소 검색 결과
 
@@ -23,7 +23,7 @@ export default function Page({isLogin, setIsLoginModalOpen}) {
     // ✅ 주유소 필터 기반 검색
     const handleOilFilterSearch = (filters) => {
         axios.post("/api/stations/search", filters)
-            .then((res) => { 
+            .then((res) => {
                 console.log(res.data);
                 setStations(res.data);
             })
@@ -33,22 +33,41 @@ export default function Page({isLogin, setIsLoginModalOpen}) {
     // ✅ 충전소 필터 기반 검색
     const handleChargeFilterSearch = (filters) => {
         axios.post("/api/charge/search", filters)
-        .then((res) => { 
-            console.log(res.data);
-            setStations(res.data);
-        })
-        .catch(err => console.error(err));
-};
+            .then((res) => {
+                console.log(res.data);
+                setStations(res.data);
+            })
+            .catch(err => console.error(err));
+    };
 
     return (
         <div style={{ display: "flex", height: "100vh" }}>
-            <SideBar onFilterChange={setActiveFilter} isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen}/>
-            <div style={{ flex: 1, position: "relative"}}>
-                <OilMap stations={stations} handleLocationSearch={handleLocationSearch} isFilterMode={activeFilter === "oil" || activeFilter === "charge"}/>
+            <SideBar onFilterChange={setActiveFilter} isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />
+            <div style={{ flex: 1, position: "relative" }}>
+                <OilMap stations={stations} handleLocationSearch={handleLocationSearch} isFilterMode={activeFilter === "oil" || activeFilter === "charge"} />
 
-                <div style={{ ...panelStyle, transform: activeFilter ? "translateX(0)" : "translateX(-100%)",}}>
-                    {activeFilter === "oil" && <OilFilterPanel handleOilFilterSearch={handleOilFilterSearch} onClose={() => setActiveFilter(null)} setStations={setStations} />}
-                    {activeFilter === "charge" && <ChargeFilterPanel handleChargeFilterSearch={handleChargeFilterSearch} onClose={() => setActiveFilter(null)} setStations={setStations} />}
+                <div
+                    className={`filter-wrapper ${activeFilter ? "open" : ""}`}
+                    style={window.innerWidth > 768
+                        ? { ...panelStyle, transform: activeFilter ? "translateX(0)" : "translateX(-100%)" }
+                        : {}}
+                >
+                    {activeFilter === "oil" && (
+                        <OilFilterPanel
+                            isOpen={true}
+                            handleOilFilterSearch={handleOilFilterSearch}
+                            onClose={() => setActiveFilter(null)}
+                            setStations={setStations}
+                        />
+                    )}
+                    {activeFilter === "charge" && (
+                        <ChargeFilterPanel
+                            isOpen={true}
+                            handleChargeFilterSearch={handleChargeFilterSearch}
+                            onClose={() => setActiveFilter(null)}
+                            setStations={setStations}
+                        />
+                    )}
                 </div>
             </div>
         </div>
@@ -65,5 +84,5 @@ const panelStyle = {
     borderRight: "1px solid #ddd",
     boxShadow: "2px 0 5px rgba(0,0,0,0.1)",
     zIndex: 30,
-    transition: "transform 0.3s ease-in-out", 
+    transition: "transform 0.3s ease-in-out",
 };

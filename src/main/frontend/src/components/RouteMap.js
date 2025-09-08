@@ -350,6 +350,7 @@ const addLabeledMarker = ({ map, kakao, type, lat, lng, name, onClick, labelAlwa
 /* ───────────────────────────────────────────────────────────────────── */
 
 export default function RouteMap() {
+  
   //로그인
   const [isAuthed, setIsAuthed] = useState(() => isTokenAlive(getToken()));
 
@@ -1466,6 +1467,11 @@ const hideMarkers = () => {
         level: 7,
       });
       mapRef.current = map;
+       // ← 지도 제스처 허용(드래그/휠/핀치)
+ map.setDraggable(true);
+ map.setZoomable(true);
+ // 브라우저에게 패닝 제스처를 넘기도록
+ container.style.touchAction = "pan-x pan-y";
       // [ZOOMBAR] 최초 갱신 + 이벤트 바인딩
 updateZoomBar();
 kakao.maps.event.addListener(map, "zoom_changed", updateZoomBar);
@@ -3285,6 +3291,7 @@ const ReviewsSection = () => (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
       {/* 좌: 필터 패널 / 우: 지도  */}
       <div style={{ display: "flex", gap: 12, flex: 1, minHeight: 0 }}>
+        {isFilterOpen && <div className="filter-dim" onClick={() => setIsFilterOpen(false)} />}
         {/* ← 필터 패널 */}
         <aside className={`filter-flyout ${isFilterOpen ? "open" : ""}`}>
           <div className="sidebar-card">
@@ -3513,6 +3520,9 @@ const ReviewsSection = () => (
           </div>
         </aside>
 
+        {/* 딤(배경). 형제요소로 패널 바로 뒤에 둬야 위 CSS가 먹습니다. */}
+  <div className="filter-dim" onClick={() => setIsFilterOpen(false)} />
+
        {/* → 오른쪽(제목/요약 + 지도) */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
           
@@ -3522,7 +3532,7 @@ const ReviewsSection = () => (
               id="map"
               style={{ position: "absolute", inset: 0, border: "1px solid #ddd"}}
             />
-
+            {/* 요약 카드 ... */}
             {(summary || detourSummary) && (
               <div className="map-summary">
                 <div className="map-summary__card">
@@ -3531,6 +3541,8 @@ const ReviewsSection = () => (
                 </div>
               </div>
             )}
+
+
 
             {/* ✅ 줌바 */}
 <div className="zoom-bar" aria-label="지도의 확대/축소 컨트롤">
@@ -3541,6 +3553,16 @@ const ReviewsSection = () => (
   <div onClick={zoomOut} role="button" title="축소">－</div>
   <div ref={zoomLabelRef} className="zoom-label">Lv -</div>
 </div>
+
+{/* 지도 우측 하단에 FAB 하나 추가 (RouteMap.jsx map 영역 내부) */}
+<button
+  className="fab"
+  onClick={() => window.dispatchEvent(new CustomEvent("ui:toggleFilters",{ detail:{ mode:"toggle" } }))}
+  aria-label="필터 열기"
+>
+  ⚙️
+</button>
+
               {/* ✅ 원점 포커스 */}
                <button
                   className="my-location-btn"
