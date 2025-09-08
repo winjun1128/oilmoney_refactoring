@@ -1,0 +1,178 @@
+/* ============================= */
+/* 🖥 데스크탑 기본 스타일 */
+/* ============================= */
+.charge-panel {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  height: 100vh;
+  background: #fff;
+  border-right: 1px solid #e5e7eb;
+
+  /* 슬라이드 효과 */
+  transform: translateX(-110%); /* 기본: 숨김 */
+  transition: transform 0.3s ease-in-out;
+}
+.charge-panel.open {
+  transform: translateX(0); /* 열림 상태 */
+}
+
+/* 헤더 */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-title h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+.close-btn {
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #374151;
+}
+
+/* 본문 */
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+.panel-body fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  transition: opacity 0.15s ease;
+}
+.panel-body fieldset.dimmed {
+  opacity: 0.55;
+}
+
+/* 필터 블록 */
+.filter-block {
+  margin-bottom: 20px;
+}
+.filter-block h4 {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #111827;
+}
+.filter-block select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 13px;
+  color: #111827;
+  margin-top: 10px;
+}
+
+/* grid */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* 체크박스 */
+.checkbox-label {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  cursor: pointer;
+}
+.checkbox-label input {
+  margin-right: 6px;
+}
+
+/* 내 주변 버튼 */
+.nearby-btn {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 13px;
+  background: #fff;
+  color: #111827;
+  cursor: pointer;
+}
+.nearby-btn.on {
+  background: #2563eb;
+  color: #fff;
+}
+
+/* 푸터 */
+.panel-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #e5e7eb;
+}
+.search-btn {
+  width: 100%;
+  padding: 10px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ============================= */
+/* 📱 모바일 전용 (카드처럼 띄우기) */
+/* ============================= */
+@media (max-width: 768px) {
+  .charge-panel {
+    position: absolute;
+    top: 100px;
+    left: 6px;
+    width: 240px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    z-index: 2000;
+    padding: 12px;
+    height: auto;
+
+    transform: translateX(-110%);
+    
+  }
+  .charge-panel.open {
+    transform: translateX(0);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  .panel-body {
+    max-height: 40vh;
+    overflow-y: auto;
+    margin-bottom: 12px;
+  }
+  .panel-footer {
+    border-top: none;
+    padding: 0;
+  }
+  .search-btn {
+    width: 100%;
+    padding: 8px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+}

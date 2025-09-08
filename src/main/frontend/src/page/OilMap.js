@@ -886,6 +886,7 @@ export default function OilMap({ stations, handleLocationSearch }) {
   };
 
   const heatWarning = weather && (weather.temp >= 33 || weather.feels >= 33);
+  const isMobile = window.innerWidth <= 768;
 
   return (
     <div className="map-container">
@@ -949,42 +950,17 @@ export default function OilMap({ stations, handleLocationSearch }) {
       )}
 
       {/* ✅ 하단 마커색깔 설명 구역 */}
-      <div
-        style={{
-          position: "absolute",
-          left: "50%",
-          transform: "translateX(-50%)",
-          bottom: 16,
-          zIndex: 1000,
-          pointerEvents: "none", // 맵 드래그 방해 X
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            background: "rgba(255,255,255,.96)",
-            border: "1px solid #e5e7eb",
-            borderRadius: 12,
-            boxShadow: "0 8px 24px rgba(0,0,0,.12)",
-            padding: "8px 12px",
-            pointerEvents: "none", // 클릭 불가(설명 전용)
-            fontSize: 12,
-            color: "#374151",
-          }}
-        >
-          <span style={{ color: "#6b7280", marginRight: 4 }}>가격 마커 안내</span>
+      <div className="price-legend">
+        <span className="legend-title">가격 마커 안내</span>
 
-          <LegendDot color="#ef4444" />
-          <span>평균보다 +30 이상</span>
+        <LegendDot color="#ef4444" />
+        <span>{isMobile ? "+30 이상" : "평균보다 +30 이상"}</span>
 
-          <LegendDot color="#f59e0b" />
-          <span>±30 구간</span>
+        <LegendDot color="#f59e0b" />
+        <span>{isMobile ? "±30 구간" : "±30 구간"}</span>
 
-          <LegendDot color="#10b981" />
-          <span>평균보다 -30 이하</span>
-        </div>
+        <LegendDot color="#10b981" />
+        <span>{isMobile ? "-30 이하" : "평균보다 -30 이하"}</span>
       </div>
 
       {/* 리뷰 모달 함수 맨 아래 */}
@@ -1073,6 +1049,16 @@ function ReviewModal({ open, mode, station, onClose }) {
     return `${m}:${id}`;
   };
 
+  const getMyUserId = () => {
+    try {
+      const p = parseJwt(getToken()) || {};
+      // 서버 JWT payload 안에 userId 가 있다고 가정
+      return p.userId || p.sub || "익명";
+    } catch {
+      return "익명";
+    }
+  };
+
   // 작성 상태
   const [text, setText] = useState("");
   const [rating, setRating] = useState(0);
@@ -1113,19 +1099,30 @@ function ReviewModal({ open, mode, station, onClose }) {
       try {
         const id = getStationId();
         const token = getToken();
-        const res = await fetch(`/api/route/reviews?key=${encodeURIComponent(makeReviewKey())}`,
-          token
-            ? { headers: { Authorization: `Bearer ${token}` } }
-            : undefined);
+        const res = await fetch(
+          `/api/route/reviews?key=${encodeURIComponent(makeReviewKey())}`,
+          token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+        );
         const json = await res.json();
-        const list = (json?.items ?? []).map(r => ({
-          id: r.id,
-          nickname: r.user || "익명",               // 서버는 user로 내려줌
-          text: r.text,
-          rating: r.rating != null ? Math.round(r.rating) : undefined, // ★ 반복용 정수화
-          createdAt: r.createdAt || r.updatedAt || "",                  // "yyyy-MM-dd HH:mm" 형식
-          mine: !!r.mine,
-        }));
+
+        const list = (json?.items ?? []).map(r => {
+          let nick = r.user || "익명";
+
+          // ⚡ 서버가 accessToken 같은 잘못된 값을 줄 때 교정
+          if (!nick || nick === "accessToken") {
+            nick = getMyUserId();
+          }
+
+          return {
+            id: r.id,
+            nickname: nick,
+            text: r.text,
+            rating: r.rating != null ? Math.round(r.rating) : undefined,
+            createdAt: r.createdAt || r.updatedAt || "",
+            mine: !!r.mine,
+          };
+        });
+
         if (!ignore) setItems(list);
       } catch {
         if (!ignore) setItems([]);
@@ -1133,8 +1130,14 @@ function ReviewModal({ open, mode, station, onClose }) {
         if (!ignore) setLoading(false);
       }
     })();
+
     // 모달 닫히면 폼 초기화
-    return () => { ignore = true; setText(""); setRating(0); setSubmitting(false); };
+    return () => {
+      ignore = true;
+      setText("");
+      setRating(0);
+      setSubmitting(false);
+    };
   }, [open, mode, station]);
 
   // 삭제 함수 (경로 파라미터 사용 + 토큰만 헤더에)
@@ -1201,7 +1204,7 @@ function ReviewModal({ open, mode, station, onClose }) {
       const now = new Date().toISOString();
       setItems(prev => [{
         id: item?.id ?? Math.random().toString(36).slice(2),
-        nickname: getMyDisplayName(),                    // 서버가 닉네임 안 주므로 프론트에서 표시만
+        nickname: getMyUserId(),                    // 서버가 닉네임 안 주므로 프론트에서 표시만
         text: clean,
         rating: rating || undefined,        // UI가 정수 별점 repeat
         createdAt: now,                     // 서버는 create 응답에 시간 안 줌 → 프론트에서 now 사용
@@ -1248,11 +1251,11 @@ function ReviewModal({ open, mode, station, onClose }) {
           ) : (
             <ul className="review-list">
               {items.map((r, i) => (
-                <li key={r.id ?? i} className="review-item">
+                <li key={`review-${r.id ?? i}`} className="review-item">
                   <div className="review-item__top">
                     <div className="review-item__avatar" />
                     <div className="review-item__meta">
-                      <b className="review-item__nick">{r.nickname ?? r.user ?? "익명"}</b>
+                      <b className="review-item__nick">{r.nickname}</b>
                       <span className="review-item__date">{(r.createdAt ?? "").slice(0, 10)}</span>
                     </div>
                     <div className="review-item__right">
