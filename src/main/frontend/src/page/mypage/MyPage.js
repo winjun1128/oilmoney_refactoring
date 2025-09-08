@@ -183,9 +183,9 @@ function MyPage({ setIsLogin, setIsLoginModalOpen }) {
 
                 <div className="mypage-right">
                     <div>
-                        <EditInfo userInfo={userInfo} setUserInfo={setUserInfo} />
                         <CarRegist cars={cars} setCars={setCars} userInfo={userInfo} fetchCars={fetchCars} />
                         <div className="mypage-fav-review">
+                            <EditInfo userInfo={userInfo} setUserInfo={setUserInfo} />
                             <FavList stations={favStations} />
                             <ReviewList />
                         </div>
