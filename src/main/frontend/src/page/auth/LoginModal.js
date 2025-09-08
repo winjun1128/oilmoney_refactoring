@@ -2,7 +2,7 @@ import { useState } from 'react';
 import './Auth.css';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { GoogleLogin, useGoogleLogin } from '@react-oauth/google';
+import { useGoogleLogin } from '@react-oauth/google';
 
 function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo }) {
 
@@ -34,7 +34,6 @@ function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo
     const googleLogin = useGoogleLogin({
         flow: 'implicit',
         onSuccess: async (tokenResponse) => {
-            console.log("토큰 확인:", tokenResponse);
             try {
                 const res = await axios.post("/auth/login/oauth2/google", {
                     token: tokenResponse.access_token

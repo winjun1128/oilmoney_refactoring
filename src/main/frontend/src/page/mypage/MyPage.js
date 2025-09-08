@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import './MyPage.css';
 import EditInfo from "./EditInfo";
 import axios from "axios";
@@ -6,8 +6,11 @@ import { useNavigate } from "react-router-dom";
 import CarRegist from "./CarRegist";
 import ReviewList from "./ReviewList";
 import FavList from "./FavList";
+import { UserContext } from "../contexts/UserContext";
 
-function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
+function MyPage({ setIsLogin, setIsLoginModalOpen }) {
+
+    const { userInfo, setUserInfo } = useContext(UserContext);
 
     const navigate = useNavigate();
     const token = localStorage.getItem("token");
@@ -116,6 +119,7 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
     const handleLogout = () => {
         if (window.confirm("정말 로그아웃하시겠습니까?")) {
             localStorage.removeItem("token");
+            setUserInfo({});
             setIsLogin(false);
             navigate("/");
         }

@@ -1,13 +1,15 @@
-import React from "react";
+import React, { useContext } from "react";
 import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { handleMyInfoClick } from "../utils/authHelpers";
+import { UserContext } from "../contexts/UserContext";
 
-export default function MyPageSideBar({ userInfo, setIsLoginModalOpen }) {
+export default function MyPageSideBar({setIsLoginModalOpen }) {
 
     const navigate = useNavigate();
+    const { userInfo } = useContext(UserContext);
 
     const itemsTop = [
         { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소", onClick: () => navigate("/") },
