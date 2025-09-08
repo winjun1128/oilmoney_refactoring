@@ -22,6 +22,8 @@ function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo
                 setUserInfo(res.data.userInfo);
                 onClose();
                 navigate("/mypage");
+                setUserId("");
+                setPw("");
             } else {
                 alert(res.data.message);
             }

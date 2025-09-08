@@ -27,7 +27,7 @@ public class JwtProvider {
 	private static final String SECRET_KEY = "thisissecretkeyforjwtreactconnectwithspringserverthisissecretkeyforjwtreactconnectwithspringserver";
 
 	// Access Token & Refresh Token 만료시간 설정
-	private static final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 30; // 30분
+	private static final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 30 * 4 ; // 2시간
 	private static final long REFRESH_TOKEN_EXPIRATION = 1000 * 60 * 60 * 24 * 7; // 7일
 
 	//시크릿키 생성 (비밀키 변환으로 키 생성)
