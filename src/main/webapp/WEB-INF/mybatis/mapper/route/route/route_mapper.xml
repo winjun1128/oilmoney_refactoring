@@ -1,0 +1,82 @@
+<!-- resources/mappers/RouteMapper.xml -->
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="route_mapper">
+
+  <resultMap id="RouteMap" type="com.app.dto.route.Route">
+    <id     column="ROUTE_ID"      property="routeId"/>
+    <result column="USER_ID"       property="userId"/>
+    <result column="ORIGIN_LABEL"  property="originLabel"/>
+    <result column="ORIGIN_LON"    property="originLon"/>
+    <result column="ORIGIN_LAT"    property="originLat"/>
+    <result column="DEST_LABEL"    property="destLabel"/>
+    <result column="DEST_LON"      property="destLon"/>
+    <result column="DEST_LAT"      property="destLat"/>
+    <result column="CREATED_AT"    property="createdAt"/>
+    <result column="UPDATED_AT"    property="updatedAt"/>
+  </resultMap>
+
+  <!-- 사용자별 목록 -->
+  <select id="selectByUserId" resultMap="RouteMap">
+    SELECT
+      ROUTE_ID, USER_ID, ORIGIN_LABEL, ORIGIN_LON, ORIGIN_LAT,
+      DEST_LABEL, DEST_LON, DEST_LAT, CREATED_AT, UPDATED_AT
+    FROM T_ROUTE
+    WHERE USER_ID = #{userId}
+    ORDER BY ROUTE_ID DESC
+  </select>
+
+<!-- 라벨쌍으로 조회(‘출발만’ 포함) -->
+  <select id="selectByLabels" resultMap="RouteMap">
+    SELECT
+      ROUTE_ID, USER_ID, ORIGIN_LABEL, ORIGIN_LON, ORIGIN_LAT,
+      DEST_LABEL, DEST_LON, DEST_LAT, CREATED_AT, UPDATED_AT
+    FROM T_ROUTE
+    WHERE USER_ID = #{userId}
+      AND TRIM(ORIGIN_LABEL) = TRIM(#{originLabel})
+      AND NVL(TRIM(DEST_LABEL), '') = NVL(TRIM(#{destLabel}), '')
+  </select>
+
+  <!-- INSERT: 시퀀스로 ID 채우기 -->
+  <insert id="insert" parameterType="com.app.dto.route.Route">
+    <selectKey keyProperty="routeId" resultType="long" order="BEFORE">
+      SELECT T_ROUTE_SEQ.NEXTVAL FROM DUAL
+    </selectKey>
+    INSERT INTO T_ROUTE (
+      ROUTE_ID, USER_ID,
+      ORIGIN_LABEL, ORIGIN_LON, ORIGIN_LAT,
+      DEST_LABEL, DEST_LON, DEST_LAT,
+      CREATED_AT, UPDATED_AT
+    ) VALUES (
+      #{routeId}, #{userId},
+      #{originLabel}, #{originLon}, #{originLat},
+      #{destLabel, jdbcType=VARCHAR},
+      #{destLon,   jdbcType=NUMERIC},
+      #{destLat,   jdbcType=NUMERIC},
+      SYSTIMESTAMP, SYSTIMESTAMP
+    )
+  </insert>
+
+  <!-- 삭제: 선택 삭제 -->
+  <delete id="deleteByIdAndUserId">
+    DELETE FROM T_ROUTE WHERE ROUTE_ID = #{routeId} AND USER_ID = #{userId}
+  </delete>
+
+ <!-- 삭제: 라벨쌍 기준 삭제 -->
+  <delete id="deleteByLabels">
+    DELETE FROM T_ROUTE
+    WHERE USER_ID = #{userId}
+      AND TRIM(ORIGIN_LABEL) = TRIM(#{originLabel})
+      AND NVL(TRIM(DEST_LABEL), '') = NVL(TRIM(#{destLabel}), '')
+  </delete>
+  
+  <select id="findIdByLabels" resultType="long">
+  SELECT ROUTE_ID FROM T_ROUTE
+  WHERE USER_ID = #{userId}
+    AND TRIM(ORIGIN_LABEL) = TRIM(#{originLabel})
+    AND NVL(TRIM(DEST_LABEL),'') = NVL(TRIM(#{destLabel}), '')
+</select>
+  
+
+</mapper>

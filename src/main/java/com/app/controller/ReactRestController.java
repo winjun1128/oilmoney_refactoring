@@ -44,8 +44,14 @@ public class ReactRestController {
 	
 	@PostMapping("/api/charge/search")
 	public List<ChargeDTO> ChargeSearch(@RequestBody ChargeSearchDTO dto) {
-		List<ChargeDTO> data = chargeService.chargeFilter(dto);
-		return data;
+		if ("nearby".equals(dto.getMode())) {
+	        // 📍 내 주변 충전소 검색
+			List<ChargeDTO> data = chargeService.findChargeNearby(dto.getLat(), dto.getLng(), dto.getRadius());
+	        return chargeService.findChargeNearby(dto.getLat(), dto.getLng(), dto.getRadius());
+	    } else {
+	        // 📍 기존 필터 기반 검색
+	        return chargeService.chargeFilter(dto);
+	    }
 	}
 	
 	@GetMapping("/api/oil/price")

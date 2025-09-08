@@ -1,8 +1,19 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 
 export default function OilFilterPanel({ setStations, handleOilFilterSearch, onClose }) {
     const [nearbyMode, setNearbyMode] = useState(false); // ✅ 내 주변 주유소 모드 ON/OFF
     const [radius, setRadius] = useState("");            // ✅ 선택한 반경 km
+
+////평균유가
+   // ── 유종 색상 기준 (여기서 직접 제어)
+  const [basis, setBasis] = useState(() => {
+    try { return localStorage.getItem("route.priceBasis.v1") || "B027"; } catch { return "B027"; }
+  });
+  const sendBasis = (k) => {
+    setBasis(k);
+    try { localStorage.setItem("route.priceBasis.v1", k); } catch {}
+    window.dispatchEvent(new CustomEvent("oil:setPriceBasis", { detail: k }));
+  };
 
     // ✅ 지역 코드 매핑
     const regionCodes = {
@@ -95,6 +106,12 @@ export default function OilFilterPanel({ setStations, handleOilFilterSearch, onC
 
     // ✅ 검색 실행
     const doSearch = () => {
+        // ✅ 검색 시: LPG가 켜지면 K015로 강제, 꺼지면 기본값(휘발유 B027)로 복귀
+  if (extras.lpg) {
+    if (basis !== "K015") sendBasis("K015");
+  } else {
+    if (basis !== "B027") sendBasis("B027");
+  }
         // 1️⃣ 내 주변 주유소 모드
         if (nearbyMode && radius) {
             const savedCoord = localStorage.getItem("savedCoord");
@@ -151,6 +168,37 @@ export default function OilFilterPanel({ setStations, handleOilFilterSearch, onC
                 </div>
                 <button onClick={onClose} style={{ background: "transparent", border: "none", fontSize: "18px", cursor: "pointer", color: "#374151" }}>✕</button>
             </div>
+
+            {/* ── 유종 색상 기준 ─────────────────────────── */}
+<div style={{paddingTop: "12px",paddingLeft:"20px",paddingRight:"20px"}}>
+  <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "#111827", textAlign: "center" }}>
+    유종 색상 기준
+  </h4>
+  {/** LPG 필터가 켜지면 다른 기준은 선택 불가 */}
+  <div style={{ display: "flex", gap: 8 }}>
+    <SmallToggle
+      active={basis === "B027"}
+      onClick={() => sendBasis("B027")}
+    >
+      휘발유
+    </SmallToggle>
+    <SmallToggle
+      active={basis === "D047"}
+      onClick={() => sendBasis("D047")}
+    >
+      경유
+    </SmallToggle>
+    <SmallToggle
+      active={basis === "K015"}
+      onClick={() => sendBasis("K015")}
+      disabled={false}
+    >
+      LPG
+    </SmallToggle>
+  </div>
+
+</div>
+
 
             {/* 콘텐츠 영역 */}
             <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
@@ -305,3 +353,27 @@ export default function OilFilterPanel({ setStations, handleOilFilterSearch, onC
         </div>
     );
 }
+
+function SmallToggle({ active, onClick, children, disabled }) {
+  return (
+    <button
+      onClick={disabled ? undefined : onClick}
+      disabled={!!disabled}
+      style={{
+        flex: 1,
+        padding: "8px 10px",
+        borderRadius: 8,
+        border: "1px solid #d1d5db",
+        background: active ? "#eef2ff" : "#fff",
+        color: active ? "#1d4ed8" : "#111827",
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+

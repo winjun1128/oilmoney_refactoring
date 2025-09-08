@@ -5,18 +5,19 @@
 
 <mapper namespace="charge_mapper">
 
-    <!-- 충전소 필터 검색 -->
+<!--
+    충전소 필터 검색
     <select id="chargeFilter"
         parameterType="com.app.dto.ChargeSearchDTO"
         resultType="com.app.dto.ChargeDTO">
   SELECT
-    c.STATID      AS statId,     -- 프론트에서 isCharge 판단에 사용
+    c.STATID      AS statId,     /* 프론트에서 isCharge 판단에 사용 */
     c.STATNM      AS statNm,
     c.ADDR        AS addr,
     c.ZCODE       AS zcode,
     c.SCODE       AS scode,
-    c.LAT         AS lat,        -- ★ 추가
-    c.LNG         AS lng,        -- ★ 추가 (프론트는 lng도 인식)
+    c.LAT         AS lat,        /* ★ 추가  */
+    c.LNG         AS lng,        /* ★ 추가 (프론트는 lng도 인식) */
     c.USETIME     AS useTime,
     c.FLOORTYPE   AS floorType,
 
@@ -73,6 +74,140 @@
       AND c.USETIME LIKE '%24시간%'
     </if>
   </where>
+</select> -->
+
+<select id="chargeFilter"
+        parameterType="com.app.dto.ChargeSearchDTO"
+        resultType="com.app.dto.ChargeDTO">
+  SELECT DISTINCT
+    c.STATID      AS statId,
+    c.STATNM      AS statNm,
+    c.ADDR        AS addr,
+    c.ZCODE       AS zcode,
+    c.SCODE       AS scode,
+    c.LAT         AS lat,
+    c.LNG         AS lng,
+    c.USETIME     AS useTime,
+    c.FLOORTYPE   AS floorType
+  FROM T_CHARGE c
+  <where>
+    <!-- 지역/시군구 -->
+    <if test="region != null and region != ''">
+      AND c.ZCODE = #{region}
+    </if>
+    <if test="city != null and city != ''">
+      AND c.SCODE = #{city}
+    </if>
+
+    <!-- 설치 위치 -->
+    <if test="floorType != null and floorType != ''">
+      AND c.FLOORTYPE = #{floorType}
+    </if>
+
+    <!-- 24시간 -->
+    <if test="twentyFour == true">
+      AND (
+           c.USETIME LIKE '%24%' OR c.USETIME LIKE '%24시간%' OR c.USETIME LIKE '24:00%'
+         )
+    </if>
+
+    <!-- 상태(포트 단위) -->
+    <if test="status != null and status != ''">
+      AND EXISTS (
+        SELECT 1
+        FROM T_CHARGER_STATUS s
+        WHERE s.STATID = c.STATID
+          AND s.STAT   = #{status}   <!-- 2/3/5 -->
+      )
+    </if>
+
+    <!-- 충전 방식: 부분문자열 매칭 (methods = ['AC완속','DC콤보',...]) -->
+    <if test="method != null and method.size() &gt; 0">
+      AND EXISTS (
+        SELECT 1
+        FROM T_CHARGER g
+        JOIN T_CHARGER_TYPE t ON g.TYPE_CD = t.TYPE_CD
+        WHERE g.STATID = c.STATID
+          AND (
+            <foreach collection="method" item="m" separator=" OR ">
+              UPPER(t.TYPE_NM) LIKE '%' || UPPER(#{m}) || '%'
+            </foreach>
+          )
+          <if test="minOutput != null and minOutput != ''">
+            AND g.OUTPUT_KW &gt;= #{minOutput}
+          </if>
+      )
+    </if>
+
+    <!-- 완속/급속/초급속: 출력구간/타입코드 버킷 -->
+    <if test="chargerType != null and chargerType.size() &gt; 0">
+      AND EXISTS (
+        SELECT 1
+        FROM T_CHARGER g
+        WHERE g.STATID = c.STATID
+          AND (
+            <!-- 완속 선택 -->
+            <if test="chargerType.contains('완속')">
+              (g.OUTPUT_KW &lt; 50 OR g.TYPE_CD IN ('02','07'))
+            </if>
+            <!-- 급속 선택 -->
+            <if test="chargerType.contains('급속')">
+              <if test="chargerType.contains('완속')"> OR </if>
+              ((g.OUTPUT_KW BETWEEN 50 AND 149) OR g.TYPE_CD IN ('01','03','04','05','06','08'))
+            </if>
+            <!-- 초급속 선택 -->
+            <if test="chargerType.contains('초급속')">
+              <if test="chargerType.contains('완속') or chargerType.contains('급속')"> OR </if>
+              (g.OUTPUT_KW &gt;= 150 OR g.TYPE_CD = '09')
+            </if>
+          )
+          <if test="minOutput != null and minOutput != ''">
+            AND g.OUTPUT_KW &gt;= #{minOutput}
+          </if>
+      )
+    </if>
+
+    <!-- minOutput만 단독으로 들어왔을 때도 반영 -->
+    <if test="(minOutput != null and minOutput != '') and (chargerType == null or chargerType.size() == 0) and (method == null or method.size() == 0)">
+      AND EXISTS (
+        SELECT 1 FROM T_CHARGER g
+        WHERE g.STATID = c.STATID
+          AND g.OUTPUT_KW &gt;= #{minOutput}
+      )
+    </if>
+  </where>
+</select>
+
+
+<select id="findChargeNearby" parameterType="map" resultType="com.app.dto.ChargeDTO">
+      <![CDATA[
+  SELECT
+    s.STATID     AS statId,
+    s.STATNM     AS statNm,
+    s.ADDR       AS addr,
+    TO_CHAR(s.LAT) AS lat,
+    TO_CHAR(s.LNG) AS lng,
+    s.USETIME    AS useTime,
+    s.ZCODE      AS zcode,
+    s.SCODE      AS scode,
+    s.FLOORNUM   AS floorNum,
+    s.FLOORTYPE  AS floorType,
+    s.BUSID      AS busId,
+    s.BUSINM     AS busiNm,
+    s.BUSICALL   AS busiCall,
+    TO_CHAR(s.UPDATED_AT,'YYYY-MM-DD HH24:MI:SS') AS updatedAt
+  FROM T_CHARGE s
+  WHERE (
+    6371 * 2 * ASIN(
+      SQRT(
+        POWER(SIN(((#{lat} * (ACOS(-1)/180)) - (TO_NUMBER(s.LAT) * (ACOS(-1)/180))) / 2), 2) +
+        COS(#{lat} * (ACOS(-1)/180)) * COS(TO_NUMBER(s.LAT) * (ACOS(-1)/180)) *
+        POWER(SIN(((#{lng} * (ACOS(-1)/180)) - (TO_NUMBER(s.LNG) * (ACOS(-1)/180))) / 2), 2)
+      )
+    )
+  ) <= #{radius}
+  ORDER BY updatedAt DESC
+  ]]>
 </select>
 
 

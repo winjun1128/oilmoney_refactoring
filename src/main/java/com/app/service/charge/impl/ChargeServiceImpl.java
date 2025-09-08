@@ -1,6 +1,8 @@
 package com.app.service.charge.impl;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -44,5 +46,14 @@ public class ChargeServiceImpl implements ChargeService {
 	public List<ChargeDTO> chargeFilter(ChargeSearchDTO dto) {
 		List<ChargeDTO> data = chargeDAO.chargeFilter(dto);
 		return data;
+	}
+
+	@Override
+	public List<ChargeDTO> findChargeNearby(Double lat, Double lng, Double radius) {
+		Map<String, Object> param = new HashMap<>();
+        param.put("lat", lat);
+        param.put("lng", lng);
+        param.put("radius", radius);
+		return chargeDAO.findChargeNearby(param);
 	}
 }

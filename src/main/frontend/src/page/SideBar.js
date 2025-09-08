@@ -17,10 +17,7 @@ export default function SideBar({ onFilterChange,isLogin, setIsLoginModalOpen })
     return (
         <aside
             style={{
-                position: "fixed",
-                left: 0,
-                top: 0,
-                zIndex: 999,
+                zIndex:1000,
                 width: 80,
                 height: "100vh",
                 borderRight: "1px solid #e5e7eb",
