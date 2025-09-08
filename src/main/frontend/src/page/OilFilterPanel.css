@@ -1,0 +1,228 @@
+/* ============================= */
+/* 🖥 데스크탑 기본 스타일 */
+/* ============================= */
+.oil-panel {
+    display: flex;
+    flex-direction: column;
+    width: 300px;
+    height: 100vh;
+    background: #fff;
+    border-right: 1px solid #e5e7eb;
+}
+
+/* 헤더 */
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.panel-title h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.close-btn {
+    background: transparent;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    color: #374151;
+}
+
+/* 유종 색상 기준 */
+.basis-wrap {
+    padding: 12px 20px 0;
+    text-align: center;
+}
+
+.basis-wrap h4 {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #111827;
+}
+
+.basis-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+/* 본문 */
+.panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+}
+
+.panel-body fieldset {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    transition: opacity .15s ease;
+}
+
+.panel-body fieldset.dimmed {
+    opacity: 0.55;
+}
+
+/* 필터 블록 */
+.filter-block {
+    margin-bottom: 20px;
+}
+
+.filter-block h4 {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: #111827;
+}
+
+.filter-block select {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    font-size: 13px;
+    color: #111827;
+    margin-top: 10px;
+}
+
+/* grid */
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+/* 체크박스 */
+.checkbox-label {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    background: #fff;
+    cursor: pointer;
+}
+
+.checkbox-label input {
+    margin-right: 6px;
+}
+
+/* 내 주변 */
+.nearby-btn {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    font-size: 13px;
+    background: #fff;
+    color: #111827;
+    cursor: pointer;
+}
+
+.nearby-btn.on {
+    background: #2563eb;
+    color: #fff;
+}
+
+/* 푸터 */
+.panel-footer {
+    padding: 16px 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.search-btn {
+    width: 100%;
+    padding: 10px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* small toggle */
+.small-toggle {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #111827;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.small-toggle.active {
+    background: #eef2ff;
+    color: #1d4ed8;
+}
+
+/* ============================= */
+/* 📱 모바일 전용 (카드처럼 띄우기) */
+/* ============================= */
+@media (max-width: 768px) {
+
+    .filter-wrapper {
+    all: unset !important; /* 부모 박스 초기화 → 네모 박스 제거 */
+  }
+  .oil-panel {
+    position: absolute;
+    top: 100px;
+    left: 6px;
+    width: 240px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    z-index: 2000;
+    padding: 12px;
+
+    display: flex;
+    flex-direction: column;
+    height: auto;          /* 🔥 높이는 내용만큼 */
+
+    /* 슬라이드 효과 */
+    transform: translateX(-110%);   /* 기본 상태: 화면 밖 */
+    transition: transform 0.3s ease-in-out;
+  }
+
+  /* 패널이 열렸을 때 */
+  .oil-panel.open {
+    transform: translateX(0);  /* 화면 안으로 들어옴 */
+  }
+
+  .panel-body {
+    max-height: 40vh;
+    overflow-y: auto;
+    margin-bottom: 12px;   /* 🔥 버튼과 본문 사이 간격 */
+  }
+
+  .panel-footer {
+    border-top: none;      /* 🔥 테두리 제거 */
+    padding: 0;            /* 🔥 불필요한 여백 제거 */
+  }
+
+  .search-btn {
+    width: 100%;
+    padding: 8px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+}
