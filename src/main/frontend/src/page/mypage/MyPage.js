@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import './MyPage.css';
 import EditInfo from "./EditInfo";
 import axios from "axios";
@@ -6,11 +6,13 @@ import { useNavigate } from "react-router-dom";
 import CarRegist from "./CarRegist";
 import ReviewList from "./ReviewList";
 import FavList from "./FavList";
+import { UserContext } from "../contexts/UserContext";
 
-function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
+function MyPage({ setIsLogin, setIsLoginModalOpen }) {
+
+    const { userInfo, setUserInfo } = useContext(UserContext);
 
     const navigate = useNavigate();
-
     const token = localStorage.getItem("token");
 
     const [deletePw, setDeletePw] = useState("");
@@ -22,10 +24,35 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
     const [reviewCount, serReviewCount] = useState(0);
     const [favStations, setFavStations] = useState([]);
 
+    // 토큰 만료 시 setIsLoginModalOpen 오류 해결용
+    useEffect(() => {
+        const interceptor = axios.interceptors.response.use(
+            response => response,
+            error => {
+                if (error.response && error.response.status === 401) {
+                    // 토큰 만료 처리
+                    localStorage.removeItem("token");
+                    setIsLogin(false);
+                    alert("세션이 만료되었습니다. 다시 로그인해주세요.");
+                    if (typeof setIsLoginModalOpen === "function") {
+                        setIsLoginModalOpen(true);
+                    }
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        return () => {
+            axios.interceptors.response.eject(interceptor);
+        };
+    }, [setIsLoginModalOpen]);
+
     useEffect(() => {
         if (!token) {
             setIsLogin(false);
-            setIsLoginModalOpen(true);
+            if (typeof setIsLoginModalOpen === "function") {
+                setIsLoginModalOpen(true);
+            }
             return;
         }
 
@@ -43,7 +70,9 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
                 console.log(err);
                 setIsLogin(false);
                 localStorage.removeItem("token");
-                setIsLoginModalOpen(true);
+                if (typeof setIsLoginModalOpen === "function") {
+                    setIsLoginModalOpen(true);
+                }
             });
     }, [token, navigate]);
 
@@ -90,6 +119,7 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
     const handleLogout = () => {
         if (window.confirm("정말 로그아웃하시겠습니까?")) {
             localStorage.removeItem("token");
+            setUserInfo({});
             setIsLogin(false);
             navigate("/");
         }
@@ -153,9 +183,9 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
 
                 <div className="mypage-right">
                     <div>
-                        <EditInfo userInfo={userInfo} setUserInfo={setUserInfo} />
                         <CarRegist cars={cars} setCars={setCars} userInfo={userInfo} fetchCars={fetchCars} />
                         <div className="mypage-fav-review">
+                            <EditInfo userInfo={userInfo} setUserInfo={setUserInfo} />
                             <FavList stations={favStations} />
                             <ReviewList />
                         </div>

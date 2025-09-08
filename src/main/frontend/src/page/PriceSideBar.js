@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useContext } from "react";
 import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple} from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom"; 
 import { handleMyInfoClick } from "./utils/authHelpers";
+import { UserContext } from "./contexts/UserContext";
 
 export default function PriceSideBar({ isLogin, setIsLoginModalOpen }) {
     const navigate = useNavigate();   // ✅ 훅 선언
@@ -13,6 +14,8 @@ export default function PriceSideBar({ isLogin, setIsLoginModalOpen }) {
         { icon: <FontAwesomeIcon icon={faShare} style={{ fontSize: "24px" }} />, label: "목적지", onClick: () => navigate("/route") },
         { icon: <FontAwesomeIcon icon={faChartSimple} style={{ fontSize: "24px" }} />, label: "유가정보" ,onClick: ()=> navigate("/oilPrice")},
     ];
+
+    const { userInfo } = useContext(UserContext);
 
     return (
         <aside
@@ -92,7 +95,8 @@ export default function PriceSideBar({ isLogin, setIsLoginModalOpen }) {
                     alignItems: "center",
                 }}
             >
-                <DockButton label="내정보" onClick={() => handleMyInfoClick({ isLogin, setIsLoginModalOpen, navigate })}>
+                <DockButton label={userInfo?.name ? `${userInfo.name}님` : "내정보"}
+                            onClick={() => handleMyInfoClick({ isLogin, setIsLoginModalOpen, navigate })}>
                     <User style={{ width: "1.75rem", height: "1.75rem" }} />
                 </DockButton>
             </div>

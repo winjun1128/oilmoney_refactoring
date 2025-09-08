@@ -1,14 +1,16 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import MyPage from "../../page/mypage/MyPage";
 import MyPageSideBar from "./MyPageSideBar";
 import LoginModal from "../auth/LoginModal";
+import { UserContext } from "../contexts/UserContext";
+import axios from "axios";
 
 export default function MyPageWrapper() {
 
     const token = localStorage.getItem("token");
 
+    const { userInfo, setUserInfo } = useContext(UserContext);
     const [isLogin, setIsLogin] = useState(!!token);
-    const [userInfo, setUserInfo] = useState({});
     const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
     useEffect(() => {
@@ -17,6 +19,15 @@ export default function MyPageWrapper() {
         }
     }, [isLogin, setIsLoginModalOpen]);
 
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        axios.get("/mypage", { headers: { Authorization: `Bearer ${token}` } })
+            .then(res => setUserInfo(res.data.userInfo))
+            .catch(err => console.error(err));
+    }, [setUserInfo]);
+
     return (
         <div style={{ display: "flex", height: "100vh" }}>
             <div style={{ width: "80px", background: "#f3f4f6", borderRight: "1px solid black" }}>
@@ -24,7 +35,7 @@ export default function MyPageWrapper() {
             </div>
 
             {isLogin ? (
-                <MyPage userInfo={userInfo} setUserInfo={setUserInfo} setIsLogin={setIsLogin} />
+                <MyPage setIsLogin={setIsLogin} />
             ) : (
                 <LoginModal
                     isOpen={isLoginModalOpen}

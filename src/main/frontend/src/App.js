@@ -2,9 +2,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MyPageWrapper from "./page/mypage/MyPageWrapper.js";
 import Page from './page/Page';
 import RouteMapPage from './page/RouteMapPage';
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Auth from "./page/auth/Auth.js";
 import OilPrice from "./page/OilPrice.js";
+import { UserContext } from "./page/contexts/UserContext.js";
+import axios from "axios";
 
 
 
@@ -15,25 +17,40 @@ function App() {
   const [isSignUpModalOpen, setIsSignUpModalOpen] = useState(false);
   const [userInfo, setUserInfo] = useState({});
 
-  return (
-    <BrowserRouter>
-      <Auth
-        isLoginModalOpen={isLoginModalOpen}
-        setIsLoginModalOpen={setIsLoginModalOpen}
-        isSignUpModalOpen={isSignUpModalOpen}
-        setIsSignUpModalOpen={setIsSignUpModalOpen}
-        setIsLogin={setIsLogin}
-        setUserInfo={setUserInfo}
-      />
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-      <Routes>
-        <Route path="/" element={<Page isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />} />
-        <Route path="/route" element={<RouteMapPage isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />} />
-        <Route path="/mypage" element={<MyPageWrapper isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen}
-          setIsLogin={setIsLogin} />} />
-        <Route path="/oilPrice" element={<OilPrice isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen}/>} />
-      </Routes>
-    </BrowserRouter>
+    axios.get("/mypage", { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => setUserInfo(res.data.userInfo))
+      .catch(err => {
+        console.log(err);
+        localStorage.removeItem("token");
+        setUserInfo({});
+      });
+  }, []);
+
+  return (
+    <UserContext.Provider value={{ userInfo, setUserInfo }}>
+      <BrowserRouter>
+        <Auth
+          isLoginModalOpen={isLoginModalOpen}
+          setIsLoginModalOpen={setIsLoginModalOpen}
+          isSignUpModalOpen={isSignUpModalOpen}
+          setIsSignUpModalOpen={setIsSignUpModalOpen}
+          setIsLogin={setIsLogin}
+          setUserInfo={setUserInfo}
+        />
+
+        <Routes>
+          <Route path="/" element={<Page isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />} />
+          <Route path="/route" element={<RouteMapPage isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />} />
+          <Route path="/mypage" element={<MyPageWrapper isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen}
+            setIsLogin={setIsLogin} />} />
+          <Route path="/oilPrice" element={<OilPrice isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />} />
+        </Routes>
+      </BrowserRouter>
+    </UserContext.Provider>
   );
 }
 

@@ -105,7 +105,7 @@ function CarRegist({ cars, setCars, userInfo, fetchCars }) {
 
     return (
         <>
-            <div className="edit-info-container">
+            <div className="car-container">
                 {!isRegisting ? (
                     <>
                         <div className='edit-title'>

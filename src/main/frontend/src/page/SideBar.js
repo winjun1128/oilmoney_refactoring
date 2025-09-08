@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useContext, useEffect } from "react";
 import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { handleMyInfoClick } from "./utils/authHelpers";
 import "./SideBar.css";   // ✅ 외부 스타일 파일 연결
+import { UserContext } from "./contexts/UserContext";
 
 export default function SideBar({ onFilterChange, isLogin, setIsLoginModalOpen }) {
     const navigate = useNavigate();
@@ -14,6 +15,8 @@ export default function SideBar({ onFilterChange, isLogin, setIsLoginModalOpen }
         { icon: <FontAwesomeIcon icon={faShare} />, label: "목적지", action: () => navigate("/route") },
         { icon: <FontAwesomeIcon icon={faChartSimple} />, label: "유가정보", action: () => navigate("/oilPrice") },
     ];
+
+    const { userInfo } = useContext(UserContext);
 
     return (
         <aside className="sidebar">
@@ -34,7 +37,7 @@ export default function SideBar({ onFilterChange, isLogin, setIsLoginModalOpen }
 
             {/* ✅ 아래쪽 (내정보) */}
             <div className="sidebar-bottom">
-                <DockButton label="내정보" onClick={() => handleMyInfoClick({ isLogin, setIsLoginModalOpen, navigate })}>
+                <DockButton label={userInfo?.name ? `${userInfo.name}님` : "내정보"} onClick={() => handleMyInfoClick({ isLogin, setIsLoginModalOpen, navigate })}>
                     <User />
                 </DockButton>
             </div>

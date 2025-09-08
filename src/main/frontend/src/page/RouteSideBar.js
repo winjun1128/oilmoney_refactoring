@@ -1,13 +1,15 @@
-import React from "react";
+import React, { useContext } from "react";
 import { User } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { handleMyInfoClick } from "./utils/authHelpers";
+import { UserContext } from "./contexts/UserContext";
 import "./RouteSideBar.css";
 
 export default function RouteSideBar({ isLogin, setIsLoginModalOpen }) {
   const navigate = useNavigate();
+  const { userInfo } = useContext(UserContext);
 
   const itemsTop = [
     { icon: <FontAwesomeIcon icon={faGasPump} className="icon" />, label: "주유소", onClick: () => navigate("/") },
@@ -39,7 +41,7 @@ export default function RouteSideBar({ isLogin, setIsLoginModalOpen }) {
       {/* 아래쪽 (내정보) */}
       <div className="root-dock__bottom">
         <DockButton
-          label="내정보"
+          label={userInfo?.name ? `${userInfo.name}님` : "내정보"}
           onClick={() => handleMyInfoClick({ isLogin, setIsLoginModalOpen, navigate })}
           iconOverride={<User className="icon" aria-hidden />}
         />
