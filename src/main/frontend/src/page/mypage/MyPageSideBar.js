@@ -5,11 +5,9 @@ import { faGasPump, faChargingStation, faShare, faChartSimple } from "@fortaweso
 import { useNavigate } from "react-router-dom";
 import { handleMyInfoClick } from "../utils/authHelpers";
 
-export default function MyPageSideBar({ isLogin, setIsLoginModalOpen }) {
+export default function MyPageSideBar({ userInfo, setIsLoginModalOpen }) {
 
     const navigate = useNavigate();
-
-    console.log("setIsLoginModalOpen", setIsLoginModalOpen);
 
     const itemsTop = [
         { icon: <FontAwesomeIcon icon={faGasPump} style={{ fontSize: "24px" }} />, label: "주유소", onClick: () => navigate("/") },
@@ -96,7 +94,8 @@ export default function MyPageSideBar({ isLogin, setIsLoginModalOpen }) {
                     alignItems: "center",
                 }}
             >
-                <DockButton label="내정보" onClick={() => handleMyInfoClick({ setIsLoginModalOpen, navigate })}>
+                <DockButton label={userInfo?.name ? `${userInfo.name}님` : "내정보"}
+                            onClick={() => handleMyInfoClick({ setIsLoginModalOpen, navigate })}>
                     <User style={{ width: "1.75rem", height: "1.75rem" }} />
                 </DockButton>
             </div>

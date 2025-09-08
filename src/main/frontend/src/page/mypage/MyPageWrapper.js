@@ -20,7 +20,7 @@ export default function MyPageWrapper() {
     return (
         <div style={{ display: "flex", height: "100vh" }}>
             <div style={{ width: "80px", background: "#f3f4f6", borderRight: "1px solid black" }}>
-                <MyPageSideBar isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />
+                <MyPageSideBar isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen}  userInfo={userInfo} setUserInfo={setUserInfo}/>
             </div>
 
             {isLogin ? (
