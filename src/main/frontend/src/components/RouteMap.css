@@ -304,7 +304,7 @@
    - 위치, 크기, 여백, 타이포 한 번에 컨트롤
    - 필요 변수만 expose
    ================================ */
-@media (max-width: 640px){
+@media (max-width: 768px){
   :root{
     --mobile-gap: 10px;                        /* 화면 상단 여백 */
     --dock-h: 64px;                            /* 하단 탭바 높이 */
@@ -377,7 +377,7 @@
 
   /* 지도 오버레이는 기존 값 유지 – 필요 시만 조절 */
   .map-summary{ left: 6px; right: 8px; bottom: calc(var(--dock-h) + 8px); top: auto; }
-  .my-location-btn{ right: 60px; bottom: calc(var(--dock-h) + 16px); }
+  .my-location-btn{ right: 16px; bottom: calc(var(--dock-h) + 32px); }
   .fab{ right: 12px; bottom: calc(var(--dock-h) + 16px); }
 }
 
