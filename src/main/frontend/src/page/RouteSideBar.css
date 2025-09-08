@@ -1,0 +1,128 @@
+/* 컨테이너 */
+.root-dock {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  width: 80px;
+  height: 100vh;
+  border-right: 1px solid #e5e7eb; /* gray-200 */
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 상단 영역 */
+.root-dock__top {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 로고 */
+.root-dock__logo {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-top: 10px;
+  margin-bottom: 30px;
+}
+.root-dock__logo img {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  display: block;
+}
+
+/* 네비 */
+.root-dock__nav {
+  margin-top: 0.5rem;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 하단 영역 */
+.root-dock__bottom {
+  margin-top: auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 버튼 */
+.dock-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+  color: #1f2937; /* gray-800 */
+  background: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  transition: color 0.2s, background-color 0.2s;
+}
+.dock-item:hover {
+  color: #2563eb; /* blue-600 */
+  background-color: #eff6ff; /* blue-50 */
+}
+.dock-item:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+
+/* 아이콘/라벨 */
+.icon-wrap {
+  line-height: 1;
+}
+.icon {
+  width: 24px;
+  height: 24px;
+  display: inline-block;
+}
+.label {
+  font-size: 15px;
+  margin-top: 0.25rem;
+  text-align: center;
+}
+
+/**************반응형************/
+/* 기본은 왼쪽(현재 스타일 유지) */
+
+/* 1024px 이하에서 자동으로 하단바로 전환 */
+@media (max-width: 1024px) {
+  .root-dock {
+    left: 0; right: 0; bottom: 0; top: auto;
+    width: 100vw; height: 64px;
+    border-top: 1px solid #e5e7eb; border-right: none;
+    display: flex; flex-direction: row;
+    align-items: stretch; justify-content: space-between;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .root-dock__top {
+    flex: 1 1 auto; min-width: 0; display: flex; align-items: center;
+    overflow-x: auto; overflow-y: hidden;
+  }
+  .root-dock__logo { display: none; }
+  .root-dock__nav {
+    margin-top: 0; width: 100%;
+    display: flex; flex-direction: row;
+    justify-content: space-evenly; gap: 0;
+  }
+  .root-dock__bottom { margin-top: 0; width: auto; display: flex; align-items: center; padding: 0 8px; }
+  .dock-item { padding-top: .5rem; padding-bottom: .25rem; min-width: 72px; }
+  .icon { width: 22px; height: 22px; }
+  .label { font-size: 12px; margin-top: 2px; }
+}
