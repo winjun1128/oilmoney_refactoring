@@ -754,6 +754,7 @@ const toggleFavForStation = async (station, mode) => {
       o.marker.setImage(getMarkerImage(o.type, kakao, starred, scale));
       o.marker.setZIndex(isActive ? 9999 : baseZ(o.type));
     });
+    applyFiltersToMarkers(); // ★ 게이트 OFF에서도 즐겨찾기 즉시 보이게
   }, [favSet,isAuthed]);
 
   // 사이드바 토글 이벤트
@@ -1444,13 +1445,11 @@ useEffect(() => { markersVisibleRef.current = markersVisible; }, [markersVisible
 
 const showMarkers = () => { markersVisibleRef.current = true; setMarkersVisible(true); };
 const hideMarkers = () => {
-  markersVisibleRef.current = false; setMarkersVisible(false);
-  // 즉시 모두 숨김
-  allMarkersRef.current.forEach(o => {
-    o.marker.setMap(null);
-    if (o.overlay) o.overlay.setMap(null);
-  });
-};
+   markersVisibleRef.current = false;
+   setMarkersVisible(false);
+   // ★ 게이트 OFF 상태에서 ‘즐겨찾기만 유지’ 로직 적용
+   applyFiltersToMarkers();
+ };
 
   /* ───────── Kakao SDK + 초기 마커 로드 ───────── */
   useEffect(() => {
@@ -2073,8 +2072,9 @@ const statIdsOfSite = (site) =>
       const starred0 = isLoggedIn() && !!(favKey && favSetRef.current?.has(favKey));
       const label = it.chargerCount ? `${it.name || "EV"} (${it.chargerCount}기)` : (it.name || "EV");
 
-     const { marker, overlay } = addLabeledMarker({
-   map: markersVisibleRef.current ? mapRef.current : null, kakao, type: "ev",
+     const wantMap = (markersVisibleRef.current || starred0) ? mapRef.current : null;
+ const { marker, overlay } = addLabeledMarker({
+   map: wantMap, kakao, type: "ev",
         lat: it.lat, lng: it.lng, name: label,
         labelAlways: LABEL_ALWAYS,
         starred: starred0,
@@ -2327,8 +2327,9 @@ const statIdsOfSite = (site) =>
     const favKey = favKeyOf(gs, "oil");
     const starred0 = isLoggedIn() && !!(favKey && favSetRef.current?.has(favKey));
 
-    const { marker, overlay } = addLabeledMarker({
-   map: markersVisibleRef.current ? mapRef.current : null, kakao, type: markerType,
+    const wantMap = (markersVisibleRef.current || starred0) ? mapRef.current : null;
+ const { marker, overlay } = addLabeledMarker({
+   map: wantMap, kakao, type: markerType,
       lat: gs.lat, lng: gs.lng,
       name: gs.name || (cat === "lpg" ? "LPG" : "주유소"),
       labelAlways: LABEL_ALWAYS,
@@ -2539,12 +2540,15 @@ const statIdsOfSite = (site) =>
   const applyFiltersToMarkers = () => {
     // ⛔ 경로&표시 이전엔 전부 숨김
   if (!markersVisibleRef.current) {
-    allMarkersRef.current.forEach(o => {
-      o.marker.setMap(null);
-      if (o.overlay) o.overlay.setMap(null);
-    });
-    return;
-  }
+   const map = mapRef.current;
+   const favOn = (o) => isLoggedIn() && !!(o.favKey && favSetRef.current?.has(o.favKey));
+   allMarkersRef.current.forEach(o => {
+     const show = favOn(o); // ★ 즐겨찾기만 보이게
+     o.marker.setMap(show ? map : null);
+     if (o.overlay) o.overlay.setMap(show ? (LABEL_ALWAYS ? map : null) : null);
+   });
+   return;
+ }
     const arr = allMarkersRef.current;
     const ctx = routeCtxRef.current;
 
