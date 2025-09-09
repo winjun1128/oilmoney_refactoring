@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?> 
+<!DOCTYPE mapper PUBLIC
+		   "-//mybatis.org//DTD Mapper 3.0//EN" 
+		   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="record_mapper">
+
+	<!-- 주유/충전 기록 -->
+	<insert id="insertRecord" parameterType="EnergyRecord" keyProperty="recordId">
+		INSERT INTO t_energy_record (record_id, car_id, recode_date, station, amount, price, fuel_type)
+		VALUES (t_energy_record_seq.NEXTVAL, #{carId}, systimestamp, #{station}, #{amount}, #{price}, #{fuelType})
+	</insert>
+
+	<select id="selectRecordsByCarId" parameterType="int" resultType="EnergyRecord">
+		SELECT record_id, car_id, recode_date as recodeDate, station, amount, price, fuel_type
+		FROM t_energy_record
+		WHERE car_id = #{carId}
+		ORDER BY recode_date DESC
+	</select>
+
+	<delete id="deleteRecord" parameterType="int">
+		DELETE FROM t_energy_record
+		WHERE record_id = #{recordId}
+	</delete>
+	
+</mapper>

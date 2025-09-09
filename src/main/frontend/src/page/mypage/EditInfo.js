@@ -75,7 +75,7 @@ function EditInfo({ userInfo, setUserInfo }) {
                             <span className='edit-title-text'>개인정보</span>
                             <button type="button" className='edit-button' onClick={() => setIsEditing(true)}>수정</button>
                         </div>
-                        <div className='edit-contents'>
+                        <div className='edit-info-contents'>
                             <span>이름 : {userInfo.name}</span>
                             <span>아이디 : {userInfo.userId}</span>
                             <span>이메일 : {userInfo.email}</span>
@@ -108,13 +108,6 @@ function EditInfo({ userInfo, setUserInfo }) {
                                     <input type="text" value={addr} onChange={(e) => setAddr(e.target.value)} />
                                 </div>
                             </div>
-                            {/* <div>
-                                <div className='edit-profile'>
-                                    <p>프로필 사진</p>
-                                    <img src={profilePreview} alt="프로필 미리보기" style={{ width: 120, height: 120, borderRadius: '50%', marginBottom: 15 }} /><br></br>
-                                    <input type="file" accept="image/*" onChange={handleProfileChange} />
-                                </div>
-                            </div> */}
                         </div>
                     </form>
                 )}

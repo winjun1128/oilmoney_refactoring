@@ -58,13 +58,13 @@ public class MyPageController {
 			users.setProfileUrl("/images/mypage/profile.jpg");
 		}
 
-		System.out.println("[Controller] 조회한 사용자 정보 : " + users);
-		System.out.println("[Controller] 등록 차량 : " + cars);
-		System.out.println("[Controller] 등록 차량 수 : " + carCount);
-		System.out.println("[Controller] 즐겨찾기 : " + stationInfo);
-		System.out.println("[Controller] 즐겨찾기 갯수 : " + favCount);
-
-		System.out.println("[Controller] 리뷰 갯수 : " + reviewCount);
+//		System.out.println("[Controller] 조회한 사용자 정보 : " + users);
+//		System.out.println("[Controller] 등록 차량 : " + cars);
+//		System.out.println("[Controller] 등록 차량 수 : " + carCount);
+//		System.out.println("[Controller] 즐겨찾기 : " + stationInfo);
+//		System.out.println("[Controller] 즐겨찾기 갯수 : " + favCount);
+//
+//		System.out.println("[Controller] 리뷰 갯수 : " + reviewCount);
 
 		Map<String, Object> response = new HashMap<>();
 		response.put("userInfo", users != null ? users : new Users());
@@ -165,9 +165,14 @@ public class MyPageController {
 	}
 	
 	@GetMapping("/cars")
-	public List<Car> getCarsByUserId(@RequestParam String userId) {
-        return usersService.getCarsByUserId(userId);
-    }
+	public List<Car> getCarsByUserId(HttpServletRequest request) {
+	    String token = JwtProvider.extractToken(request);
+	    if (token == null || !JwtProvider.isValidToken(token)) {
+	        return List.of(); // 또는 401 처리
+	    }
+	    String userId = JwtProvider.getUserIdFromToken(token);
+	    return usersService.getCarsByUserId(userId);
+	}
 
 //	즐겨찾기 목록
 	@PostMapping("/favorites")

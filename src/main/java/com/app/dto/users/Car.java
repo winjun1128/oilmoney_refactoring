@@ -14,4 +14,7 @@ public class Car {
 	String carType;
 	String regDate;
 	String isMain;
+	
+	String chargerType;
+	String chargerTypeNm;
 }

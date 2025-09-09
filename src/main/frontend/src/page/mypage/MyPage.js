@@ -196,7 +196,7 @@ function MyPage({ setIsLogin, setIsLoginModalOpen }) {
                     <div className="mypage-left-profile">
                         <div className="profile-img-wrapper">
                             <img src={profilePreview} alt="프로필 사진" className="mypage-profile-img" />
-                            <button className="edit-icon" onClick={handleEditProfile}>✏️</button>
+                            <button className="edit-icon" onClick={handleEditProfile}><img src="/images/mypage/pencil_color.png" alt="연필" id="edit-image"/></button>
                             <input type="file" id="profileFileInput" style={{ display: "none" }} accept="image/*" onChange={handleProfileChange} />
                         </div>
                         <span>{userInfo.name}</span>
@@ -218,7 +218,7 @@ function MyPage({ setIsLogin, setIsLoginModalOpen }) {
                             </div>
                         </div>
                         <div className="mypage-menu-tabs">
-                            <img src="/images/mypage/pencil_color.png" alt="연필" />
+                            <img src="/images/mypage/review.png" alt="리뷰" />
                             <div className="mypage-menu-tab">
                                 <span>내가 쓴 리뷰</span>
                                 <span className="mypage-count">{reviewCount}</span>

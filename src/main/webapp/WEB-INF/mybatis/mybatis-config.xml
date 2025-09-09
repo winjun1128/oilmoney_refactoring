@@ -19,6 +19,7 @@
 		<typeAlias type="com.app.dto.users.EmailCode" alias="EmailCode"/>	
 		<typeAlias type="com.app.dto.users.Car" alias="Car"/>
 		<typeAlias type="com.app.dto.users.StationInfo" alias="StationInfo"/>
+		<typeAlias type="com.app.dto.users.EnergyRecord" alias="EnergyRecord"/>
 	</typeAliases>
 		
 		
