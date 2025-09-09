@@ -10,7 +10,7 @@ export default function AllAvgPrice({ activeTab, setActiveTab, selectedSidoName,
     const [selectedIndex, setSelectedIndex] = useState(PINS.findIndex(p => p.name === selectedSidoName));
     const [allAvgData, setAllAvgData] = useState([]);   // 전국 평균
     const [sidoData, setSidoData] = useState([]);       // 지역별 데이터
-    const tabs = ['고급휘발유', '휘발유', '경유', 'LPG'];
+    const tabs = ['휘발유', '고급휘발유', '경유', 'LPG'];
     const prodMap = {
         '경유': '자동차용경유',
         'LPG': '자동차용부탄',
@@ -57,12 +57,12 @@ export default function AllAvgPrice({ activeTab, setActiveTab, selectedSidoName,
     const allAvgItem = allAvgFiltered[0];
 
     // 선택 지역 데이터 필터링
-    const sidoFiltered = sidoData.filter(item => 
+    const sidoFiltered = sidoData.filter(item =>
         item.SIDONM === selectedSidoName &&
         ((selectedFuel === "휘발유" && item.PRODCD === "B027") ||
-         (selectedFuel === "고급휘발유" && item.PRODCD === "B034") ||
-         (selectedFuel === "경유" && item.PRODCD === "D047") ||
-         (selectedFuel === "LPG" && item.PRODCD === "K015"))
+            (selectedFuel === "고급휘발유" && item.PRODCD === "B034") ||
+            (selectedFuel === "경유" && item.PRODCD === "D047") ||
+            (selectedFuel === "LPG" && item.PRODCD === "K015"))
     );
     const sidoItem = sidoFiltered[0];
 
@@ -71,6 +71,7 @@ export default function AllAvgPrice({ activeTab, setActiveTab, selectedSidoName,
 
             {/* 전국 평균 */}
             <h2 className="card-title">전국 평균 유가정보</h2>
+            <hr className="line" />
             <div className="fuel-tabs">
                 {tabs.map(tab => (
                     <button
@@ -80,7 +81,14 @@ export default function AllAvgPrice({ activeTab, setActiveTab, selectedSidoName,
                     >
                         {tab}
                     </button>
+
                 ))}
+                <button
+                    className={'fuel-tab-btn'}
+                    onClick={() => alert("전기차 요금 서비스는 준비중입니다")}
+                >
+                    전기
+                </button>
             </div>
             {allAvgItem && (
                 <div className="price-content">
@@ -100,13 +108,13 @@ export default function AllAvgPrice({ activeTab, setActiveTab, selectedSidoName,
                         <li className="list-item price-item">
                             <span>{selectedFuel}</span>
                             <div className="flip-numbers-container">
-                                <FlipNumbers 
-                                    height={20} 
-                                    width={10} 
-                                    color="black" 
-                                    background="white" 
-                                    play 
-                                    numbers={sidoItem.PRICE.toString()} 
+                                <FlipNumbers
+                                    height={20}
+                                    width={10}
+                                    color="black"
+                                    background="white"
+                                    play
+                                    numbers={sidoItem.PRICE.toString()}
                                 /> 원
                             </div>
                         </li>

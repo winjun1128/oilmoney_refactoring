@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import './components.css';
 import './RegionSelector.css';
+import './line.css';
 
 export default function RegionSelector({ sidoName, selectedFuel }) {
     const regionCodeMap = {
@@ -14,6 +15,19 @@ export default function RegionSelector({ sidoName, selectedFuel }) {
 
     const fuelCodeMap = {
         "휘발유": "B027", "경유": "D047", "고급휘발유": "B034", "LPG": "K015",
+    };
+
+    const iconMap = {
+        SKE: "https://www.opinet.co.kr/images/user/main/img_logo2.jpg",   // SK에너지
+        GSC: "https://www.opinet.co.kr/images/user/main/img_logo3.jpg",   // GS칼텍스
+        HDO: "https://www.opinet.co.kr/images/user/main/img_logo.jpg",   // 현대오일뱅크
+        SOL: "https://www.opinet.co.kr/images/user/main/img_logo4.jpg",   // S-OIL
+        RTE: "https://www.opinet.co.kr/images/user/main/img_logo7.jpg",   // 자영알뜰
+        RTX: "https://www.opinet.co.kr/images/user/main/img_logo7.jpg",   // 고속도로알뜰
+        NHO: "https://www.opinet.co.kr/images/user/main/img_logo11.jpg",   // 농협알뜰
+        ETC: "https://www.opinet.co.kr/images/user/main/img_logo13.jpg",   // 자가상표
+        E1G: "https://www.opinet.co.kr/images/user/main/img_logo10.jpg",   // E1
+        SKG: "https://www.opinet.co.kr/images/user/main/img_logo12.jpg"    // SK가스
     };
 
     const [sigunList, setSigunList] = useState([]);
@@ -70,7 +84,9 @@ export default function RegionSelector({ sidoName, selectedFuel }) {
 
     return (
         <div className="card-container region-selector">
+
             <h2 className="card-title">{sidoName} 지역별 저렴한 주유소 TOP 5</h2>
+            <hr className="line" />
             <select
                 className="sigun-select"
                 value={selectedSigunCode}
@@ -87,7 +103,18 @@ export default function RegionSelector({ sidoName, selectedFuel }) {
                 <ul className="list-container gas-station-list">
                     {gasStationData.map(station => (
                         <li key={station.UNI_ID} className="list-item">
-                            <strong>{station.OS_NM}</strong> - {station.PRICE}원
+                            <strong>
+                                {iconMap[station.POLL_DIV_CD]?.startsWith("http")
+                                    ? <img
+                                        src={iconMap[station.POLL_DIV_CD]}
+                                        alt={station.POLL_DIV_CD}
+                                        style={{ width: "55px", marginRight: "15px", verticalAlign: "middle" }}
+                                    />
+                                    : iconMap[station.POLL_DIV_CD] || "❓"
+                                }
+                                {station.OS_NM}
+                            </strong>
+                            <span>{station.PRICE}원</span>
                         </li>
                     ))}
                 </ul>

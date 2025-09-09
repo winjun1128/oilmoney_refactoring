@@ -6,6 +6,16 @@ import './components.css';
 import './AvgRecentPrice.css';
 
 export default function AvgRecentPrice({ activeFuel }) {
+    
+    // ✅ 시도 코드 맵 추가s
+    const sidoCodeMap = {
+        "서울": "01", "경기": "02", "강원": "03", "충북": "04",
+        "충남": "05", "전북": "06", "전남": "07", "경북": "08",
+        "경남": "09", "부산": "10", "제주": "11", "대구": "14",
+        "인천": "15", "광주": "16", "대전": "17", "울산": "18",
+        "세종": "19"
+    };
+
     const [data, setData] = useState([]);
     const prodNameMap = { B034: '고급휘발유', D047: '경유', B027: '휘발유', K015: 'LPG' };
     const fuelColorMap = { '휘발유': '#4a90e2', '경유': '#ff7300', '고급휘발유': '#8884d8', 'LPG': '#d6bf25ff' };
@@ -33,12 +43,13 @@ export default function AvgRecentPrice({ activeFuel }) {
 
     return (
         <div className="card-container avg-recent-price-card">
-            <h2 className="card-title">1주일간 유가 추이</h2>
+            <h2 className="card-title">일주일 유가 추이</h2>
+            <hr className="line" />
             <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={data} margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" padding={{ left: 20, right: 20 }} />
-                    <YAxis domain={[minPrice , maxPrice ]}/>
+                    <YAxis domain={[minPrice, maxPrice]} />
                     <Tooltip formatter={(value) => `${value.toLocaleString()}원`} />
                     <Legend />
                     {chartKey && (
