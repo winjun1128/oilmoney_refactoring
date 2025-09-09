@@ -1101,7 +1101,7 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
           mapRef.current.setLevel(6);
         }
         myMarkerRef.current?.setPosition(center);
-      } else if (!hadMarkers) {
+      } else {
         // ✅ 일반 필터 검색이면 밀집 중심
         const pts = [];
         drawList.forEach((s0) => {
@@ -1111,11 +1111,29 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
         });
         const bestCenter = findDensestCenterAtLevel(mapRef.current, pts, 6);
         if (bestCenter) {
-          mapRef.current.setCenter(bestCenter);
-          try {
-            mapRef.current.setLevel(6, { animate: false, anchor: bestCenter, anchorAnimate: false });
-          } catch {
-            mapRef.current.setLevel(6);
+          const cur = mapRef.current.getCenter();
+          const distKm = haversineKm(
+            cur.getLat(), cur.getLng(),
+            bestCenter.getLat(), bestCenter.getLng()
+          );
+
+          let shouldRecenter = false;
+
+          if (queryType === "filter") {
+            // 필터 검색일 땐 무조건 검색 결과 중심으로 이동
+            shouldRecenter = true;
+          } else if (queryType === "nearby") {
+            // 내 주변 검색일 땐 기존 조건 유지
+            shouldRecenter = !hadMarkers || distKm > 8;
+          }
+
+          if (shouldRecenter) {
+            mapRef.current.setCenter(bestCenter);
+            try {
+              mapRef.current.setLevel(6, { animate: false, anchor: bestCenter, anchorAnimate: false });
+            } catch {
+              mapRef.current.setLevel(6);
+            }
           }
         }
       }
