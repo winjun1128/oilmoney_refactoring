@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState,useRef } from "react";
 import SideBar from "./SideBar";
 import OilFilterPanel from "./OilFilterPanel";
 import ChargeFilterPanel from "./ChargeFilterPanel";
@@ -8,43 +8,38 @@ import axios from "axios";
 export default function Page({ isLogin, setIsLoginModalOpen }) {
     const [activeFilter, setActiveFilter] = useState(null);
     const [stations, setStations] = useState([]); // ✅ 주유소 검색 결과
+    const latestReqRef = useRef(0);
 
-    // ✅ 위치/반경 기반 기본 검색
-    const handleLocationSearch = (coord, radiusKm) => {
-        axios.post("/api/stations/search", {
-            lat: coord.lat,
-            lon: coord.lon,
-            radius: radiusKm,
-        })
-            .then((res) => setStations(res.data))
-            .catch((err) => console.error(err));
-    };
+    // 1) 내 주변 검색
+const handleLocationSearch = (coord, radiusKm) => {
+  const reqId = ++latestReqRef.current;
+  axios.post("/api/stations/search", { lat: coord.lat, lon: coord.lon, radius: radiusKm })
+    .then((res) => { if (reqId === latestReqRef.current) setStations(res.data); })
+    .catch((err) => console.error(err));
+};
 
     // ✅ 주유소 필터 기반 검색
-    const handleOilFilterSearch = (filters) => {
-        axios.post("/api/stations/search", filters)
-            .then((res) => {
-                console.log(res.data);
-                setStations(res.data);
-            })
-            .catch((err) => console.error(err));
-    };
+const handleOilFilterSearch = (filters) => {
+  const reqId = ++latestReqRef.current;
+  axios.post("/api/stations/search", filters)
+    .then((res) => { if (reqId === latestReqRef.current) setStations(res.data); })
+    .catch((err) => console.error(err));
+};
 
     // ✅ 충전소 필터 기반 검색
     const handleChargeFilterSearch = (filters) => {
-        axios.post("/api/charge/search", filters)
-            .then((res) => {
-                console.log(res.data);
-                setStations(res.data);
-            })
-            .catch(err => console.error(err));
-    };
+  const reqId = ++latestReqRef.current;
+  axios.post("/api/charge/search", filters)
+    .then((res) => { if (reqId === latestReqRef.current) setStations(res.data); })
+    .catch(err => console.error(err));
+};
 
     return (
         <div style={{ display: "flex", height: "100vh" }}>
-            <SideBar onFilterChange={setActiveFilter} isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />
+            <SideBar onFilterChange={setActiveFilter} handleOilFilterSearch={handleOilFilterSearch} isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />
             <div style={{ flex: 1, position: "relative" }}>
                 <OilMap stations={stations} handleLocationSearch={handleLocationSearch} isFilterMode={activeFilter === "oil" || activeFilter === "charge"} />
+                
 
                 <div
                     className={`filter-wrapper ${activeFilter ? "open" : ""}`}

@@ -92,7 +92,16 @@ const oilAvgPairPanel = (gs, { lpgOnly = false } = {}) => {
     ${row("⛽ 휘발유", ag, dg)}${row("🛢 경유", ad, dd)}</div>`;
 };
 
-
+// 두 좌표 사이 거리(km)
+const haversineKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat/2)**2 +
+    Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+};
 
 
 
@@ -222,12 +231,29 @@ const favKeyOf = (station, mode) => {
   return sid ? `ev:${String(sid)}` : `ev@${coordKey(station.lat ?? station.LAT, station.lon ?? station.LON ?? station.lng)}`;
 };
 ////
-export default function OilMap({ stations, handleLocationSearch }) {
+export default function OilMap({ stations, handleLocationSearch,handleOilFilterSearch }) {
   const mapDivRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const myMarkerRef = useRef(null);
   const infoRef = useRef(null);
+
+  // 두 가지 검색 핸들러(객체/옛 방식)를 모두 지원
+  const doFilterSearch = (args) => {
+  if (!args) return;
+  lastQueryRef.current = args?.mode === "nearby"
+    ? { type: "nearby", lat: args.lat, lon: args.lon, radius: Number(args.radius) || 0 }
+    : { type: "filter" };
+
+  if (handleOilFilterSearch) { handleOilFilterSearch(args); return; }
+  if (handleLocationSearch && args?.mode === "nearby") {
+    const { lat, lon, radius } = args;
+    handleLocationSearch({ lat, lon }, Number(radius));
+  }
+};
+
+  const [mapReady, setMapReady] = useState(false);
+  const bootRunRef = useRef(false);
 
   const zoomFillRef = useRef(null);
   const zoomLabelRef = useRef(null);
@@ -239,6 +265,8 @@ export default function OilMap({ stations, handleLocationSearch }) {
   const [selectedCoord, setSelectedCoord] = useState(null);
 
   const [reviewModal, setReviewModal] = useState({ open: false, mode: null, station: null });
+
+  const lastQueryRef = useRef(null);
   // ── 평균유가/차이: RouteMap과 동일 개념
   //const PRICE_DIFF_THRESH = 30;                     // 임계값(원)
   //const BASIS_KEY = "route.priceBasis.v1";
@@ -364,6 +392,63 @@ useEffect(() => {
   })();
 }, []);
 
+useEffect(() => {
+  // 처음 렌더 1회: 토큰으로 즐겨찾기 목록 가져오고, 별마커로 표시되도록 favSet 갱신
+  (async () => {
+    try {
+      const token = getToken(); // localStorage의 JWT
+      if (!token) return;       // 비로그인 시 스킵
+
+      // ⬇⬇⬇ POST 바꾸기 → GET + Authorization 헤더
+      const { data } = await axios.get("/idtoken", {
+        headers: {
+          Authorization: `Bearer ${token}`, // 서버에서 Bearer 제거 후 파싱
+        },
+      });
+      // data: StationDTO[] (stationId / lat / lon 등 포함)
+
+      // 1) 즐겨찾기 키로 변환
+      const keys = (Array.isArray(data) ? data : [])
+        .map((st) => {
+          const id = getOilId(st) || st.stationId;
+          return id ? `oil:${String(id)}` : null;
+        })
+        .filter(Boolean);
+
+      setFavSet(new Set(keys));
+      const k = favStorageKey();
+      if (k) localStorage.setItem(k, JSON.stringify(keys)); // 사용자별 로컬 캐시
+
+      // 2) 지도 뷰 보정(선택)
+      if (window.kakao && mapRef.current && data?.length) {
+        const kakao = window.kakao;
+        const map = mapRef.current;
+        const bounds = new kakao.maps.LatLngBounds();
+        let any = false;
+
+        data.forEach((st) => {
+          const lat = Number(st.lat ?? st.LAT);
+          const lon = Number(st.lon ?? st.LON ?? st.lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+          bounds.extend(new kakao.maps.LatLng(lat, lon));
+          any = true;
+        });
+
+        if (any) {
+          try { map.setLevel(6, { animate: false }); } catch { map.setLevel(6); }
+          map.panTo(bounds.getCenter());
+        }
+      }
+    } catch (err) {
+      console.error("[/idtoken] fetch favorites failed:", err?.response?.data || err);
+    }
+  })();
+
+  return () => {
+    // cleanup 불필요
+  };
+}, []);
+
 
   // 즐겨찾기 토글 (optimistic 업데이트, 실패 시 롤백)
  const toggleFavForStation = async (station, mode) => {
@@ -483,7 +568,7 @@ useEffect(() => {
 useEffect(() => {
   if (!window.kakao || !mapRef.current) return;
   markersRef.current.forEach((m, idx) => {
-    const s0 = stations?.[idx]; if (!s0) return;
+    const s0 = drawList?.[idx]; if (!s0) return;
     const uni = getOilId(s0);
     const extra = uni ? (avgMap.get(uni) || {}) : {};
     const s = { ...s0, uni, stationId: uni, prices: extra.prices || {}, avg: extra.avg || {}, diff: extra.diff || {}, updatedAt: extra.updatedAt };
@@ -565,6 +650,7 @@ useEffect(() => {
       fetchWeather(coord.lat, coord.lon);
       window.kakao.maps.event.addListener(map, "zoom_changed", updateZoomBar);
       updateZoomBar();
+      setMapReady(true); // ✅ 지도 SDK/맵 생성 완료
     };
 
     if (window.kakao?.maps) window.kakao.maps.load(init);
@@ -576,6 +662,17 @@ useEffect(() => {
       document.head.appendChild(script);
     }
   }, []);
+
+  // 지도 준비가 끝나면 최초 1회 '내 주변 3km' 검색 자동 실행
+useEffect(() => {
+  if (!mapReady || bootRunRef.current) return; // StrictMode 중복 방지
+  bootRunRef.current = true;
+
+  const saved = localStorage.getItem("savedCoord");
+  const { lat, lon } = saved ? JSON.parse(saved) : MY_COORD;
+
+  doFilterSearch?.({ mode: "nearby", lat, lon, radius: 3 }); // ← 핵심
+}, [mapReady]);
 
   ////평균유가
   // ✅ 마커 표시
@@ -595,20 +692,31 @@ const normalizeStation = (s0 = {}) => {
   };
 };
 
-  useEffect(() => {
-    if (!window.kakao || !mapRef.current) return;
+// ★ 서버가 반경을 무시해도 프론트에서 한 번 더 걸러준다
+let drawList = stations;
+if (lastQueryRef.current?.type === "nearby") {
+  const { lat: qLat, lon: qLon, radius } = lastQueryRef.current;
+  drawList = stations.filter((s0) => {
+    const s = normalizeStation(s0);
+    if (!Number.isFinite(s.lat) || !Number.isFinite(s.lon)) return false;
+    return haversineKm(s.lat, s.lon, qLat, qLon) <= (radius || 0);
+  });
+}
 
-    console.log('[nearby]', stations.slice(0,3).map(s => ({ name: s.name||s.NAME, id: getOilId(s) })));
+  useEffect(() => {
+    if (!mapReady || !window.kakao || !mapRef.current) return;
+
+    console.log('[nearby]', drawList.slice(0,3).map(s => ({ name: s.name||s.NAME, id: getOilId(s) })));
 
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
-    if (!stations?.length) return;
+    if (!drawList?.length) return;
     const bounds = new window.kakao.maps.LatLngBounds();
     const newMarkers = [];
     const centerCoord = selectedCoord ?? MY_COORD;
 
-    stations.forEach((s0) => {
+    drawList.forEach((s0) => {
        const s = normalizeStation(s0);                 // ← 여기서 통일
        // avgMap에서 평균/차이 붙이기
   const uni   = getOilId(s);
@@ -953,23 +1061,29 @@ const normalizeStation = (s0 = {}) => {
     });
 
     markersRef.current = newMarkers;
-    if (newMarkers.length > 0) {
-      // 현재 표시되는 모든 포인트(lat/lon) 수집
+  if (newMarkers.length > 0) {
+    // 우선 레벨 고정
+    try { mapRef.current.setLevel(6, { animate: false }); } catch { mapRef.current.setLevel(6); }
+
+    if (lastQueryRef.current?.type === "nearby") {
+      // ✅ '내 주변' 검색이면 내 위치를 화면 중앙으로
+      const { lat, lon } = lastQueryRef.current;
+      const center = new window.kakao.maps.LatLng(lat, lon);
+      mapRef.current.setCenter(center);        // panTo 대신 setCenter(무애니메이션)
+      myMarkerRef.current?.setPosition(center);
+    } else {
+      // 일반 필터 검색이면 기존 로직으로 밀집 중심
       const pts = [];
-      stations.forEach((s0) => {
-        const s = { ...s0, stationId: getOilId(s0) || s0.stationId };
+      drawList.forEach((s0) => {
         const lat = Number(s0.lat ?? s0.LAT);
         const lon = Number(s0.lon ?? s0.LON ?? s0.lng);
         if (Number.isFinite(lat) && Number.isFinite(lon)) pts.push({ lat, lon });
       });
-
-      // 레벨 6에서 최다 밀집되는 중심 찾기
       const bestCenter = findDensestCenterAtLevel(mapRef.current, pts, 6);
-      // 레벨 6으로 고정 + 그 중심으로 이동
-      try { mapRef.current.setLevel(6, { animate: false }); } catch { mapRef.current.setLevel(6); }
       if (bestCenter) mapRef.current.panTo(bestCenter);
     }
-  }, [stations, favSet, avgMap, priceBasis]);
+  }
+  }, [mapReady,stations, favSet, avgMap, priceBasis]);
 
   // ✅ 내 위치 이동
   const goMyPosition = () => {

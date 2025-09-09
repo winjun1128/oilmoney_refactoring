@@ -52,22 +52,6 @@
     </where>
 </select>
 
-
-
-<!-- <select id="findNearby" parameterType="map" resultType="com.app.dto.StationDTO">
-    SELECT *
-    FROM T_GAS_STATION
-    WHERE (
-        6371 * 2 * ASIN(
-            SQRT(
-                POWER(SIN(((#{lat} * (ACOS(-1)/180)) - (LAT * (ACOS(-1)/180))) / 2), 2) +
-                COS(#{lat} * (ACOS(-1)/180)) * COS(LAT * (ACOS(-1)/180)) *
-                POWER(SIN(((#{lon} * (ACOS(-1)/180)) - (LON * (ACOS(-1)/180))) / 2), 2)
-            )
-        )
-    ) &lt;= #{radius}
-</select> -->
-
 <select id="findNearby" parameterType="map" resultType="com.app.dto.StationDTO">
   <![CDATA[
     SELECT
@@ -107,6 +91,41 @@
     ORDER BY distance_km ASC
   ]]>
 </select>
+
+<select id="findFavOilStations"
+          parameterType="string"
+          resultType="com.app.dto.StationDTO">
+    SELECT
+      s.UNI_CD          AS stationId,
+      s.NAME            AS name,
+      s.BRAND           AS brand,
+      s.ADDR            AS address,
+
+      /* 아래 컬럼들이 테이블에 있으면 주석 해제해서 같이 매핑해도 됩니다 */
+       s.REGION        AS region, 
+       s.CITY          AS city, 
+       s.LAT           AS lat,    
+       s.LON           AS lon,    
+
+      /* 편의시설/운영 여부 컬럼이 존재한다면 사용 */
+       s.CAR_WASH_YN   AS carWash,    
+       s.CVS_YN        AS store,      
+       s.MAINT_YN      AS repair,     
+       s.SELF_YN       AS self,       
+       s.KPETRO_YN     AS quality,    
+       s.LPG_YN        AS lpgYN,      
+       s.OPEN_24H_YN   AS twentyFour, 
+       s.UPDATE_TIME   AS updateTime  
+
+      /* 필요하면 전화번호 등도 alias로 추가 가능: s.TEL AS tel */
+    FROM FAVORITES f
+    JOIN OIL_STATION s
+      ON s.UNI_CD = REPLACE(TRIM(f.FAV_KEY), 'oil:', '')
+    WHERE f.USER_ID = #{userId}
+      AND f.TYPE = 'oil'
+      AND f.FAV_KEY LIKE 'oil:%'
+    ORDER BY f.ID DESC
+  </select>
 
 
 

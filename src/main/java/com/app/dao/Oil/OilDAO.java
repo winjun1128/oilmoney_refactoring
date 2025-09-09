@@ -12,4 +12,6 @@ public interface OilDAO {
 
 	List<StationDTO> findNearby(Map<String, Object> param);
 
+	List<StationDTO> findFavOilStations(String userId);
+
 }

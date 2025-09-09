@@ -11,4 +11,6 @@ public interface OilService {
 
 	List<StationDTO> findNearby(Double lat, Double lon, Integer radius);
 
+	List<StationDTO> findFavOilStations(String userId);
+
 }
