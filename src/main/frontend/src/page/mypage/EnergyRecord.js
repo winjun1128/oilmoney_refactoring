@@ -37,7 +37,7 @@ function EnergyRecord({ car }) {
             const res = await axios.post(`/${car.carId}/energy`, {
                 station,
                 amount: parseFloat(amount),
-                price: car.fuelType === "전기차" ? 0 : parseFloat(price),
+                price: parseFloat(price),
                 fuelType: car.fuelType
                 
             });
@@ -111,7 +111,7 @@ function EnergyRecord({ car }) {
                                 <td>{record.recodeDate}</td>
                                 <td>{record.station}</td>
                                 <td>{record.amount}</td>
-                                {car.fuelType !== "전기차" && <td>{record.price}</td>}
+                                <td>{record.price}</td>
                                 <td>
                                     <button onClick={() => handleDeleteRecord(record.recordId)}>삭제</button>
                                 </td>
