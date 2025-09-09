@@ -15,10 +15,24 @@ export default function OilDashboard() {
     const [allAvgData, setAllAvgData] = useState([]);
     const [avgRecentData, setAvgRecentData] = useState([]);
     const [sidoPriceData, setSidoPriceData] = useState([]);
-    const [sigunList, setSigunList] = useState([]); // 새로운 상태 추가
-    const [lowerTopData, setLowerTopData] = useState([]); // 새로운 상태 추가
-    
+    const [sigunList, setSigunList] = useState([]);
+    const [lowerTopData, setLowerTopData] = useState([]);
+    const [selectedSidoRecentData, setSelectedSidoRecentData] = useState([]);
+    const [selectedSigunCode, setSelectedSigunCode] = useState('');
 
+    // ✅ Map 객체들을 부모 컴포넌트에 정의
+    const regionCodeMap = {
+        "서울": "01", "경기": "02", "강원": "03", "충북": "04", "충남": "05",
+        "전북": "06", "전남": "07", "경북": "08", "경남": "09", "부산": "10",
+        "제주": "11", "대구": "14", "인천": "15", "광주": "16", "대전": "17",
+        "울산": "18", "세종": "19"
+    };
+
+    const fuelCodeMap = {
+        "휘발유": "B027", "경유": "D047", "고급휘발유": "B034", "LPG": "K015",
+    };
+
+    // ✅ 1. 초기 데이터를 불러오는 훅 (컴포넌트 마운트 시 한 번만 실행)
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
@@ -32,18 +46,15 @@ export default function OilDashboard() {
                 setAvgRecentData(avgRecentRes.data || []);
                 setSidoPriceData(sidoPriceRes.data || []);
             } catch (error) {
-                console.error("데이터 로딩 실패", error);
+                console.error("초기 데이터 로딩 실패", error);
             }
         };
         fetchInitialData();
-    }, []);
+    }, []); 
 
-    const regionCodeMap = { /* ... */ }; // 지도 정보는 여기에 유지
-    const fuelCodeMap = { /* ... */ }; // 유종 정보는 여기에 유지
-
-    // ✅ 시/군 및 주유소 데이터를 가져오는 새로운 useEffect 훅
+    // ✅ 2. 'selectedSidoName'이 변경될 때 시/군 목록을 가져오는 훅
     useEffect(() => {
-        const fetchRegionData = async () => {
+        const fetchSigunData = async () => {
             if (!selectedSidoName) return;
             const regionCode = regionCodeMap[selectedSidoName];
             try {
@@ -51,24 +62,38 @@ export default function OilDashboard() {
                 const sigunData = sigunRes.data.RESULT?.OIL || [];
                 setSigunList(sigunData);
 
-                // 첫 번째 시/군 데이터로 주유소 목록을 가져옴
+                // 시/군 목록을 가져온 후, 첫 번째 시/군 코드로 상태를 업데이트
                 if (sigunData.length > 0) {
-                    const firstSigunCode = sigunData[0].AREA_CD;
-                    const prodcd = fuelCodeMap[selectedFuel];
-                    const lowerTopRes = await axios.get(`/main/oilPrice/lowerTop?area=${firstSigunCode}&prodcd=${prodcd}`);
-                    setLowerTopData(lowerTopRes.data || []);
+                    setSelectedSigunCode(sigunData[0].AREA_CD);
                 } else {
-                    setLowerTopData([]);
+                    setSelectedSigunCode('');
                 }
             } catch (error) {
-                console.error("지역별 데이터 로딩 실패", error);
+                console.error("시/군 데이터 로딩 실패", error);
                 setSigunList([]);
+            }
+        };
+        fetchSigunData();
+    }, [selectedSidoName]); 
+
+    // ✅ 3. 'selectedSigunCode'나 'selectedFuel'이 변경될 때 주유소 목록을 가져오는 훅
+    useEffect(() => {
+        const fetchLowerTopData = async () => {
+            if (!selectedSigunCode || !selectedFuel) {
+                setLowerTopData([]);
+                return;
+            }
+            const prodcd = fuelCodeMap[selectedFuel];
+            try {
+                const lowerTopRes = await axios.get(`/main/oilPrice/lowerTop?area=${selectedSigunCode}&prodcd=${prodcd}`);
+                setLowerTopData(lowerTopRes.data || []);
+            } catch (error) {
+                console.error("주유소 데이터 로딩 실패", error);
                 setLowerTopData([]);
             }
         };
-        fetchRegionData();
-    }, [selectedSidoName, selectedFuel]); // ✅ sidoName과 selectedFuel이 바뀔 때만 실행
-
+        fetchLowerTopData();
+    }, [selectedSigunCode, selectedFuel]);
     return (
         <div className="oil-dashboard-container">
             <div className="dashboard-section-top">
@@ -78,27 +103,28 @@ export default function OilDashboard() {
                     allAvgData={allAvgData} // 데이터 전달
                     selectedSidoName={selectedSidoName}
                     selectedFuel={selectedFuel}
-                    //sidoOilData={sidoOilData}
+                    sidoPriceData={sidoPriceData}
                 />
                 <AvgRecentPrice
                     activeFuel={selectedFuel}
                     avgRecentData={avgRecentData} // 데이터 전달
+                    selectedSidoRecentData={selectedSidoRecentData}
                 />
             </div>
             <div className="dashboard-section-bottom">
                 <SidoPrice
                     selectedSidoName={selectedSidoName}
                     setSelectedSidoName={setSelectedSidoName}
-                    selectedFuel={selectedFuel}
-                    sidoPriceData={sidoPriceData} // 데이터 전달
                 />
                 <RegionSelector
-                    sidoName={selectedSidoName} 
+                    sidoName={selectedSidoName}
                     selectedFuel={selectedFuel}
-                    sigunList={sigunList} // ✅ sigunList와 lowerTopData 전달
+                    sigunList={sigunList}
                     lowerTopData={lowerTopData}
+                    // ✅ props로 Map 객체들을 전달
                     regionCodeMap={regionCodeMap}
                     fuelCodeMap={fuelCodeMap}
+                    setSelectedSigunCode={setSelectedSigunCode}
                 />
             </div>
         </div>
