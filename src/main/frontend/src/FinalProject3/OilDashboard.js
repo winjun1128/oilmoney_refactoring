@@ -77,6 +77,7 @@ export default function OilDashboard() {
                     allAvgData={allAvgData} // 데이터 전달
                     selectedSidoName={selectedSidoName}
                     selectedFuel={selectedFuel}
+                    //sidoOilData={sidoOilData}
                 />
                 <AvgRecentPrice
                     activeFuel={selectedFuel}

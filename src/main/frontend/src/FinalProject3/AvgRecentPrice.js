@@ -8,7 +8,7 @@ import './AvgRecentPrice.css';
 export default function AvgRecentPrice({ activeFuel }) {
     const [data, setData] = useState([]);
     const prodNameMap = { B034: '고급휘발유', D047: '경유', B027: '휘발유', K015: 'LPG' };
-    const fuelColorMap = { '휘발유': '#4a90e2', '경유': '#ff7300', '고급휘발유': '#8884d8', 'LPG': '#88846a' };
+    const fuelColorMap = { '휘발유': '#4a90e2', '경유': '#ff7300', '고급휘발유': '#8884d8', 'LPG': '#d6bf25ff' };
 
     useEffect(() => {
         axios.get('/main/oilPrice/avgrecent')
@@ -33,17 +33,27 @@ export default function AvgRecentPrice({ activeFuel }) {
 
     return (
         <div className="card-container avg-recent-price-card">
-            <h2 className="card-title">전국 유가 추이</h2>
+            <h2 className="card-title">1주일간 유가 추이</h2>
             <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={data} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
+                <LineChart data={data} margin={{ top: 10, right: 30, left: 30, bottom: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis domain={[minPrice, maxPrice]} tickFormatter={formatYAxis} />
+                    <XAxis dataKey="date" padding={{ left: 20, right: 20 }} />
+                    <YAxis domain={[minPrice , maxPrice ]}/>
                     <Tooltip formatter={(value) => `${value.toLocaleString()}원`} />
                     <Legend />
-                    {chartKey && <Line type="monotone" dataKey={chartKey} stroke={fuelColorMap[chartKey]} strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />}
+                    {chartKey && (
+                        <Line
+                            type="monotoneX"
+                            dataKey={chartKey}
+                            stroke={fuelColorMap[chartKey]}
+                            strokeWidth={3}
+                            dot={{ r: 3 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    )}
                 </LineChart>
             </ResponsiveContainer>
+
         </div>
     );
 }
