@@ -13,7 +13,8 @@
   --panel-bg:#fafafa;
   --panel-border:#e6e6e6;
   --text:#222;
-  --text-muted:#6b7280;
+  /* --text-muted:#6b7280; */
+  --text-muted:black;
   --accent:#2b8af7;
   --accent-600:#1e72d4;
 }
@@ -191,67 +192,46 @@
 .icon-btn:active{ transform: translateY(1px); }
 .close-btn{ font-weight: 700; }
 
-/* 경로 안내창 구 버전 */
-.map-summary {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 1000;
-  max-width: min(66vw, 420px);
-  pointer-events: none;
+
+ .map-summary{
+  position:absolute;
+  top:18px; right:18px;
+  z-index:1200;
+  pointer-events:none;
+  /* 데스크탑 폭: 360~560px 범위에서 화면에 맞춰 유연하게 */
+  max-width: clamp(360px, 38vw, 560px);
 }
 
-.map-summary__card {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid #e6e6e6;
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.12);
-  padding: 10px 12px;
-  font-size: 14px;
-  line-height: 1.5;
+.map-summary__card{
+  /* 가독성 강화 */
+  font-size:16px;
+  line-height:1.6;
+  font-weight:600;
+
+  /* 여백/모서리/그림자 */
+  padding:14px 16px;
+  border-radius:14px;
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(0,0,0,.08);
+  box-shadow:0 12px 32px rgba(0,0,0,.18);
+
+  /* 유리느낌(지원 브라우저에서) */
+  -webkit-backdrop-filter: saturate(140%) blur(8px);
+  backdrop-filter: saturate(140%) blur(8px);
+
+  display:grid;
+  gap:8px;
+
+  /* 등장 애니메이션 */
+  animation: mapSummaryIn .18s ease-out;
 }
 
-.map-summary__row + .map-summary__row {
-  margin-top: 4px;
+.map-summary__row{
+  /* 행끼리 더 여유 */
+  margin:0;
+  padding:2px 0;
+  word-break:keep-all;
 }
-
-/* ▷ 경로 안내 박스 크기/글씨 키우기 */
-/* .map-summary {
-  position: absolute;
-  right: 18px;
-  top: 18px;
-  z-index: 10000;
-}
-
-.map-summary__card {
-  --summary-font: 18px;
-  --summary-line: 1.6;
-  --summary-width: 460px;
-
-  font-size: var(--summary-font);
-  line-height: var(--summary-line);
-  min-width: var(--summary-width);
-  max-width: 600px;
-
-  padding: 14px 18px;
-  border-radius: 12px;
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  box-shadow: 0 6px 24px rgba(0,0,0,.15);
-}
-
-.map-summary__row {
-  font-weight: 600;
-  margin: 6px 0;
-}
-
-@media (max-width: 640px) {
-  .map-summary__card {
-    --summary-font: 16px;
-    --summary-width: min(90vw, 380px);
-    padding: 12px 14px;
-  }
-} */
 
 /***************통일 모달*************/
 .info-window { font-size:13px; line-height:1.5; max-width:280px; }
@@ -265,6 +245,55 @@
 .info-flags { margin-top:8px; display:flex; flex-wrap:wrap; gap:6px; }
 .flag { font-size:12px; padding:2px 8px; border-radius:999px; background:#bdc3c7; color:#fff; }
 .flag.on { background:#27ae60; }
+
+
+/* 인포윈도우 툴팁 */
+.info-window { position: relative; overflow: visible; }
+
+.info-window .tt {
+  position: relative;
+  cursor: help;
+}
+
+/* 말풍선 본체 */
+.info-window .tt::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translate(-50%, -8px);
+  display: none;
+  background: rgba(17,17,17,.92);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  max-width: 280px;
+  white-space: normal;
+  word-break: keep-all;
+  box-shadow: 0 6px 16px rgba(0,0,0,.2);
+  z-index: 1000;
+}
+
+/* 말풍선 화살표 */
+.info-window .tt::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 2px);
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(17,17,17,.92);
+  display: none;
+  z-index: 1001;
+}
+
+.info-window .tt:hover::after,
+.info-window .tt:hover::before {
+  display: block;
+}
+
 
 /* === Zoom Bar === */
 /* .zoom-bar{
@@ -299,27 +328,34 @@
 /* ===== 기존(데스크탑) 유지: 좌측 슬라이드 ===== */
 /* (네가 올린 RouteMap.css의 .filter-flyout / .sidebar-card 그대로 둬도 됨) */
 
-/* ===== Mobile: 가운데 떠있는 좌측 슬라이드 카드 ===== */
-@media (max-width: 640px){
+/* ================================
+   📱 RouteMap – 모바일 정리본 (<=640px)
+   - 위치, 크기, 여백, 타이포 한 번에 컨트롤
+   - 필요 변수만 expose
+   ================================ */
+@media (max-width: 768px){
   :root{
-    --dock-h: 64px;                            /* 하단 탭 높이 */
-    --mobile-gap: 10px;                        /* 상/하 여백 */
-    --mobile-panel-w: min(86vw, 320px);        /* 패널 너비 */
-    --safe-top: env(safe-area-inset-top, 0px);
-    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --mobile-gap: 10px;                        /* 화면 상단 여백 */
+    --dock-h: 64px;                            /* 하단 탭바 높이 */
+    --mobile-panel-w: min(86vw, 268px);        /* 패널 너비 */
+    --trim-top: 16px;                          /* '필터' 글자 위치에 맞춰 패널을 더 내리는 값 */
+    --panel-top-pad: 6px;                      /* 카드 내부 상단 패딩 */
+    --route-filter-maxh: 70vh;                 /* 카드 최대 높이 */
+    --route-filter-gap: 8px;                   /* 블록 간 간격 */
+    --route-filter-ctrl-pad: 7px;              /* input/select/버튼 상하 패딩 */
   }
 
-  /* 좌측에서 너비로 슬라이드 + 수직 가운데 정렬 컨테이너 */
+  /* 패널 컨테이너: 좌측에서 슬라이드, 시작 위치 맞춤 */
   .filter-flyout{
     left: 6px;
     right: auto;
-    top: calc(var(--mobile-gap) + var(--safe-top));
-    bottom: calc(var(--dock-h) + var(--mobile-gap) + var(--safe-bottom));
+    top: calc(var(--mobile-gap) + env(safe-area-inset-top,0px) + var(--trim-top));
+    bottom: calc(var(--dock-h) + var(--mobile-gap) + env(safe-area-inset-bottom,0px));
     height: auto;
-    width: 0;                                  /* 닫힘 */
-    display: flex;                             /* 안의 카드 가운데 배치 */
+    width: 0;
+    display: flex;
     flex-direction: column;
-    justify-content: center;                   /* 수직 중앙 */
+    justify-content: center;
     opacity: 0; visibility: hidden; pointer-events: none;
     transition:
       width var(--slide-dur) var(--slide-ease),
@@ -327,137 +363,73 @@
       visibility 0s linear var(--slide-dur);
   }
   .filter-flyout.open{
-    width: var(--mobile-panel-w);              /* 열림 */
+    width: var(--mobile-panel-w);
     opacity: 1; visibility: visible; pointer-events: auto;
   }
 
-  /* 패널 본체: 전체 높이 X, 내부 스크롤 O (가운데 떠 있는 카드) */
+  /* 카드 본체: 컴팩트 + 내부 스크롤 */
   .sidebar-card{
-    height: auto;                              /* 데스크탑 100vh 덮어쓰기 */
-    max-height: min(72vh,
-      calc(100%));                             /* 너무 커지지 않게 제한 */
-    margin: 0;                                 /* 부모가 중앙 정렬 */
+    height: auto;
+    max-height: var(--route-filter-maxh);
+    margin: 0;
     border: 1px solid var(--panel-border);
     border-radius: 12px;
     box-shadow: 0 10px 24px rgba(0,0,0,.15);
-    overflow-y: auto;                          /* 내용 스크롤 */
+    overflow-y: auto;
     overflow-x: hidden;
-    padding-bottom: 10px;
+    padding: var(--panel-top-pad) 12px 8px;    /* 상단 약간, 하단 살짝 */
+    gap: var(--route-filter-gap);
   }
 
-  /* 딤: 탭바 영역은 비워둠(간격 유지) */
-  .filter-dim{
-    position: fixed;
-    left: 0; right: 0;
-    top: calc(var(--mobile-gap) + var(--safe-top));
-    bottom: calc(var(--dock-h) + var(--mobile-gap) + var(--safe-bottom));
-    background: rgba(0,0,0,.35);
-    z-index: 40;
-  }
-
-  /* 모바일 가독성 */
-  .label-row{ flex-direction: column; align-items: stretch; }
-  .label-row__label{ width: auto; }
-  .btn-row{ grid-template-columns: 1fr; }
-  .btn-row.compact{ display: grid; grid-template-columns: 1fr 1fr; }
-
-  /* 지도 오버레이: 탭바 피해서 */
-  .map-summary{ left: 6px; right: 8px; bottom: calc(var(--dock-h) + 8px); top: auto; }
-  .my-location-btn{ right: 60px; bottom: calc(var(--dock-h) + 16px); }
-  .fab{ right: 12px; bottom: calc(var(--dock-h) + 16px); }
-
-  /* 모바일 줌바 숨김 */
-  .zoom-bar{ display: none !important; }
-}
-/*********************딤***************/
-/* PC에선 딤 숨김 */
-.filter-dim{ display:none; }
-
-/* ===== 모바일 전용 ===== */
-@media (max-width: 640px){
-  /* 딤 기본: 보이지 않음 */
-  .filter-dim{
-    position: fixed;
-    left: 0; right: 0;
-    top: calc(var(--mobile-gap,10px) + env(safe-area-inset-top,0px));
-    bottom: calc(var(--dock-h,64px) + var(--mobile-gap,10px) + env(safe-area-inset-bottom,0px));
-    background: rgba(0,0,0,.35);
-    z-index: 40;
-    opacity: 0;
-    pointer-events: none;
-    display: block;                /* 모바일에서만 존재시키고 투명 처리 */
-    transition: opacity .2s ease;
-  }
-
-  /* 패널이 열렸을 때만 딤 활성화 (형제 선택자 & 보조 바디 클래스 둘 다 지원) */
-  .filter-flyout.open + .filter-dim,
-  .filter-flyout.open ~ .filter-dim,
-  body.filter-open .filter-dim{
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  /* 패널 헤더가 스크롤에 따라 함께 올라가도록 sticky 해제 */
+  /* 헤더는 고정 해제(카드 안에서 자연스럽게 스크롤) */
   .sidebar-header{
     position: static;
-    top: auto;
-    z-index: auto;
-    background: transparent;       /* 필요 시 유지하려면 이 줄 제거 */
+    background: transparent;
     border-bottom: 0;
+    padding-bottom: 6px;
+  }
+
+  /* 내부 여백/컨트롤 사이즈 정리 */
+  .form-group{ margin: 0 0 var(--route-filter-gap); }
+  .label-row{ margin: 4px 0 var(--route-filter-gap); }
+  .btn-row{ margin: 4px 0 var(--route-filter-gap); }
+
+  .input,
+  .select,
+  .btn{
+    padding: var(--route-filter-ctrl-pad) 10px;
+    font-size: 12px;
+  }
+
+  /* 모바일에선 딤 제거(카드만 띄움) */
+  .filter-dim{ display: none !important; opacity: 0 !important; pointer-events: none !important; }
+
+  /* 지도 오버레이는 기존 값 유지 – 필요 시만 조절 */
+  .map-summary{ left: 6px; right: 8px; bottom: calc(var(--dock-h) + 8px); top: auto; }
+  .my-location-btn{ right: 16px; bottom: calc(var(--dock-h) + 32px); }
+  .fab{ right: 12px; bottom: calc(var(--dock-h) + 16px); }
+}
+
+
+/* 모바일 최적화 */
+@media (max-width: 768px){
+  .map-summary{
+    top:10px; right:10px; left:10px;
+    max-width: none;            /* 가로 꽉 차게 */
+  }
+  .map-summary__card{
+    font-size:15px;
+    padding:12px 14px;
+    border-radius:12px;
+    box-shadow:0 10px 28px rgba(0,0,0,.16);
   }
 }
 
-/* 모바일에서만 위치 조정 */
-@media (max-width: 640px){
-  :root{
-    --dock-h: 64px;                          /* 하단 탭바 높이 */
-    --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --focus-right: 22px;                     /* 오른쪽 여백 → 내정보 탭 중앙쯤 */
-    --focus-gap: 34px;                       /* 탭바에서 더 띄우는 거리 */
-  }
-
-  /* 원점포커스(필요시 클래스/아이디 교체) */
-  .my-location-btn{
-    position: fixed;                         /* 화면 기준 고정 */
-    right: var(--focus-right) !important;    /* X: 오른쪽으로 */
-    bottom: calc(var(--dock-h) + var(--focus-gap) + var(--safe-bottom)) !important; /* Y: 위로 띄우기 */
-    left: auto !important;
-    top: auto !important;
-    transform: none !important;              /* 가운데 정렬 제거 */
-    z-index: 1000;                           /* 다른 컨트롤 위 */
-  }
+@keyframes mapSummaryIn{
+  from{ opacity:0; transform:translateY(-6px); }
+  to  { opacity:1; transform:none; }
 }
 
-/* === 모바일: 딤 끄기 + 패널 그림자 강화 === */
-@media (max-width: 640px){
-  /* 1) 딤 완전 비활성화 */
-  .filter-dim{
-    display: none !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-    background: transparent !important;
-  }
-
-  /* 2) 패널(카드)에만 그림자 */
-  .sidebar-card{
-    border: 1px solid var(--panel-border);
-    border-radius: 12px;
-    /* 그림자 조금 더 또렷하게 */
-    box-shadow: 0 18px 36px rgba(0,0,0,.22), 0 6px 16px rgba(0,0,0,.14);
-  }
-}
-/* 지도 제스처 통과 */
-#map { touch-action: pan-x pan-y; }
-
-#map .map-summary,
-#map .filter-dim,
-#map .route-overlay { pointer-events: none; }
-
-/* 실제로 눌러야 하는 버튼/마커만 다시 살림 */
-#map .map-summary .map-summary__card,
-.my-location-btn,
-.fab,
-.marker { pointer-events: auto; }
 
 
 

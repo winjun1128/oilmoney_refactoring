@@ -1,5 +1,45 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import "./ChargeFilterPanel.css"; // ✅ 외부 스타일 연결
+
+// ChargeFilterPanel.jsx 상단 import들 아래에 헬퍼 추가
+const inferEvFromCar = (car) => {
+  const fuelRaw = String(
+    car?.fuelType ?? car?.fuel ?? car?.powertrain ?? car?.type ?? ""
+  ).toUpperCase();
+
+  const isEv =
+    fuelRaw.includes("EV") ||
+    fuelRaw.includes("ELECTRIC") ||
+    fuelRaw.includes("전기");
+
+  // 커넥터/방식/출력 추정
+  const plugRaw = String(
+    car?.connector ?? car?.plugType ?? car?.chargeType ?? ""
+  ).toUpperCase();
+  const maxKw = Number(car?.maxKw ?? car?.maxOutput ?? car?.kw ?? 0);
+
+  const methods = new Set();
+  if (plugRaw.includes("CCS") || plugRaw.includes("콤보")) methods.add("DC콤보");
+  if (plugRaw.includes("차데모") || plugRaw.includes("CHADEMO")) methods.add("DC차데모");
+  if (plugRaw.includes("AC3상")) methods.add("AC3상");
+  if (plugRaw.includes("AC완속") || plugRaw.includes("AC")) methods.add("AC완속");
+
+  const chargerTypes = new Set();
+  if (maxKw >= 100) chargerTypes.add("초급속");
+  else if (maxKw >= 50) chargerTypes.add("급속");
+  else if (maxKw > 0) chargerTypes.add("완속");
+
+  // 정보가 모호하면 한국 기본값(DC콤보/급속) 추천
+  if (isEv && methods.size === 0) methods.add("DC콤보");
+  if (isEv && chargerTypes.size === 0) chargerTypes.add("급속");
+
+  return {
+    isEv,
+    method: Array.from(methods),
+    chargerType: Array.from(chargerTypes),
+  };
+};
+
 
 export default function ChargeFilterPanel({ isOpen, handleChargeFilterSearch, onClose }) {
     const [selectedRegion, setSelectedRegion] = useState("44");
@@ -68,6 +108,44 @@ export default function ChargeFilterPanel({ isOpen, handleChargeFilterSearch, on
         console.log("🚀 충전소 필터 payload:", payload);
         handleChargeFilterSearch(payload);
     };
+
+    // ChargeFilterPanel.jsx
+useEffect(() => {
+  (async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const res = await fetch("/mainCar", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",        // ★ JSON 요청 강제
+        },
+      });
+
+      // 혹시 서버가 또 JSON이 아닌 걸 줄 경우 대비한 안전장치 (디버깅용)
+      const ct = res.headers.get("content-type") || "";
+      if (!ct.includes("application/json")) {
+        const t = await res.text();
+        console.warn("[/mainCar] non-JSON response:", t);
+        return; // JSON 아니라면 여기서 종료 (바인딩 회피)
+      }
+
+      const { ok, item: car } = await res.json();
+      if (!ok || !car) return;
+
+      const pref = inferEvFromCar(car); // 이전에 드린 헬퍼
+      if (pref.isEv) {
+        if (pref.method.length) setMethod(pref.method);
+        if (pref.chargerType.length) setChargerType(pref.chargerType);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  })();
+}, []);
+
+
 
     return (
         <div className={`charge-panel ${isOpen ? "open" : ""}`}>

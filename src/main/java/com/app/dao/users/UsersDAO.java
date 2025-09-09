@@ -27,6 +27,7 @@ public interface UsersDAO {
 	
 	int insertMyCar(Car car);
 	List<Car> getCarsByUserId(String userId);
+	Car mainCarByUserId(String userId);
 	int deleteCar(Car car);
 	int setMainCar(int carId);
 	int resetMainCar(String userId);

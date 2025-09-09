@@ -149,6 +149,11 @@ public class UsersDAOImpl implements UsersDAO {
 		return result;
 	}
 
+	@Override
+	public Car mainCarByUserId(String userId) {
+		return sqlSessionTemplate.selectOne("users_mapper.mainCarByUserId",userId);
+	}
+
 	
 
 }

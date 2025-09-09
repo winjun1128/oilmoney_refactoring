@@ -3,6 +3,29 @@ import "./RouteMap.css";
 import { useEffect, useRef, useState } from "react";
 import proj4 from "proj4";
 
+
+// RouteMap.jsx 내부 어디든(컴포넌트 선언 위쪽) 넣어주세요.
+const BasisToggle = ({ active, onClick, children, disabled }) => (
+  <button
+    onClick={disabled ? undefined : onClick}
+    disabled={!!disabled}
+    style={{
+      flex: 1,
+      padding: "8px 10px",
+      borderRadius: 8,
+      border: "1px solid #d1d5db",
+      background: active ? "#eef2ff" : "#fff",
+      color: active ? "#1d4ed8" : "#111827",
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: disabled ? "not-allowed" : "pointer",
+      opacity: disabled ? 0.5 : 1,
+    }}
+  >
+    {children}
+  </button>
+);
+
 // ---- auth helpers (must be above first use) ----
 function getToken() {
   try { return localStorage.getItem("token") || ""; } catch { return ""; }
@@ -45,6 +68,8 @@ const INFOWIN_Z = 20000; // 마커(9999)보다 충분히 큼
 const escapeHtml = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[m]));
 
+// 인포윈도우용 툴팁 스팬
+const tip = (text) => `<span class="tt" title="${escapeHtml(text)}" data-tip="${escapeHtml(text)}">${escapeHtml(text)}</span>`;
 
 ////////////
 /** 원점(홈) 저장 키 & 카카오 스타마커 이미지 */
@@ -112,6 +137,48 @@ const chargerTypeName = (code = "") =>
     "10": "기타",
   }[String(code).padStart(2, "0")] || String(code));
 
+  // 메인카 정보 → 화면 필터로 매핑 (교체 버전)
+const _lc = (s) => String(s || "").toLowerCase();
+
+function inferFiltersFromCar(car = {}) {
+  const fuel = _lc(car.fuelType || car.fuel || car.energy || car.oilType || "");
+  const evRaw =
+    car.chargingType || car.evType || car.chargerType || car.chgerType ||
+    car.chargeSpec || car.chargerTypeNm || "";
+  const evStr = String(evRaw).trim();
+  const ev = _lc(evStr);
+
+  // EV 여부
+  if (fuel.includes("ev") || fuel.includes("전기") || fuel.includes("electric")) {
+    // ① 텍스트 기반 판별
+    let hasDC = /(dc|콤보|combo|차데모|급속|초고속|super|슈퍼)/i.test(ev);
+    let hasAC = /(ac|완속|3상)/i.test(ev);
+
+    // ② 숫자 코드 기반 판별 (예: 07=AC3상, 04/05/09=DC콤보 등)
+    const codes = (evStr.match(/\d{1,2}/g) || []).map(c => c.padStart(2, "0"));
+    const DC_SET = new Set(["01","03","04","05","06","08","09"]); // DC 포함
+    const AC_SET = new Set(["02","03","06","07","08"]);           // AC 포함
+    if (codes.length) {
+      if (codes.some(c => DC_SET.has(c))) hasDC = true;
+      if (codes.some(c => AC_SET.has(c))) hasAC = true;
+    }
+
+    let evType = "any";
+    if (hasDC && hasAC) evType = "combo";
+    else if (hasDC)     evType = "dc";
+    else if (hasAC)     evType = "ac";
+
+    return { cat: "ev", basis: "B027", evType };
+  }
+
+  if (fuel.includes("lpg")) return { cat: "lpg", basis: "K015", evType: "any" };
+  if (fuel.includes("경유") || fuel.includes("diesel"))
+    return { cat: "oil", basis: "D047", evType: "any" };
+
+  return { cat: "oil", basis: "B027", evType: "any" };
+}
+
+
 /* ───────── 숫자/좌표 유틸 ───────── */
 const parseNum = (v) => {
   if (v == null) return NaN;
@@ -160,9 +227,27 @@ const tmToWgs = (x, y) => {
   return null;
 };
 
-/** 브랜드/유종 */
-const brandName = (c) =>
-  ({ SKE: "SK에너지", GSC: "GS칼텍스", HDO: "현대오일뱅크", SOL: "S-OIL", RTX: "자가/고속도로", RTO: "알뜰(농협)", ETC: "기타" }[String(c || "").trim()] || c || "");
+/** 브랜드 표기 (코드/별칭 정규화 + brandGroup 보조) */
+const _bk = (s) => String(s ?? "").trim().toUpperCase();
+const OIL_BRAND_MAP = {
+  // 정식 코드/별칭
+  SKE: "SK에너지", SK: "SK에너지", "SK에너지": "SK에너지",
+  GSC: "GS칼텍스", GS: "GS칼텍스", "GS칼텍스": "GS칼텍스",
+  HDO: "현대오일뱅크", HD: "현대오일뱅크", "현대오일뱅크": "현대오일뱅크",
+  SOL: "S-OIL", "S-OIL": "S-OIL", SOIL: "S-OIL",
+  RTX: "자가/고속도로", "자가": "자가/고속도로", "자영": "자가/고속도로", "고속도로": "자가/고속도로",
+  // 농협/알뜰 계열(여기 포함: NHO)
+  RTO: "알뜰(농협)", NHO: "알뜰(농협)", "NH-OIL": "알뜰(농협)", NH: "알뜰(농협)",
+  "농협": "알뜰(농협)", "알뜰": "알뜰(농협)", "알뜰주유소": "알뜰(농협)",
+  ETC: "기타", "ETC.": "기타", "기타": "기타",
+};
+function brandName(brand, brandGroup) {
+  for (const raw of [brand, brandGroup]) {
+    const k = _bk(raw);
+    if (k && OIL_BRAND_MAP[k]) return OIL_BRAND_MAP[k];
+  }
+  return brand || brandGroup || "";
+}
 const productName = (code) =>
   ({ B027: "휘발유", D047: "경유", B034: "고급휘발유", C004: "등유", K015: "자동차용 LPG" }[String(code || "").trim()] || code || "기타");
 
@@ -351,6 +436,10 @@ const addLabeledMarker = ({ map, kakao, type, lat, lng, name, onClick, labelAlwa
 
 export default function RouteMap() {
   
+  // 화면이 좁으면 모바일로 간주
+const isMobileScreen = () =>
+  (window.matchMedia?.("(max-width: 900px)")?.matches) || (window.innerWidth <= 900);
+
   //로그인
   const [isAuthed, setIsAuthed] = useState(() => isTokenAlive(getToken()));
 
@@ -754,6 +843,7 @@ const toggleFavForStation = async (station, mode) => {
       o.marker.setImage(getMarkerImage(o.type, kakao, starred, scale));
       o.marker.setZIndex(isActive ? 9999 : baseZ(o.type));
     });
+    applyFiltersToMarkers(); // ★ 게이트 OFF에서도 즐겨찾기 즉시 보이게
   }, [favSet,isAuthed]);
 
   // 사이드바 토글 이벤트
@@ -1046,6 +1136,53 @@ useEffect(() => {
     try { setSavedRoutes(await listSavedRoutes()); } catch (e) { console.warn(e); }
   })();
 }, [isAuthed]);
+
+
+// 메인카 읽어서 필터 패널 자동 바인딩
+useEffect(() => {
+  let ignore = false;
+  (async () => {
+    try {
+      if (!isAuthed) return; // 로그인일 때만 시도
+      const token = getToken();
+      const r = await fetch("/mainCar", {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      const j = await requireJson(r); // 401/403 처리 포함
+      const car = j?.item ?? j;      // 컨트롤러가 { ok, item } 형태로 반환
+
+      if (!car || ignore) return;
+
+      const pref = inferFiltersFromCar(car);
+
+      // 1) 종류
+      setActiveCat(pref.cat);
+
+      // 2) 연료 색상 기준 (주유소/LPG일 때만 의미 있음)
+      setPriceBasis(pref.basis);
+
+      // 3) 충전 타입 (EV일 때만 의미 있음) + enabled 스위치
+      setFilters((v) => ({
+        ev: {
+          ...v.ev,
+          enabled: pref.cat === "ev",
+          status: "any",
+          type: pref.evType, // dc | ac | combo | any
+        },
+        oil: { ...v.oil, enabled: pref.cat === "oil" },
+        lpg: { ...v.lpg, enabled: pref.cat === "lpg" },
+      }));
+
+      // UI에 바로 반영
+      setTimeout(() => applyFiltersToMarkers(), 0);
+    } catch (e) {
+      // 메인카가 없거나 토큰 만료 등은 조용히 무시
+      console.warn("메인카 자동 바인딩 실패:", e?.message || e);
+    }
+  })();
+  return () => { ignore = true; };
+}, [isAuthed]);
+
 
 // datalist 옵션(로그인 상태에서만 채움)
 const dedup = (arr) => [...new Set(arr.filter(Boolean))];
@@ -1444,13 +1581,11 @@ useEffect(() => { markersVisibleRef.current = markersVisible; }, [markersVisible
 
 const showMarkers = () => { markersVisibleRef.current = true; setMarkersVisible(true); };
 const hideMarkers = () => {
-  markersVisibleRef.current = false; setMarkersVisible(false);
-  // 즉시 모두 숨김
-  allMarkersRef.current.forEach(o => {
-    o.marker.setMap(null);
-    if (o.overlay) o.overlay.setMap(null);
-  });
-};
+   markersVisibleRef.current = false;
+   setMarkersVisible(false);
+   // ★ 게이트 OFF 상태에서 ‘즐겨찾기만 유지’ 로직 적용
+   applyFiltersToMarkers();
+ };
 
   /* ───────── Kakao SDK + 초기 마커 로드 ───────── */
   useEffect(() => {
@@ -2073,8 +2208,9 @@ const statIdsOfSite = (site) =>
       const starred0 = isLoggedIn() && !!(favKey && favSetRef.current?.has(favKey));
       const label = it.chargerCount ? `${it.name || "EV"} (${it.chargerCount}기)` : (it.name || "EV");
 
-     const { marker, overlay } = addLabeledMarker({
-   map: markersVisibleRef.current ? mapRef.current : null, kakao, type: "ev",
+     const wantMap = (markersVisibleRef.current || starred0) ? mapRef.current : null;
+ const { marker, overlay } = addLabeledMarker({
+   map: wantMap, kakao, type: "ev",
         lat: it.lat, lng: it.lng, name: label,
         labelAlways: LABEL_ALWAYS,
         starred: starred0,
@@ -2112,7 +2248,7 @@ const statIdsOfSite = (site) =>
       <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
         <div style="flex:1;min-width:0;">
           <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-            ${escapeHtml(it.name || "충전소")}
+           ${tip(it.name || "충전소")}
           </div>
         </div>
         ${routeBtnHtmlForKey(favKey)}${favBtnHtml(starredNow)}
@@ -2250,7 +2386,7 @@ const statIdsOfSite = (site) =>
         <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
           <div style="flex:1;min-width:0;">
             <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              ${escapeHtml(it.name || "충전소")}
+              ${tip(it.name || "충전소")}
             </div>
           </div>
           ${routeBtnHtmlForKey(favKey)}${favBtnHtml(nowStar)}
@@ -2327,8 +2463,9 @@ const statIdsOfSite = (site) =>
     const favKey = favKeyOf(gs, "oil");
     const starred0 = isLoggedIn() && !!(favKey && favSetRef.current?.has(favKey));
 
-    const { marker, overlay } = addLabeledMarker({
-   map: markersVisibleRef.current ? mapRef.current : null, kakao, type: markerType,
+    const wantMap = (markersVisibleRef.current || starred0) ? mapRef.current : null;
+ const { marker, overlay } = addLabeledMarker({
+   map: wantMap, kakao, type: markerType,
       lat: gs.lat, lng: gs.lng,
       name: gs.name || (cat === "lpg" ? "LPG" : "주유소"),
       labelAlways: LABEL_ALWAYS,
@@ -2368,7 +2505,7 @@ const statIdsOfSite = (site) =>
 
   const stationName = gs.name || "이름없음";
   const addr = gs.addr || "";
-  const brand = brandName(gs.brand || "");
+  const brand = brandName(gs.brand, gs.brandGroup);
 
   // (A) 가격 로딩 전
   const baseHtml = `
@@ -2376,7 +2513,7 @@ const statIdsOfSite = (site) =>
       <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
         <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
           <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-            ${escapeHtml(stationName)}
+            ${tip(stationName)}
           </div>
           ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
         </div>
@@ -2446,7 +2583,7 @@ const statIdsOfSite = (site) =>
       <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
         <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
           <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-            ${escapeHtml(stationName)}
+            ${tip(stationName)}
           </div>
           ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
         </div>
@@ -2539,12 +2676,15 @@ const statIdsOfSite = (site) =>
   const applyFiltersToMarkers = () => {
     // ⛔ 경로&표시 이전엔 전부 숨김
   if (!markersVisibleRef.current) {
-    allMarkersRef.current.forEach(o => {
-      o.marker.setMap(null);
-      if (o.overlay) o.overlay.setMap(null);
-    });
-    return;
-  }
+   const map = mapRef.current;
+   const favOn = (o) => isLoggedIn() && !!(o.favKey && favSetRef.current?.has(o.favKey));
+   allMarkersRef.current.forEach(o => {
+     const show = favOn(o); // ★ 즐겨찾기만 보이게
+     o.marker.setMap(show ? map : null);
+     if (o.overlay) o.overlay.setMap(show ? (LABEL_ALWAYS ? map : null) : null);
+   });
+   return;
+ }
     const arr = allMarkersRef.current;
     const ctx = routeCtxRef.current;
 
@@ -2873,6 +3013,7 @@ const onMapClick = async ({ lat, lng }) => {
 
   /* ───────── 경로 버튼 ───────── */
   const handleRoute = async () => {
+     if (isMobileScreen()) setIsFilterOpen(false);   // ← 모바일이면 패널 닫기
     try {
       if (!window.kakao?.maps || !mapRef.current) {
         alert("지도를 준비 중입니다. 잠시 후 다시 시도해주세요.");
@@ -3318,33 +3459,35 @@ const ReviewsSection = () => (
 
               {/* ⚡ 충전소가 아닐 때만 유종 색상 기준 노출 */}
   {activeCat !== "ev" && (
-    <>
-      <span className="form-label">유종 색상 기준</span>
-      <div className="btn-row compact">
-        <button
-          className={`btnrow btn-toggle ${priceBasis === "B027" ? "on" : ""}`}
-          onClick={() => setPriceBasis("B027")}
-          title="휘발유 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
-        >
-          휘발유
-        </button>
-        <button
-          className={`btnrow btn-toggle ${priceBasis === "D047" ? "on" : ""}`}
-          onClick={() => setPriceBasis("D047")}
-          title="경유 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
-        >
-          경유
-        </button>
-        <button
-          className={`btnrow btn-toggle ${priceBasis === "K015" ? "on" : ""}`}
-          onClick={() => setPriceBasis("K015")}
-          title="LPG 기준으로 평균 대비 싸면 초록, 비싸면 빨강"
-        >
-          LPG
-        </button>
-      </div>
-    </>
-  )}
+  <>
+    <span className="form-label">유종 색상 기준</span>
+
+    {/* 오일필터패널과 동일한 스타일 */}
+    <div style={{ display: "flex", gap: 8 }}>
+      <BasisToggle
+        active={priceBasis === "B027"}
+        onClick={() => setPriceBasis("B027")}
+      >
+        휘발유
+      </BasisToggle>
+
+      <BasisToggle
+        active={priceBasis === "D047"}
+        onClick={() => setPriceBasis("D047")}
+      >
+        경유
+      </BasisToggle>
+
+      <BasisToggle
+        active={priceBasis === "K015"}
+        onClick={() => setPriceBasis("K015")}
+      >
+        LPG
+      </BasisToggle>
+    </div>
+  </>
+)}
+
   
             </div>
 

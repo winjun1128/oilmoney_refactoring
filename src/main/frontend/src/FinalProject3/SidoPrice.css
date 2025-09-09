@@ -3,9 +3,9 @@
     max-width: 450px;
 }
 
-.map-section {
+/* .map-section {
     min-width: 400px;
-}
+} */
 
 .main-map-container {
     width: 300px;
@@ -35,7 +35,7 @@
 }
 
 .map-pin-button.active {
-    background-color: #2563eb;
-    color: #fff;
-    border-color: #2563eb;
+    background-color: #2563eb !important;;
+    color: #fff !important;;
+    border-color: #2563eb !important;;
 }

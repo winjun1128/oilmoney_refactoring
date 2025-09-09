@@ -30,4 +30,10 @@ public class OilDAOImpl implements OilDAO{
 		return sqlSessionTemplate.selectList("station_mapper.findNearby", param);
 	}
 
+	@Override
+	public List<StationDTO> findFavOilStations(String userId) {
+		List<StationDTO> data = sqlSessionTemplate.selectList("station_mapper.findFavOilStations",userId);
+		return data;
+	}
+
 }
