@@ -72,22 +72,18 @@
 	</delete>
 	
 	<!-- 내 차 등록 -->
-<!-- 	<insert id="insertMyCar" parameterType="Car" useGeneratedKeys="true" keyProperty="carId">
-		insert into t_car (car_id, user_id, fuel_type, car_type)
-		values (seq_car.NEXTVAL, #{userId}, #{fuelType}, #{carType})
-	</insert> -->
 	<insert id="insertMyCar" parameterType="Car">
 	    <selectKey keyProperty="carId" resultType="int" order="BEFORE">
 	        SELECT seq_car.NEXTVAL FROM dual
 	    </selectKey>
-		    insert into t_car (car_id, user_id, fuel_type, car_type)
-		    values (#{carId}, #{userId}, #{fuelType}, #{carType})
+		    insert into t_car (car_id, user_id, fuel_type, car_type, charger_type)
+		    values (#{carId}, #{userId}, #{fuelType}, #{carType}, #{chargerType})
 	</insert>
 	
 	<!-- 등록 차량 정보 조회 -->
 	<select id="getCarsByUserId" parameterType="String" resultType="Car">
 	    select 
-	    	car_id, user_id, fuel_type, car_type, reg_date, is_main
+	    	car_id, user_id, fuel_type, car_type, reg_date, is_main, charger_type
 	    from t_car where user_id = #{userId}
 	    order by decode(is_main, 'Y', 1, 'N', 0) desc , reg_date
 	</select>

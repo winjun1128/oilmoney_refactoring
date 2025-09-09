@@ -18,13 +18,40 @@
     gap: 5px;
 }
 
+.profile-img-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
 .mypage-profile-img {
     width: 150px;
     height: 150px;
     border-radius: 50%;
-    cursor: pointer;
+    object-fit: cover;
     margin-top: 15px;
     margin-bottom: 14px;
+}
+
+.edit-icon {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background-color: white;
+    border: none;
+    border-radius: 50%;
+    padding: 6px;
+    cursor: pointer;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.2);
+    transition: 0.2s;
+}
+
+#edit-image {
+    width: 22px;
+    height: 21px;
+}
+
+.edit-icon:hover {
+    background-color: #f3f3f3;
 }
 
 .mypage-left-profile>span {
@@ -157,7 +184,7 @@
 
 .edit-buttons {
     display: flex;
-    gap: 10px;
+    gap: 5px;
 }
 
 .edit-button {
@@ -183,6 +210,16 @@
 .edit-contents-box {
     display: flex;
     gap: 80px;
+    /* justify-content: center; */
+}
+
+.edit-info-contents {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 15px;
+    font-size: 18px;
+    font-weight: 500;
 }
 
 .edit-contents {
@@ -190,7 +227,7 @@
     flex-direction: column;
     gap: 5px;
     padding: 15px;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 500;
 }
 
@@ -207,6 +244,25 @@
 
 .mypage-regist-info {
     color: #747474;
+}
+
+.edit-email {
+    width: 165px;
+}
+
+.edit-pw {
+    display: flex;
+    flex-direction: column;
+    gap: 5.5px;
+    width: 230px;
+    margin-top: 5px;
+}
+
+.edit-pw-input {
+    height: 18px;
+    border-radius: 7px;
+    border: 1.7px solid rgba(100, 100, 100, 0.76);
+    padding: 3px;
 }
 
 /* CarRegist css */
@@ -227,6 +283,8 @@
     gap: 10px;
     padding: 15px;
     font-size: 17px;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .mypage-car-item {
@@ -255,13 +313,6 @@
     color: rgb(57, 153, 231);
 }
 
-.main-label {
-    background: yellow;
-    padding: 2px 4px;
-    margin-left: 5px;
-    border-radius: 3px;
-}
-
 .car-buttons {
     display: flex;
     gap: 5px;
@@ -270,6 +321,255 @@
 .set-main-btn {
     height: 25px;
 }
+
+/* ---------------------------------------------------------------------------- */
+/* 🚗 모달 */
+.car-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+}
+
+.car-modal-content {
+    background: #fff;
+    padding: 20px 25px 25px 25px;
+    border-radius: 12px;
+    width: 420px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.car-modal-title {
+    margin-bottom: 20px;
+}
+
+.car-contents {
+    font-weight: 500;
+    font-size: 17px;
+}
+
+.car-model {
+    height: 19px;
+    padding: 3px;
+    border: 1px solid rgb(158, 158, 158);
+    border-radius: 5px;
+}
+
+/* 연료 버튼 */
+.fuel-select {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.fuel-option {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 8px 15px;
+    cursor: pointer;
+    background: #f9f9f9;
+    transition: all 0.2s ease-in-out;
+}
+
+.fuel-option:hover {
+    background: #f0f0f0;
+}
+
+.fuel-option.active {
+    background: #1976d2;
+    color: white;
+    border-color: #1976d2;
+}
+
+/* 모달 버튼 */
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 30px;
+    gap: 10px;
+}
+
+.modal-button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.modal-button.cancel {
+    background: #ddd;
+}
+
+.modal-button.submit {
+    background: #1976d2;
+    color: white;
+}
+
+.fuel-option {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 8px 15px;
+    cursor: pointer;
+    background: #f9f9f9;
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.fuel-option:hover {
+    background: #f0f0f0;
+}
+
+.fuel-option.active {
+    background: #1976d2;
+    color: white;
+    border-color: #1976d2;
+}
+
+/* .cars-container {
+    display: flex;
+    gap: 20px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.car-card {
+    max-width: 385px;
+    flex: 1 1 385px;
+    border: 1px solid #ddd;
+    border-radius: 7px;
+    padding: 15px;
+    background-color: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+} */
+
+.cars-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    /* 2개씩 */
+    gap: 20px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.car-card {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 15px;
+    background-color: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.car-card:hover {
+    transform: translateY(-2px);
+    transition: transform 0.2s;
+}
+
+.main-car-card {
+    border: 2px solid #4CAF50;
+}
+
+.car-header {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.car-photo {
+    width: 80px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.car-title {
+    display: flex;
+    gap: 20px;
+}
+
+.car-basic-info h3 {
+    margin: 0;
+    font-size: 1.2em;
+}
+
+.main-label {
+    display: inline-block;
+    margin-left: 10px;
+    background-color: #4CAF50;
+    color: #fff;
+    padding: 2px 6px;
+    font-size: 0.8em;
+    border-radius: 4px;
+}
+
+.car-actions {
+    margin-top: 10px;
+    display: flex;
+    gap: 10px;
+}
+
+.set-main-btn {
+    background-color: #2196F3;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+}
+
+.car-delete-btn {
+    border-radius: 6px;
+    padding: 5px 10px;
+    border: none;
+    cursor: pointer;
+}
+
+.record-section {
+    margin-top: 15px;
+}
+
+.record-section h4 {
+    margin-bottom: 5px;
+    font-size: 0.95em;
+    color: #555;
+}
+
+.fuel-records,
+.maintenance-records {
+    list-style: none;
+    padding-left: 0;
+    font-size: 0.9em;
+    color: #333;
+}
+
+.fuel-chart {
+    display: flex;
+    gap: 5px;
+    margin-top: 5px;
+    align-items: flex-end;
+    height: 100px;
+}
+
+.fuel-chart .bar {
+    width: 20px;
+    background-color: #2196F3;
+    border-radius: 3px 3px 0 0;
+    transition: height 0.3s;
+}
+
+/* ---------------------------------------------------------------------------- */
+
 
 /* FavList css */
 .fav-info-container {

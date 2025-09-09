@@ -139,7 +139,6 @@ public class UsersDAOImpl implements UsersDAO {
 	public int setMainCar(int carId) {
 		int result = sqlSessionTemplate.update("users_mapper.setMainCar", carId);
 		System.out.println("[DAO] setMainCar 실행 - carId: " + carId);
-		//System.out.println("[DAO] 대표차 등록 성공 ");
 		return result;
 	}
 
@@ -147,7 +146,6 @@ public class UsersDAOImpl implements UsersDAO {
 	public int resetMainCar(String userId) {
 		int result = sqlSessionTemplate.update("users_mapper.resetMainCar", userId);
 		System.out.println("[DAO] resetMainCar 실행 - userId: " + userId);
-		//System.out.println("[DAO] 대표차 해제 성공 ");
 		return result;
 	}
 
