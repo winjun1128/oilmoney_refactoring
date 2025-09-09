@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import RouteSideBar from './RouteSideBar';
-import FinalProject from '../FinalProject3/FinalProject';
+
+import OilDashboard from '.././FinalProject3/OilDashboard'
 import '../App.css';
 
 export default function OilPrice({ isLogin, setIsLoginModalOpen }) {
@@ -27,7 +28,7 @@ export default function OilPrice({ isLogin, setIsLoginModalOpen }) {
                     marginLeft: windowWidth > 768 ? '80px' : '0px', // 화면 너비에 따라 margin 조절
                 }}
             >
-                <FinalProject />
+                <OilDashboard />
             </div>
         </div>
     );
