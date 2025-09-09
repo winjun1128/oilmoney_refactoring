@@ -1,4 +1,4 @@
-import React, { useState,useRef } from "react";
+import React, { useState, useRef } from "react";
 import SideBar from "./SideBar";
 import OilFilterPanel from "./OilFilterPanel";
 import ChargeFilterPanel from "./ChargeFilterPanel";
@@ -9,37 +9,52 @@ export default function Page({ isLogin, setIsLoginModalOpen }) {
     const [activeFilter, setActiveFilter] = useState(null);
     const [stations, setStations] = useState([]); // ✅ 주유소 검색 결과
     const latestReqRef = useRef(0);
+    // state 추가
+    const [queryType, setQueryType] = useState("nearby");   // 'nearby' | 'filter'
+    const [nearbyParams, setNearbyParams] = useState(null); // {lat, lon, radius} | null
 
-    // 1) 내 주변 검색
-const handleLocationSearch = (coord, radiusKm) => {
-  const reqId = ++latestReqRef.current;
-  axios.post("/api/stations/search", { lat: coord.lat, lon: coord.lon, radius: radiusKm })
-    .then((res) => { if (reqId === latestReqRef.current) setStations(res.data); })
-    .catch((err) => console.error(err));
-};
+    // ✅ 내 주변 검색
+    const handleLocationSearch = (coord, radiusKm) => {
+        const reqId = ++latestReqRef.current;
+        setQueryType("nearby");
+        setNearbyParams({ lat: coord.lat, lon: coord.lon, radius: Number(radiusKm) || 0 });
 
-    // ✅ 주유소 필터 기반 검색
-const handleOilFilterSearch = (filters) => {
-  const reqId = ++latestReqRef.current;
-  axios.post("/api/stations/search", filters)
-    .then((res) => { if (reqId === latestReqRef.current) setStations(res.data); })
-    .catch((err) => console.error(err));
-};
+        axios.post("/api/stations/search", { lat: coord.lat, lon: coord.lon, radius: radiusKm })
+            .then(res => { if (reqId === latestReqRef.current) setStations(res.data); })
+            .catch(console.error);
+    };
+
+    // ✅ 주유소 필터 검색
+    const handleOilFilterSearch = (filters) => {
+        const reqId = ++latestReqRef.current;
+
+        const isNearby = filters?.mode === "nearby";
+        setQueryType(isNearby ? "nearby" : "filter");
+        setNearbyParams(isNearby ? {
+            lat: filters.lat, lon: filters.lon, radius: Number(filters.radius) || 0
+        } : null);
+
+        axios.post("/api/stations/search", filters)
+            .then(res => { if (reqId === latestReqRef.current) setStations(res.data); })
+            .catch(console.error);
+    };
 
     // ✅ 충전소 필터 기반 검색
     const handleChargeFilterSearch = (filters) => {
-  const reqId = ++latestReqRef.current;
-  axios.post("/api/charge/search", filters)
-    .then((res) => { if (reqId === latestReqRef.current) setStations(res.data); })
-    .catch(err => console.error(err));
-};
+        const reqId = ++latestReqRef.current;
+        setQueryType("filter");
+        setNearbyParams(null);
+        axios.post("/api/charge/search", filters)
+            .then(res => { if (reqId === latestReqRef.current) setStations(res.data); })
+            .catch(console.error);
+    };
 
     return (
         <div style={{ display: "flex", height: "100vh" }}>
             <SideBar onFilterChange={setActiveFilter} handleOilFilterSearch={handleOilFilterSearch} isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />
             <div style={{ flex: 1, position: "relative" }}>
-                <OilMap stations={stations} handleLocationSearch={handleLocationSearch} isFilterMode={activeFilter === "oil" || activeFilter === "charge"} />
-                
+                <OilMap stations={stations} handleLocationSearch={handleLocationSearch} isFilterMode={activeFilter === "oil" || activeFilter === "charge"} queryType={queryType} nearbyParams={nearbyParams} />
+
 
                 <div
                     className={`filter-wrapper ${activeFilter ? "open" : ""}`}

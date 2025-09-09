@@ -21,7 +21,7 @@ const BASIS_KEY = "route.priceBasis.v1";
 // 파일 상단 헬퍼 근처에 추가
 const getOilId = (o) => {
   if (!o) return "";
-  const keys = ["stationId","STATION_ID","uni","UNI","UNI_CD","uniCd","id","ID"];
+  const keys = ["stationId", "STATION_ID", "uni", "UNI", "UNI_CD", "uniCd", "id", "ID"];
   for (const k of keys) {
     const v = o?.[k];
     if (v !== undefined && v !== null && String(v).trim() !== "") return String(v).trim();
@@ -98,8 +98,8 @@ const haversineKm = (lat1, lon1, lat2, lon2) => {
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a =
-    Math.sin(dLat/2)**2 +
-    Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
 };
 
@@ -223,15 +223,24 @@ const coordKey = (lat, lng) => `${Number(lat).toFixed(6)},${Number(lng).toFixed(
 const favKeyOf = (station, mode) => {
   if (!station) return "";
   if (mode === "oil") {
-   const id = getOilId(station);
-   return id ? `oil:${id}` : `oil@${coordKey(station.lat ?? station.LAT, station.lon ?? station.LON ?? station.lng)}`;
-   }
+    const id = getOilId(station);
+    return id ? `oil:${id}` : `oil@${coordKey(station.lat ?? station.LAT, station.lon ?? station.LON ?? station.lng)}`;
+  }
   // mode === 'ev'
   const sid = station?.statId || station?.STAT_ID || "";
   return sid ? `ev:${String(sid)}` : `ev@${coordKey(station.lat ?? station.LAT, station.lon ?? station.LON ?? station.lng)}`;
 };
+
+
+
+
+
 ////
-export default function OilMap({ stations, handleLocationSearch,handleOilFilterSearch }) {
+
+
+
+
+export default function OilMap({ stations, handleLocationSearch, handleOilFilterSearch, queryType, nearbyParams }) {
   const mapDivRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -240,17 +249,17 @@ export default function OilMap({ stations, handleLocationSearch,handleOilFilterS
 
   // 두 가지 검색 핸들러(객체/옛 방식)를 모두 지원
   const doFilterSearch = (args) => {
-  if (!args) return;
-  lastQueryRef.current = args?.mode === "nearby"
-    ? { type: "nearby", lat: args.lat, lon: args.lon, radius: Number(args.radius) || 0 }
-    : { type: "filter" };
+    if (!args) return;
+    lastQueryRef.current = args?.mode === "nearby"
+      ? { type: "nearby", lat: args.lat, lon: args.lon, radius: Number(args.radius) || 0 }
+      : { type: "filter" };
 
-  if (handleOilFilterSearch) { handleOilFilterSearch(args); return; }
-  if (handleLocationSearch && args?.mode === "nearby") {
-    const { lat, lon, radius } = args;
-    handleLocationSearch({ lat, lon }, Number(radius));
-  }
-};
+    if (handleOilFilterSearch) { handleOilFilterSearch(args); return; }
+    if (handleLocationSearch && args?.mode === "nearby") {
+      const { lat, lon, radius } = args;
+      handleLocationSearch({ lat, lon }, Number(radius));
+    }
+  };
 
   const [mapReady, setMapReady] = useState(false);
   const bootRunRef = useRef(false);
@@ -286,15 +295,15 @@ export default function OilMap({ stations, handleLocationSearch,handleOilFilterS
   };
   useEffect(() => { fetchOilWithAverage().catch(() => { }); }, []);
 
-useEffect(() => {
-  const prefix = "route.favorites.v1";
-  const del = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith(prefix)) del.push(k);
-  }
-  del.forEach(k => localStorage.removeItem(k));
-}, []);
+  useEffect(() => {
+    const prefix = "route.favorites.v1";
+    const del = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(prefix)) del.push(k);
+    }
+    del.forEach(k => localStorage.removeItem(k));
+  }, []);
 
 
 
@@ -363,135 +372,145 @@ useEffect(() => {
   // ... 기존 refs/state ...
 
   // ✅ 즐겨찾기 상태 (서버 동기화 + 로컬 캐시)
- const [favSet, setFavSet] = useState(() => {
-  if (!isLoggedIn()) return new Set();
-  try {
-    const k = favStorageKey();
-    const arr = JSON.parse(localStorage.getItem(k) || "[]");
-    return new Set(Array.isArray(arr) ? arr : []);
-  } catch { return new Set(); }
-});
+  const [favSet, setFavSet] = useState(() => {
+    if (!isLoggedIn()) return new Set();
+    try {
+      const k = favStorageKey();
+      const arr = JSON.parse(localStorage.getItem(k) || "[]");
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch { return new Set(); }
+  });
+
 
   const favSetRef = useRef(favSet);
   useEffect(() => { favSetRef.current = favSet; }, [favSet]);
 
   // 최초 1회 서버 → 로컬 동기화 (로그인 시)
- useEffect(() => {
-  (async () => {
-    try {
-      const token = getToken();
-      if (!isTokenAlive(token)) return;
-      const res = await fetch("/api/route/favs", { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) return;
-      const json = await res.json();
-      const keys = (json.items || []).map((it) => it.key);
-      setFavSet(new Set(keys));
-      const k = favStorageKey();
-      if (k) localStorage.setItem(k, JSON.stringify(keys));  // ✅ 사용자별 저장
-    } catch { /* ignore */ }
-  })();
-}, []);
+  useEffect(() => {
+    (async () => {
+      try {
+        const token = getToken();
+        if (!isTokenAlive(token)) return;
+        const res = await fetch("/api/route/favs", { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return;
+        const json = await res.json();
+        const keys = (json.items || []).map((it) => it.key);
+        setFavSet(new Set(keys));
+        const k = favStorageKey();
+        if (k) localStorage.setItem(k, JSON.stringify(keys));  // ✅ 사용자별 저장
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
-useEffect(() => {
-  // 처음 렌더 1회: 토큰으로 즐겨찾기 목록 가져오고, 별마커로 표시되도록 favSet 갱신
-  (async () => {
-    try {
-      const token = getToken(); // localStorage의 JWT
-      if (!token) return;       // 비로그인 시 스킵
+  useEffect(() => {
+    // 처음 렌더 1회: 토큰으로 즐겨찾기 목록 가져오고, 별마커로 표시되도록 favSet 갱신
+    (async () => {
+      try {
+        const token = getToken(); // localStorage의 JWT
+        if (!token) return;       // 비로그인 시 스킵
 
-      // ⬇⬇⬇ POST 바꾸기 → GET + Authorization 헤더
-      const { data } = await axios.get("/idtoken", {
-        headers: {
-          Authorization: `Bearer ${token}`, // 서버에서 Bearer 제거 후 파싱
-        },
-      });
-      // data: StationDTO[] (stationId / lat / lon 등 포함)
-
-      // 1) 즐겨찾기 키로 변환
-      const keys = (Array.isArray(data) ? data : [])
-        .map((st) => {
-          const id = getOilId(st) || st.stationId;
-          return id ? `oil:${String(id)}` : null;
-        })
-        .filter(Boolean);
-
-      setFavSet(new Set(keys));
-      const k = favStorageKey();
-      if (k) localStorage.setItem(k, JSON.stringify(keys)); // 사용자별 로컬 캐시
-
-      // 2) 지도 뷰 보정(선택)
-      if (window.kakao && mapRef.current && data?.length) {
-        const kakao = window.kakao;
-        const map = mapRef.current;
-        const bounds = new kakao.maps.LatLngBounds();
-        let any = false;
-
-        data.forEach((st) => {
-          const lat = Number(st.lat ?? st.LAT);
-          const lon = Number(st.lon ?? st.LON ?? st.lng);
-          if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
-          bounds.extend(new kakao.maps.LatLng(lat, lon));
-          any = true;
+        // ⬇⬇⬇ POST 바꾸기 → GET + Authorization 헤더
+        const { data } = await axios.get("/idtoken", {
+          headers: {
+            Authorization: `Bearer ${token}`, // 서버에서 Bearer 제거 후 파싱
+          },
         });
+        // data: StationDTO[] (stationId / lat / lon 등 포함)
 
-        if (any) {
-          try { map.setLevel(6, { animate: false }); } catch { map.setLevel(6); }
-          map.panTo(bounds.getCenter());
+        // 1) 즐겨찾기 키로 변환
+        const keys = (Array.isArray(data) ? data : [])
+          .map((st) => {
+            const id = getOilId(st) || st.stationId;
+            return id ? `oil:${String(id)}` : null;
+          })
+          .filter(Boolean);
+
+        setFavSet(new Set(keys));
+        const k = favStorageKey();
+        if (k) localStorage.setItem(k, JSON.stringify(keys)); // 사용자별 로컬 캐시
+
+        // 2) 지도 뷰 보정(선택)
+        if (window.kakao && mapRef.current && data?.length) {
+          const kakao = window.kakao;
+          const map = mapRef.current;
+          const bounds = new kakao.maps.LatLngBounds();
+          let any = false;
+
+          data.forEach((st) => {
+            const lat = Number(st.lat ?? st.LAT);
+            const lon = Number(st.lon ?? st.LON ?? st.lng);
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+            bounds.extend(new kakao.maps.LatLng(lat, lon));
+            any = true;
+          });
+
+          if (any) {
+            const hasSaved = !!localStorage.getItem("savedCoord");
+            const searchRunning = !!lastQueryRef.current;  // doFilterSearch에서 이미 세팅됨
+            if (!searchRunning && !hasSaved && markersRef.current.length === 0) {
+              const c = bounds.getCenter();
+              mapRef.current.setCenter(c);
+              try {
+                mapRef.current.setLevel(6, { animate: false, anchor: c, anchorAnimate: false });
+              } catch {
+                mapRef.current.setLevel(6);
+              }
+            }
+          }
         }
+      } catch (err) {
+        console.error("[/idtoken] fetch favorites failed:", err?.response?.data || err);
       }
-    } catch (err) {
-      console.error("[/idtoken] fetch favorites failed:", err?.response?.data || err);
-    }
-  })();
+    })();
 
-  return () => {
-    // cleanup 불필요
-  };
-}, []);
+    return () => {
+      // cleanup 불필요
+    };
+  }, []);
 
 
   // 즐겨찾기 토글 (optimistic 업데이트, 실패 시 롤백)
- const toggleFavForStation = async (station, mode) => {
-  const key = favKeyOf(station, mode);
-  if (!key) return;
-  if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
+  const toggleFavForStation = async (station, mode) => {
+    const key = favKeyOf(station, mode);
+    if (!key) return;
+    if (!isLoggedIn()) { alert("로그인 후 이용 가능합니다."); return; }
 
-  const wasFav = favSetRef.current?.has(key);
+    const wasFav = favSetRef.current?.has(key);
 
-  setFavSet(prev => {
-    const next = new Set(prev);
-    wasFav ? next.delete(key) : next.add(key);
-    const k = favStorageKey();
-    if (k) localStorage.setItem(k, JSON.stringify([...next]));  // ✅
-    return next;
-  });
-
-  try {
-    const token = getToken();
-    const method = wasFav ? "DELETE" : "POST";
-    const url = method === "POST" ? "/api/route/favs" : `/api/route/favs/${encodeURIComponent(key)}`;
-    const body = method === "POST"
-      ? JSON.stringify({ key, label: station?.statNm || station?.name || "", lat: station?.lat, lng: station?.lon ?? station?.lng, mode })
-      : undefined;
-
-    const r = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body,
-    });
-    if (!r.ok) throw new Error("즐겨찾기 동기화 실패");
-  } catch (e) {
-    // 롤백
     setFavSet(prev => {
-      const rollback = new Set(prev);
-      wasFav ? rollback.add(key) : rollback.delete(key);
+      const next = new Set(prev);
+      wasFav ? next.delete(key) : next.add(key);
       const k = favStorageKey();
-      if (k) localStorage.setItem(k, JSON.stringify([...rollback])); // ✅
-      return rollback;
+      if (k) localStorage.setItem(k, JSON.stringify([...next]));  // ✅
+      return next;
     });
-    alert("즐겨찾기 저장에 실패했습니다.");
-  }
-};
+
+    try {
+      const token = getToken();
+      const method = wasFav ? "DELETE" : "POST";
+      const url = method === "POST" ? "/api/route/favs" : `/api/route/favs/${encodeURIComponent(key)}`;
+      const body = method === "POST"
+        ? JSON.stringify({ key, label: station?.statNm || station?.name || "", lat: station?.lat, lng: station?.lon ?? station?.lng, mode })
+        : undefined;
+
+      const r = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body,
+      });
+      if (!r.ok) throw new Error("즐겨찾기 동기화 실패");
+    } catch (e) {
+      // 롤백
+      setFavSet(prev => {
+        const rollback = new Set(prev);
+        wasFav ? rollback.add(key) : rollback.delete(key);
+        const k = favStorageKey();
+        if (k) localStorage.setItem(k, JSON.stringify([...rollback])); // ✅
+        return rollback;
+      });
+      alert("즐겨찾기 저장에 실패했습니다.");
+    }
+  };
 
   /////
 
@@ -565,53 +584,53 @@ useEffect(() => {
   };
 
   ////평균유가-기준 바뀌면 현재 마커 이미지만 재칠하기
-useEffect(() => {
-  if (!window.kakao || !mapRef.current) return;
-  markersRef.current.forEach((m, idx) => {
-    const s0 = drawList?.[idx]; if (!s0) return;
-    const uni = getOilId(s0);
-    const extra = uni ? (avgMap.get(uni) || {}) : {};
-    const s = { ...s0, uni, stationId: uni, prices: extra.prices || {}, avg: extra.avg || {}, diff: extra.diff || {}, updatedAt: extra.updatedAt };
-    const isCharge = !!s.statId;
-    if (isCharge) return; // EV는 그대로
-    const cat = ((s.lpgYN ?? s.LPG_YN) === "Y") ? "lpg" : "oil";
-    const t = markerTypeByBasis(s, cat, priceBasis);
+  useEffect(() => {
+    if (!window.kakao || !mapRef.current) return;
+    markersRef.current.forEach((m, idx) => {
+      const s0 = drawList?.[idx]; if (!s0) return;
+      const uni = getOilId(s0);
+      const extra = uni ? (avgMap.get(uni) || {}) : {};
+      const s = { ...s0, uni, stationId: uni, prices: extra.prices || {}, avg: extra.avg || {}, diff: extra.diff || {}, updatedAt: extra.updatedAt };
+      const isCharge = !!s.statId;
+      if (isCharge) return; // EV는 그대로
+      const cat = ((s.lpgYN ?? s.LPG_YN) === "Y") ? "lpg" : "oil";
+      const t = markerTypeByBasis(s, cat, priceBasis);
 
-    const favKey = favKeyOf(s, "oil");
-    const favOn = isLoggedIn() && favSetRef.current?.has(favKey);  // ✅
-    m.setImage(favOn ? getStarMarkerImage(window.kakao)
-                     : getMarkerImage(t, window.kakao));
-    m.setZIndex(favOn ? 7 : 5);                                    // ✅
-  });
-}, [priceBasis, avgMap, stations /* 필요하면 favSet도 추가 가능 */]);
+      const favKey = favKeyOf(s, "oil");
+      const favOn = isLoggedIn() && favSetRef.current?.has(favKey);  // ✅
+      m.setImage(favOn ? getStarMarkerImage(window.kakao)
+        : getMarkerImage(t, window.kakao));
+      m.setZIndex(favOn ? 7 : 5);                                    // ✅
+    });
+  }, [priceBasis, avgMap, stations /* 필요하면 favSet도 추가 가능 */]);
 
-const [authToken, setAuthToken] = useState(getToken());
+  const [authToken, setAuthToken] = useState(getToken());
 
-// 토큰 변경 감지 (탭 내 폴링 + 다른 탭 storage 이벤트 대응)
-useEffect(() => {
-  const onStorage = (e) => { if (e.key === "token") setAuthToken(getToken()); };
-  window.addEventListener("storage", onStorage);
-  const id = setInterval(() => {
-    const t = getToken();
-    if (t !== authToken) setAuthToken(t);
-  }, 1000);
-  return () => { window.removeEventListener("storage", onStorage); clearInterval(id); };
-}, [authToken]);
+  // 토큰 변경 감지 (탭 내 폴링 + 다른 탭 storage 이벤트 대응)
+  useEffect(() => {
+    const onStorage = (e) => { if (e.key === "token") setAuthToken(getToken()); };
+    window.addEventListener("storage", onStorage);
+    const id = setInterval(() => {
+      const t = getToken();
+      if (t !== authToken) setAuthToken(t);
+    }, 1000);
+    return () => { window.removeEventListener("storage", onStorage); clearInterval(id); };
+  }, [authToken]);
 
-// 토큰이 바뀌면 즐겨찾기 셋을 다시 로드 (로그아웃이면 비움)
-useEffect(() => {
-  if (!isTokenAlive(authToken)) {
-    setFavSet(new Set());                // ✅ 로그아웃 즉시 전체 ⭐ 제거
-    return;
-  }
-  try {
-    const k = favStorageKey();
-    const arr = JSON.parse(localStorage.getItem(k) || "[]");
-    setFavSet(new Set(Array.isArray(arr) ? arr : []));
-  } catch {
-    setFavSet(new Set());
-  }
-}, [authToken]);
+  // 토큰이 바뀌면 즐겨찾기 셋을 다시 로드 (로그아웃이면 비움)
+  useEffect(() => {
+    if (!isTokenAlive(authToken)) {
+      setFavSet(new Set());                // ✅ 로그아웃 즉시 전체 ⭐ 제거
+      return;
+    }
+    try {
+      const k = favStorageKey();
+      const arr = JSON.parse(localStorage.getItem(k) || "[]");
+      setFavSet(new Set(Array.isArray(arr) ? arr : []));
+    } catch {
+      setFavSet(new Set());
+    }
+  }, [authToken]);
 
 
 
@@ -641,6 +660,9 @@ useEffect(() => {
 
       const markerImage = getMyLocationImage(window.kakao);
 
+      // 부트 검색은 mapReady effect에서 한 번만 실행 (여기선 플래그만 세팅만)
+      lastQueryRef.current = { type: "nearby" };
+
       myMarkerRef.current = new window.kakao.maps.Marker({
         position: center,
         image: markerImage,
@@ -664,50 +686,57 @@ useEffect(() => {
   }, []);
 
   // 지도 준비가 끝나면 최초 1회 '내 주변 3km' 검색 자동 실행
-useEffect(() => {
-  if (!mapReady || bootRunRef.current) return; // StrictMode 중복 방지
-  bootRunRef.current = true;
+  useEffect(() => {
+    if (!mapReady || bootRunRef.current) return; // StrictMode 중복 방지
+    bootRunRef.current = true;
 
-  const saved = localStorage.getItem("savedCoord");
-  const { lat, lon } = saved ? JSON.parse(saved) : MY_COORD;
+    const saved = localStorage.getItem("savedCoord");
+    const { lat, lon } = saved ? JSON.parse(saved) : MY_COORD;
 
-  doFilterSearch?.({ mode: "nearby", lat, lon, radius: 3 }); // ← 핵심
-}, [mapReady]);
+    // idtoken 이펙트가 먼저 돌아도 "검색 중"으로 인식하도록 플래그 셋
+    lastQueryRef.current = { type: "nearby", lat, lon, radius: 3 };
+    doFilterSearch?.({ mode: "nearby", lat, lon, radius: 3 }); // ← 핵심
+  }, [mapReady]);
 
   ////평균유가
   // ✅ 마커 표시
-  
+
 
   // ★ 주유소/충전소 공통 정규화
-const normalizeStation = (s0 = {}) => {
-  const stationId =
-    s0.stationId ?? s0.UNI_CD ?? s0.uni ?? s0.UNI ?? s0.UNI_ID ?? s0.id ?? s0.ID ?? "";
+  const normalizeStation = (s0 = {}) => {
+    const stationId =
+      s0.stationId ?? s0.UNI_CD ?? s0.uni ?? s0.UNI ?? s0.UNI_ID ?? s0.id ?? s0.ID ?? "";
 
-  return {
-    ...s0,
-    stationId,                                 // 주유소 가격조회용 ID를 확실히 채움
-    statId: s0.statId ?? s0.STAT_ID ?? "",     // EV도 통일
-    lat: Number(s0.lat ?? s0.LAT),
-    lon: Number(s0.lon ?? s0.LON ?? s0.lng),
+    return {
+      ...s0,
+      stationId,                                 // 주유소 가격조회용 ID를 확실히 채움
+      statId: s0.statId ?? s0.STAT_ID ?? "",     // EV도 통일
+      lat: Number(s0.lat ?? s0.LAT),
+      lon: Number(s0.lon ?? s0.LON ?? s0.lng),
+    };
   };
-};
 
-// ★ 서버가 반경을 무시해도 프론트에서 한 번 더 걸러준다
-let drawList = stations;
-if (lastQueryRef.current?.type === "nearby") {
-  const { lat: qLat, lon: qLon, radius } = lastQueryRef.current;
-  drawList = stations.filter((s0) => {
-    const s = normalizeStation(s0);
-    if (!Number.isFinite(s.lat) || !Number.isFinite(s.lon)) return false;
-    return haversineKm(s.lat, s.lon, qLat, qLon) <= (radius || 0);
-  });
-}
+  // ★ 반경 필터: 'nearby'일 때만 적용
+  let drawList = stations;
+  if (queryType === "nearby" && nearbyParams) {
+    const { lat: qLat, lon: qLon, radius } = nearbyParams;
+    drawList = stations.filter((s0) => {
+      const s = normalizeStation(s0);
+      if (!Number.isFinite(s.lat) || !Number.isFinite(s.lon)) return false;
+      return haversineKm(s.lat, s.lon, qLat, qLon) <= (radius || 0);
+    });
+  }
 
   useEffect(() => {
     if (!mapReady || !window.kakao || !mapRef.current) return;
+    // ✅ 결과 타입이 정해지기 전엔 아예 그리지 않음 (대구 점프 방지)
+    if (queryType === "nearby" && !nearbyParams) return;
+    if (!queryType) return;
 
-    console.log('[nearby]', drawList.slice(0,3).map(s => ({ name: s.name||s.NAME, id: getOilId(s) })));
+    console.log('[nearby]', drawList.slice(0, 3).map(s => ({ name: s.name || s.NAME, id: getOilId(s) })));
 
+    // 이전 렌더에 마커가 있었는지 기억해서 불필요한 리센터를 막음
+    const hadMarkers = markersRef.current.length > 0;
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
@@ -717,49 +746,49 @@ if (lastQueryRef.current?.type === "nearby") {
     const centerCoord = selectedCoord ?? MY_COORD;
 
     drawList.forEach((s0) => {
-       const s = normalizeStation(s0);                 // ← 여기서 통일
-       // avgMap에서 평균/차이 붙이기
-  const uni   = getOilId(s);
-  const extra = uni ? (avgMap.get(uni) || {}) : {};
-  const sPlus = {
-    ...s,
-    uni,
-    stationId: uni || s.stationId,
-    prices:   extra.prices || {},
-    avg:      extra.avg    || {},
-    diff:     extra.diff   || {},
-    updatedAt: extra.updatedAt || s.updatedAt,
-  };
-  if (!Number.isFinite(sPlus.lat) || !Number.isFinite(sPlus.lon)) return;
-  const pos = new window.kakao.maps.LatLng(sPlus.lat, sPlus.lon);
-  const isCharge = !!sPlus.statId;
+      const s = normalizeStation(s0);                 // ← 여기서 통일
+      // avgMap에서 평균/차이 붙이기
+      const uni = getOilId(s);
+      const extra = uni ? (avgMap.get(uni) || {}) : {};
+      const sPlus = {
+        ...s,
+        uni,
+        stationId: uni || s.stationId,
+        prices: extra.prices || {},
+        avg: extra.avg || {},
+        diff: extra.diff || {},
+        updatedAt: extra.updatedAt || s.updatedAt,
+      };
+      if (!Number.isFinite(sPlus.lat) || !Number.isFinite(sPlus.lon)) return;
+      const pos = new window.kakao.maps.LatLng(sPlus.lat, sPlus.lon);
+      const isCharge = !!sPlus.statId;
 
-  const favKey = favKeyOf(sPlus, isCharge ? "ev" : "oil");
-  const isFav = !!(favKey && favSetRef.current?.has(favKey));
-  const favOn = isLoggedIn() && isFav;                     // ✅
-  // 평균/차이에 따라 마커색 결정
-  const cat  = ((sPlus.lpgYN ?? sPlus.LPG_YN) === "Y") ? "lpg" : "oil";
-  const type = isCharge ? "ev" : markerTypeByBasis(sPlus, cat, priceBasis);
-  const markerImage = favOn
-    ? getStarMarkerImage(window.kakao)
-    : getMarkerImage(type, window.kakao);
+      const favKey = favKeyOf(sPlus, isCharge ? "ev" : "oil");
+      const isFav = !!(favKey && favSetRef.current?.has(favKey));
+      const favOn = isLoggedIn() && isFav;                     // ✅
+      // 평균/차이에 따라 마커색 결정
+      const cat = ((sPlus.lpgYN ?? sPlus.LPG_YN) === "Y") ? "lpg" : "oil";
+      const type = isCharge ? "ev" : markerTypeByBasis(sPlus, cat, priceBasis);
+      const markerImage = favOn
+        ? getStarMarkerImage(window.kakao)
+        : getMarkerImage(type, window.kakao);
 
-  const marker = new window.kakao.maps.Marker({
-    position: pos,
-    zIndex: favOn ? 7 : 5,
-    image: markerImage,
-  });
-  marker.setMap(mapRef.current);
-  newMarkers.push(marker);
-  bounds.extend(pos);
+      const marker = new window.kakao.maps.Marker({
+        position: pos,
+        zIndex: favOn ? 7 : 5,
+        image: markerImage,
+      });
+      marker.setMap(mapRef.current);
+      newMarkers.push(marker);
+      bounds.extend(pos);
 
       window.kakao.maps.event.addListener(marker, "click", async () => {
-  if (isCharge) {
-    // ───────── EV 인포윈도우 ─────────
-    const mode = "ev";
-    const favKey = favKeyOf(sPlus, mode);
-    const starredNow = !!(favKey && favSetRef.current?.has(favKey));
-    const favBtnHtml = (on) => `
+        if (isCharge) {
+          // ───────── EV 인포윈도우 ─────────
+          const mode = "ev";
+          const favKey = favKeyOf(sPlus, mode);
+          const starredNow = !!(favKey && favSetRef.current?.has(favKey));
+          const favBtnHtml = (on) => `
       <button class="fav-btn ${on ? "on" : ""}"
               ${isLoggedIn() ? "" : "disabled"}
               title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
@@ -767,8 +796,8 @@ if (lastQueryRef.current?.type === "nearby") {
         ${on ? "★" : "☆"}
       </button>`;
 
-    // 1) 기본 화면
-    const baseHtml = `
+          // 1) 기본 화면
+          const baseHtml = `
       <div class="info-window">
         <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
           <div style="flex:1;min-width:0;">
@@ -787,58 +816,58 @@ if (lastQueryRef.current?.type === "nearby") {
         <div class="info-row" id="ev-status-line">상태 불러오는 중…</div>
       </div>`.trim();
 
-    setInfoHtml(baseHtml, marker, (root) => {
-      const btn = root.querySelector(".fav-btn");
-      if (btn && !btn.disabled) {
-        btn.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          await toggleFavForStation(sPlus, "ev");
-          const on = favSetRef.current?.has(favKeyOf(sPlus, "ev"));
-          btn.textContent = on ? "★" : "☆";
-          btn.classList.toggle("on", on);
-          setMarkerIconByFav(marker, true, on, window.kakao);
-        });
-      }
-      const rvBtn = root.querySelector(".review-btn");
-      if (rvBtn) {
-        rvBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          setReviewModal({ open: true, mode: "ev", station: sPlus });
-        });
-      }
-    });
+          setInfoHtml(baseHtml, marker, (root) => {
+            const btn = root.querySelector(".fav-btn");
+            if (btn && !btn.disabled) {
+              btn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                await toggleFavForStation(sPlus, "ev");
+                const on = favSetRef.current?.has(favKeyOf(sPlus, "ev"));
+                btn.textContent = on ? "★" : "☆";
+                btn.classList.toggle("on", on);
+                setMarkerIconByFav(marker, true, on, window.kakao);
+              });
+            }
+            const rvBtn = root.querySelector(".review-btn");
+            if (rvBtn) {
+              rvBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                setReviewModal({ open: true, mode: "ev", station: sPlus });
+              });
+            }
+          });
 
-    // 2) 상태 비동기 로딩 → 갱신
-    try {
-      const statId = String(sPlus.statId || "");
-      if (!statId) throw new Error("STAT_ID 없음");
-      const url = `/api/route/ev/status/by-station?statIds=${encodeURIComponent(statId)}`;
-      const j = await (await fetch(url)).json();
-      const list = normalizeEvStatusList(j);
+          // 2) 상태 비동기 로딩 → 갱신
+          try {
+            const statId = String(sPlus.statId || "");
+            if (!statId) throw new Error("STAT_ID 없음");
+            const url = `/api/route/ev/status/by-station?statIds=${encodeURIComponent(statId)}`;
+            const j = await (await fetch(url)).json();
+            const list = normalizeEvStatusList(j);
 
-      const available = list.filter(c => String(c.status) === "2").length;
-      const hasDc = list.some(c => ["01","03","04","05","06","08","09"].includes(String(c.type).padStart(2,"0")));
-      const hasAc = list.some(c => ["02","03","06","07","08"].includes(String(c.type).padStart(2,"0")));
-      let latest = "";
-      for (const c of list) {
-        const t = String(c.lastTs || "");
-        if (!t) continue;
-        if (!latest || new Date(t.replace(" ","T")) > new Date(latest.replace(" ","T"))) latest = t;
-      }
+            const available = list.filter(c => String(c.status) === "2").length;
+            const hasDc = list.some(c => ["01", "03", "04", "05", "06", "08", "09"].includes(String(c.type).padStart(2, "0")));
+            const hasAc = list.some(c => ["02", "03", "06", "07", "08"].includes(String(c.type).padStart(2, "0")));
+            let latest = "";
+            for (const c of list) {
+              const t = String(c.lastTs || "");
+              if (!t) continue;
+              if (!latest || new Date(t.replace(" ", "T")) > new Date(latest.replace(" ", "T"))) latest = t;
+            }
 
-      const statusText = (s) =>
-        ({ "1":"통신이상","2":"충전가능","3":"충전중","4":"운영중지","5":"점검중","9":"미확인","0":"미확인" }[String(s ?? "9")] || "미확인");
-      const statusPill = (v) => {
-        const code = String(v ?? "9");
-        let bg = "#999";
-        if (code === "2") bg = "#27ae60";
-        else if (code === "3") bg = "#f59e0b";
-        else if (code === "5") bg = "#e74c3c";
-        else if (["1","4","9","0"].includes(code)) bg = "#7f8c8d";
-        return `<span style="display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;color:#fff;background:${bg};">${escapeHtml(statusText(code))}</span>`;
-      };
+            const statusText = (s) =>
+              ({ "1": "통신이상", "2": "충전가능", "3": "충전중", "4": "운영중지", "5": "점검중", "9": "미확인", "0": "미확인" }[String(s ?? "9")] || "미확인");
+            const statusPill = (v) => {
+              const code = String(v ?? "9");
+              let bg = "#999";
+              if (code === "2") bg = "#27ae60";
+              else if (code === "3") bg = "#f59e0b";
+              else if (code === "5") bg = "#e74c3c";
+              else if (["1", "4", "9", "0"].includes(code)) bg = "#7f8c8d";
+              return `<span style="display:inline-block;padding:3px 8px;border-radius:999px;font-size:12px;color:#fff;background:${bg};">${escapeHtml(statusText(code))}</span>`;
+            };
 
-      const rowsHtml = list.map(c => `
+            const rowsHtml = list.map(c => `
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0;padding:8px 10px;border:1px solid #f0f0f0;border-radius:10px;background:#fafafa;">
           <div style="display:flex;align-items:center;gap:10px;min-width:0">
             <span style="display:inline-block;min-width:44px;text-align:center;font-weight:700;color:#444;background:#fff;border:1px solid #eaeaea;padding:4px 8px;border-radius:8px;">#${escapeHtml(c.chgerId)}</span>
@@ -848,8 +877,8 @@ if (lastQueryRef.current?.type === "nearby") {
         </div>
       `).join("");
 
-      const nowStar = !!(favKey && favSetRef.current?.has(favKey));
-      const html2 = `
+            const nowStar = !!(favKey && favSetRef.current?.has(favKey));
+            const html2 = `
         <div class="info-window">
           <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
             <div style="flex:1;min-width:0;">
@@ -878,46 +907,46 @@ if (lastQueryRef.current?.type === "nearby") {
             </div>` : ""}
         </div>`.trim();
 
-      setInfoHtml(html2, marker, (root) => {
-        const btn = root.querySelector(".fav-btn");
-        if (btn && !btn.disabled) {
-          btn.addEventListener("click", async (e) => {
-            e.stopPropagation();
-            await toggleFavForStation(sPlus, "ev");
-            const on = favSetRef.current?.has(favKeyOf(sPlus, "ev"));
-            btn.textContent = on ? "★" : "☆";
-            btn.classList.toggle("on", on);
-            setMarkerIconByFav(marker, true, on, window.kakao);
-          });
-        }
-        const rvBtn = root.querySelector(".review-btn");
-        if (rvBtn) {
-          rvBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            setReviewModal({ open: true, mode: "ev", station: sPlus });
-          });
-        }
-      });
-    } catch (e) {
-      const fail = `
+            setInfoHtml(html2, marker, (root) => {
+              const btn = root.querySelector(".fav-btn");
+              if (btn && !btn.disabled) {
+                btn.addEventListener("click", async (e) => {
+                  e.stopPropagation();
+                  await toggleFavForStation(sPlus, "ev");
+                  const on = favSetRef.current?.has(favKeyOf(sPlus, "ev"));
+                  btn.textContent = on ? "★" : "☆";
+                  btn.classList.toggle("on", on);
+                  setMarkerIconByFav(marker, true, on, window.kakao);
+                });
+              }
+              const rvBtn = root.querySelector(".review-btn");
+              if (rvBtn) {
+                rvBtn.addEventListener("click", (e) => {
+                  e.stopPropagation();
+                  setReviewModal({ open: true, mode: "ev", station: sPlus });
+                });
+              }
+            });
+          } catch (e) {
+            const fail = `
         <div class="info-window">
           <div class="info-title">${escapeHtml(sPlus.statNm ?? "충전소")}</div>
           ${sPlus.addr ? `<div class="info-row">📍 ${escapeHtml(sPlus.addr)}</div>` : ""}
           <div class="info-row" style="color:#c0392b">⚠️ 상태 조회 실패</div>
         </div>`.trim();
-      setInfoHtml(fail, marker);
-    }
-  } else {
-    // ───────── 주유소 인포윈도우 ─────────
-    const mode = "oil";
-    const stationName = sPlus.name ?? sPlus.NAME ?? "이름없음";
-    const addr  = sPlus.address ?? sPlus.ADDR ?? sPlus.ADDRESS ?? "";
-    const brand = sPlus.brand ?? sPlus.BRAND ?? "";
-    const isLpg = (sPlus.lpgYN ?? sPlus.LPG_YN) === "Y";
+            setInfoHtml(fail, marker);
+          }
+        } else {
+          // ───────── 주유소 인포윈도우 ─────────
+          const mode = "oil";
+          const stationName = sPlus.name ?? sPlus.NAME ?? "이름없음";
+          const addr = sPlus.address ?? sPlus.ADDR ?? sPlus.ADDRESS ?? "";
+          const brand = sPlus.brand ?? sPlus.BRAND ?? "";
+          const isLpg = (sPlus.lpgYN ?? sPlus.LPG_YN) === "Y";
 
-    const favKey = favKeyOf(sPlus, mode);
-    const starredNow = !!(favKey && favSetRef.current?.has(favKey));
-    const favBtnHtml = (on) => `
+          const favKey = favKeyOf(sPlus, mode);
+          const starredNow = !!(favKey && favSetRef.current?.has(favKey));
+          const favBtnHtml = (on) => `
       <button class="fav-btn ${on ? "on" : ""}"
               ${isLoggedIn() ? "" : "disabled"}
               title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
@@ -925,8 +954,8 @@ if (lastQueryRef.current?.type === "nearby") {
         ${on ? "★" : "☆"}
       </button>`;
 
-    // (가격 로딩 전 화면)
-    const baseHtml = `
+          // (가격 로딩 전 화면)
+          const baseHtml = `
       <div class="info-window">
         <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
           <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
@@ -945,63 +974,63 @@ if (lastQueryRef.current?.type === "nearby") {
         <div class="price-box">가격 불러오는 중…</div>
         <div class="info-flags">
           ${[
-            ["세차장", (sPlus.carWash ?? sPlus.CAR_WASH_YN) === "Y"],
-            ["편의점", (sPlus.store ?? sPlus.CVS_YN ?? sPlus.CONVENIENCE_YN) === "Y"],
-            ["경정비", (sPlus.repair ?? sPlus.MAINT_YN) === "Y"],
-            ["셀프주유소", (sPlus.self ?? sPlus.SELF_YN) === "Y"],
-            ["품질인증주유소", (sPlus.quality ?? sPlus.KPETRO_YN ?? sPlus.QUAL_YN) === "Y"],
-            ["24시간", (sPlus.twentyFour ?? sPlus.OPEN_24H_YN ?? sPlus.TWENTY_FOUR_YN) === "Y"],
-            ["LPG충전소", (sPlus.lpgYN ?? sPlus.LPG_YN) === "Y"],
-          ].map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`).join("")}
+              ["세차장", (sPlus.carWash ?? sPlus.CAR_WASH_YN) === "Y"],
+              ["편의점", (sPlus.store ?? sPlus.CVS_YN ?? sPlus.CONVENIENCE_YN) === "Y"],
+              ["경정비", (sPlus.repair ?? sPlus.MAINT_YN) === "Y"],
+              ["셀프주유소", (sPlus.self ?? sPlus.SELF_YN) === "Y"],
+              ["품질인증주유소", (sPlus.quality ?? sPlus.KPETRO_YN ?? sPlus.QUAL_YN) === "Y"],
+              ["24시간", (sPlus.twentyFour ?? sPlus.OPEN_24H_YN ?? sPlus.TWENTY_FOUR_YN) === "Y"],
+              ["LPG충전소", (sPlus.lpgYN ?? sPlus.LPG_YN) === "Y"],
+            ].map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`).join("")}
         </div>
       </div>`.trim();
 
-    setInfoHtml(baseHtml, marker, (root) => {
-      const btn = root.querySelector(".fav-btn");
-      if (btn && !btn.disabled) {
-        btn.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          await toggleFavForStation(sPlus, "oil");
-          const on = favSetRef.current?.has(favKeyOf(sPlus, "oil"));
-          btn.textContent = on ? "★" : "☆";
-          btn.classList.toggle("on", on);
-          setMarkerIconByFav(marker, false, on, window.kakao);
-        });
-      }
-      const rvBtn = root.querySelector(".review-btn");
-      if (rvBtn) {
-        rvBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          setReviewModal({ open: true, mode: "oil", station: sPlus });
-        });
-      }
-    });
+          setInfoHtml(baseHtml, marker, (root) => {
+            const btn = root.querySelector(".fav-btn");
+            if (btn && !btn.disabled) {
+              btn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                await toggleFavForStation(sPlus, "oil");
+                const on = favSetRef.current?.has(favKeyOf(sPlus, "oil"));
+                btn.textContent = on ? "★" : "☆";
+                btn.classList.toggle("on", on);
+                setMarkerIconByFav(marker, false, on, window.kakao);
+              });
+            }
+            const rvBtn = root.querySelector(".review-btn");
+            if (rvBtn) {
+              rvBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                setReviewModal({ open: true, mode: "oil", station: sPlus });
+              });
+            }
+          });
 
-    // 가격 조회
-    let oilHtml = "";
-    const priceId = getOilId(sPlus);
-    if (!priceId) {
-      oilHtml = `<div class="price-error">⚠️ 가격 조회용 ID가 없어 가격을 불러올 수 없습니다.</div>`;
-    } else {
-      try {
-        const res = await axios.get("/api/oil/price", { params: { id: priceId } });
-        const prices = res.data || {};
-        const won = (n) => Number(n).toLocaleString();
-        oilHtml = (prices["휘발유"] || prices["경유"] || prices["LPG"] || prices["등유"])
-          ? `<div class="price-box">
+          // 가격 조회
+          let oilHtml = "";
+          const priceId = getOilId(sPlus);
+          if (!priceId) {
+            oilHtml = `<div class="price-error">⚠️ 가격 조회용 ID가 없어 가격을 불러올 수 없습니다.</div>`;
+          } else {
+            try {
+              const res = await axios.get("/api/oil/price", { params: { id: priceId } });
+              const prices = res.data || {};
+              const won = (n) => Number(n).toLocaleString();
+              oilHtml = (prices["휘발유"] || prices["경유"] || prices["LPG"] || prices["등유"])
+                ? `<div class="price-box">
                ${prices["휘발유"] ? `<div class="price-row"><span>⛽ 휘발유</span><b>${won(prices["휘발유"])}원</b></div>` : ""}
                ${prices["경유"] ? `<div class="price-row"><span>🛢 경유</span><b>${won(prices["경유"])}원</b></div>` : ""}
                ${prices["등유"] ? `<div class="price-row"><span>🏠 등유</span><b>${won(prices["등유"])}원</b></div>` : ""}
                ${prices["LPG"] ? `<div class="price-row"><span>🔥 LPG</span><b>${won(prices["LPG"])}원</b></div>` : ""}
              </div>`
-          : `<div class="price-box">⚠️ 가격 등록이 안됐습니다.</div>`;
-      } catch {
-        oilHtml = `<div class="price-error">⚠️ 가격 정보를 불러오지 못했습니다.</div>`;
-      }
-    }
+                : `<div class="price-box">⚠️ 가격 등록이 안됐습니다.</div>`;
+            } catch {
+              oilHtml = `<div class="price-error">⚠️ 가격 정보를 불러오지 못했습니다.</div>`;
+            }
+          }
 
-    // (가격 로딩 후 최종 화면)
-    const html = `
+          // (가격 로딩 후 최종 화면)
+          const html = `
       <div class="info-window">
         <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
           <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
@@ -1020,70 +1049,78 @@ if (lastQueryRef.current?.type === "nearby") {
         ${oilHtml}
         <div class="info-flags">
           ${[
-            ["세차장", (sPlus.carWash ?? sPlus.CAR_WASH_YN) === "Y"],
-            ["편의점", (sPlus.store ?? sPlus.CVS_YN ?? sPlus.CONVENIENCE_YN) === "Y"],
-            ["경정비", (sPlus.repair ?? sPlus.MAINT_YN) === "Y"],
-            ["셀프주유소", (sPlus.self ?? sPlus.SELF_YN) === "Y"],
-            ["품질인증주유소", (sPlus.quality ?? sPlus.KPETRO_YN ?? sPlus.QUAL_YN) === "Y"],
-            ["24시간", (sPlus.twentyFour ?? sPlus.OPEN_24H_YN ?? sPlus.TWENTY_FOUR_YN) === "Y"],
-            ["LPG충전소", (sPlus.lpgYN ?? sPlus.LPG_YN) === "Y"],
-          ].map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`).join("")}
+              ["세차장", (sPlus.carWash ?? sPlus.CAR_WASH_YN) === "Y"],
+              ["편의점", (sPlus.store ?? sPlus.CVS_YN ?? sPlus.CONVENIENCE_YN) === "Y"],
+              ["경정비", (sPlus.repair ?? sPlus.MAINT_YN) === "Y"],
+              ["셀프주유소", (sPlus.self ?? sPlus.SELF_YN) === "Y"],
+              ["품질인증주유소", (sPlus.quality ?? sPlus.KPETRO_YN ?? sPlus.QUAL_YN) === "Y"],
+              ["24시간", (sPlus.twentyFour ?? sPlus.OPEN_24H_YN ?? sPlus.TWENTY_FOUR_YN) === "Y"],
+              ["LPG충전소", (sPlus.lpgYN ?? sPlus.LPG_YN) === "Y"],
+            ].map(([k, v]) => `<span class="flag ${v ? "on" : ""}">${k}</span>`).join("")}
         </div>
       </div>`.trim();
 
-    setInfoHtml(html, marker, (root) => {
-      const btn = root.querySelector(".fav-btn");
-      if (btn && !btn.disabled) {
-        btn.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          await toggleFavForStation(sPlus, "oil");
-          const on = favSetRef.current?.has(favKeyOf(sPlus, "oil"));
-          btn.textContent = on ? "★" : "☆";
-          btn.classList.toggle("on", on);
-          setMarkerIconByFav(marker, false, on, window.kakao);
-        });
-      }
-      const rvBtn = root.querySelector(".review-btn");
-      if (rvBtn) {
-        rvBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          setReviewModal({ open: true, mode: "oil", station: sPlus });
-        });
-      }
-    });
-  }
+          setInfoHtml(html, marker, (root) => {
+            const btn = root.querySelector(".fav-btn");
+            if (btn && !btn.disabled) {
+              btn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                await toggleFavForStation(sPlus, "oil");
+                const on = favSetRef.current?.has(favKeyOf(sPlus, "oil"));
+                btn.textContent = on ? "★" : "☆";
+                btn.classList.toggle("on", on);
+                setMarkerIconByFav(marker, false, on, window.kakao);
+              });
+            }
+            const rvBtn = root.querySelector(".review-btn");
+            if (rvBtn) {
+              rvBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                setReviewModal({ open: true, mode: "oil", station: sPlus });
+              });
+            }
+          });
+        }
 
-  // 포커싱 이동
-  mapRef.current.panTo(pos);
-});
+        // 포커싱 이동
+        mapRef.current.panTo(pos);
+      });
 
 
     });
 
     markersRef.current = newMarkers;
-  if (newMarkers.length > 0) {
-    // 우선 레벨 고정
-    try { mapRef.current.setLevel(6, { animate: false }); } catch { mapRef.current.setLevel(6); }
-
-    if (lastQueryRef.current?.type === "nearby") {
-      // ✅ '내 주변' 검색이면 내 위치를 화면 중앙으로
-      const { lat, lon } = lastQueryRef.current;
-      const center = new window.kakao.maps.LatLng(lat, lon);
-      mapRef.current.setCenter(center);        // panTo 대신 setCenter(무애니메이션)
-      myMarkerRef.current?.setPosition(center);
-    } else {
-      // 일반 필터 검색이면 기존 로직으로 밀집 중심
-      const pts = [];
-      drawList.forEach((s0) => {
-        const lat = Number(s0.lat ?? s0.LAT);
-        const lon = Number(s0.lon ?? s0.LON ?? s0.lng);
-        if (Number.isFinite(lat) && Number.isFinite(lon)) pts.push({ lat, lon });
-      });
-      const bestCenter = findDensestCenterAtLevel(mapRef.current, pts, 6);
-      if (bestCenter) mapRef.current.panTo(bestCenter);
+    if (newMarkers.length > 0) {
+      if (queryType === "nearby" && nearbyParams) {
+        // ✅ 내 주변 검색이면 내 위치로 중심 고정
+        const center = new window.kakao.maps.LatLng(nearbyParams.lat, nearbyParams.lon);
+        mapRef.current.setCenter(center);
+        try {
+          mapRef.current.setLevel(6, { animate: false, anchor: center, anchorAnimate: false });
+        } catch {
+          mapRef.current.setLevel(6);
+        }
+        myMarkerRef.current?.setPosition(center);
+      } else if (!hadMarkers) {
+        // ✅ 일반 필터 검색이면 밀집 중심
+        const pts = [];
+        drawList.forEach((s0) => {
+          const lat = Number(s0.lat ?? s0.LAT);
+          const lon = Number(s0.lon ?? s0.LON ?? s0.lng);
+          if (Number.isFinite(lat) && Number.isFinite(lon)) pts.push({ lat, lon });
+        });
+        const bestCenter = findDensestCenterAtLevel(mapRef.current, pts, 6);
+        if (bestCenter) {
+          mapRef.current.setCenter(bestCenter);
+          try {
+            mapRef.current.setLevel(6, { animate: false, anchor: bestCenter, anchorAnimate: false });
+          } catch {
+            mapRef.current.setLevel(6);
+          }
+        }
+      }
     }
-  }
-  }, [mapReady,stations, favSet, avgMap, priceBasis]);
+  }, [mapReady, stations, favSet, avgMap, priceBasis, queryType, nearbyParams]);
 
   // ✅ 내 위치 이동
   const goMyPosition = () => {
