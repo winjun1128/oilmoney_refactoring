@@ -1,5 +1,6 @@
 package com.app.dto.users;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -16,7 +17,7 @@ public class EnergyRecord {
     int carId;          // 차량 ID
     
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    LocalDateTime recodeDate;
+    LocalDate recordDate;
     
     String station;     // 주유/충전소 이름
     Double amount;      // 리터, kWh, kg
