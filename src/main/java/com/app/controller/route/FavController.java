@@ -20,7 +20,7 @@ public class FavController {
  @Autowired
  FavService favService;
 
- @GetMapping("/favs")
+ @GetMapping(value="/favs", produces = "application/json")
  public Map<String, Object> getFavs(HttpServletRequest request) {
      String token  = JwtProvider.extractToken(request);
      String userId = JwtProvider.getUserIdFromToken(token);
@@ -47,7 +47,7 @@ public class FavController {
  }
 
 
-  @PostMapping("/favs")
+  @PostMapping(value="/favs", produces = "application/json")
   public ResponseEntity<?> add(@RequestBody FavReq req, HttpServletRequest request) {
     String token = JwtProvider.extractToken(request);
     String userId = JwtProvider.getUserIdFromToken(token);
@@ -60,7 +60,7 @@ public class FavController {
     return ResponseEntity.ok(Map.of("key", req.key, "mode", req.mode));
   }
 
-  @DeleteMapping("/favs/{key}")
+  @DeleteMapping(value="/favs/{key}", produces = "application/json")
   public ResponseEntity<?> remove(@PathVariable String key, HttpServletRequest request) {
     String token = JwtProvider.extractToken(request);
     String userId = JwtProvider.getUserIdFromToken(token);

@@ -1,0 +1,39 @@
+/* 공통: 패널 */
+.slide-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 300px;
+  height: 100%;
+  background: #fff;
+  border-right: 1px solid #ddd;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+  z-index: 30;
+
+  transform: translateX(-100%);
+  transition: transform 0.3s ease-in-out;
+}
+
+.slide-panel.open {
+  transform: translateX(0);
+}
+
+/* 📱 모바일 전용 */
+@media (max-width: 768px) {
+  .slide-panel {
+    position: fixed;         /* PC는 absolute, 모바일은 화면 기준 */
+    top: 0;
+    left: 0;
+    width: 80%;              /* 화면 폭의 80%만 차지 */
+    max-width: 300px;        /* 너무 넓지 않게 제한 */
+    height: 100%;            /* 전체 세로 */
+    border-radius: 0 12px 12px 0;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.25);
+    
+    transform: translateX(-100%); /* 기본 숨김 */
+  }
+
+  .slide-panel.open {
+    transform: translateX(0);     /* 왼쪽에서 슬라이드 인 */
+  }
+}

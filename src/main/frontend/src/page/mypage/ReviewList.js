@@ -32,7 +32,7 @@ function ReviewList() {
                 ) : (
                     <ul className="mypage-fav-list">
                         {reviews.map((review) => (
-                            <li key={review.reviewKey} className="review-item">
+                            <li key={review.reviewKey} className="review-item1">
                                 <div className='review-station-type'>
                                     <div>
                                         <span className={`review-type ${review.type}`}>

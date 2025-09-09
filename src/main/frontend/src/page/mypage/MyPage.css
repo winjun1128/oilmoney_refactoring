@@ -1,13 +1,12 @@
 .mypage-container {
-    margin: 10px;
+    /* margin: 10px; */
     display: flex;
 }
 
 .mypage-left {
-    min-width: 300px;
-    /* height: 875px; */
-    /* position: fixed; */
-    box-shadow: 3px 1px 8px 0 rgba(0, 0, 0, 0.07);
+    width: 250px;
+    box-shadow: 3px 1px 8px 0 rgba(168, 168, 168, 0.411);
+    height: 100vh;
 }
 
 .mypage-left-profile {
@@ -33,10 +32,9 @@
 }
 
 .mypage-left-menu {
-    margin-top: 100px;
+    margin: 100px 0 20px 35px;
     display: flex;
     flex-direction: column;
-    margin-left: 27px;
     align-items: flex-start;
     gap: 23px;
     color: rgb(34, 34, 34);
@@ -61,7 +59,7 @@
     justify-content: space-between;
     font-size: 20px;
     color: #252525;
-    width: 180px;
+    width: 150px;
 }
 
 .mypage-count {
@@ -70,23 +68,16 @@
 }
 
 .mypage-left-footer {
-    margin-top: 330px;
+    margin-top: 310px;
     display: flex;
     gap: 8px;
     justify-content: center;
     font-size: 15px;
     color: #9b9b9b;
-    position: fixed;
-    bottom: 40px;
-    left: 160px;
 }
 
 .mypage-left-footer>span {
     cursor: pointer;
-}
-
-.mypage-right {
-    margin-left: 40px;
 }
 
 .mypage-modal-overlay {
@@ -140,10 +131,12 @@
 
 /* EditInfo css */
 .edit-info-container {
-    margin: 30px;
-    border: 3px solid rgb(191, 224, 255);
-    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
-    min-width: 700px;
+    margin: 15px;
+    /* border: 3px solid rgb(191, 224, 255); */
+    border: 1px solid rgb(191, 224, 255);
+    box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.315);
+    width: 280px;
+    height: 370px;
     border-radius: 15px;
     display: flex;
     flex-direction: column;
@@ -153,7 +146,7 @@
     display: flex;
     justify-content: space-between;
     background-color: rgb(226, 241, 255);
-    border-radius: 13px 13px 0 0;
+    border-radius: 15px 15px 0 0;
     padding: 15px;
 }
 
@@ -198,6 +191,7 @@
     gap: 5px;
     padding: 15px;
     font-size: 17px;
+    font-weight: 500;
 }
 
 .edit-contents input {
@@ -216,7 +210,18 @@
 }
 
 /* CarRegist css */
-.mypage-regist-contents{
+.car-container {
+    margin: 30px 30px 16px 33px;
+    border: 1px solid rgb(191, 224, 255);
+    box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.315);
+    width: 886px;
+    border-radius: 15px;
+    display: flex;
+    flex-direction: column;
+    height: 430px;
+}
+
+.mypage-regist-contents {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -241,26 +246,49 @@
 
 .fa-xmark {
     font-size: 18px;
-    margin-right: 5px;
     color: #797979;
     margin-bottom: 20px;
 }
 
+.main-car {
+    font-weight: bold;
+    color: rgb(57, 153, 231);
+}
+
+.main-label {
+    background: yellow;
+    padding: 2px 4px;
+    margin-left: 5px;
+    border-radius: 3px;
+}
+
+.car-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.set-main-btn {
+    height: 25px;
+}
+
 /* FavList css */
-.fav-info-container{
-    margin-left: 30px;
-    border: 3px solid rgb(191, 224, 255);
-    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+.fav-info-container {
+    /* margin-left: 30px; */
+    /* border: 2px solid rgb(191, 224, 255); */
+    border: 1px solid rgb(191, 224, 255);
+    box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.315);
     border-radius: 15px;
     display: flex;
     flex-direction: column;
-    width: 350px;
+    width: 280px;
     height: 370px;
 }
 
-.mypage-fav-review{
+.mypage-fav-review {
     display: flex;
+    align-items: center;
     gap: 5px;
+    margin-left: 18px;
 }
 
 .mypage-fav-list {
@@ -269,8 +297,8 @@
     margin: 0;
 }
 
-.fav-title-text{
-    font-size: 22px;
+.fav-title-text {
+    font-size: 25px;
     font-weight: bold;
 }
 
@@ -319,14 +347,14 @@
 }
 
 /* ReviewList css */
-.review-info-container{
-    margin-left: 30px;
-    border: 3px solid rgb(191, 224, 255);
-    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+.review-info-container {
+    margin-left: 15px;
+    border: 1px solid rgb(191, 224, 255);
+    box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.315);
     border-radius: 15px;
     display: flex;
     flex-direction: column;
-    width: 310px;
+    width: 280px;
     height: 370px;
 }
 
@@ -336,17 +364,17 @@
     margin: 0;
 }
 
-.review-item {
+.review-item1 {
     margin-bottom: 12px;
     border-bottom: 1px solid #cacaca;
     padding: 8px;
 }
 
-.review-station-type{
+.review-station-type {
     display: flex;
 }
 
-.review-title-box{
+.review-title-box {
     display: flex;
     justify-content: space-between;
     width: 75%;

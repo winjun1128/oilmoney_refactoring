@@ -14,7 +14,7 @@ public class EvJobs {
   EvImportService evImportService;
 
   // 앱 시작 시 1회 전체 스냅샷
-  @Scheduled(initialDelay = 60000, fixedDelay = Long.MAX_VALUE)
+  @Scheduled(cron = "0 0 19 * * *")
   public void init() throws Exception {
     evImportService.importInfoSnapshot();
   }

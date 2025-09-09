@@ -1,0 +1,40 @@
+<!-- resources/mapper/OilAvgMapper.xml  (폴더명 확인! mapper/ 로 두세요) -->
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="oilAvgPrice_mapper">
+
+  <!-- DTO 바로 받음 -->
+  <update id="mergeOne" parameterType="com.app.dto.route.OilAvgPriceRow">
+    MERGE INTO OIL_AVG_PRICE t
+    USING (
+      SELECT
+        #{sidoCd}  AS SIDO_CD,
+        #{sigunCd} AS SIGUN_CD,
+        #{prodcd}  AS PRODCD,
+        #{price}   AS PRICE
+      FROM dual
+    ) s
+    ON (t.SIDO_CD = s.SIDO_CD AND t.SIGUN_CD = s.SIGUN_CD AND t.PRODCD = s.PRODCD)
+    WHEN MATCHED THEN
+      UPDATE SET t.PRICE = s.PRICE, t.UPDATED_AT = SYSTIMESTAMP
+    WHEN NOT MATCHED THEN
+      INSERT (SIDO_CD, SIGUN_CD, PRODCD, PRICE, UPDATED_AT)
+      VALUES (s.SIDO_CD, s.SIGUN_CD, s.PRODCD, s.PRICE, SYSTIMESTAMP)
+  </update>
+
+  <select id="selectBySiguns" resultType="com.app.dto.route.OilAvgPriceRow">
+    SELECT
+      SIDO_CD     AS sidoCd,
+      SIGUN_CD    AS sigunCd,
+      PRODCD      AS prodcd,
+      PRICE       AS price,
+      UPDATED_AT  AS updatedAt
+    FROM OIL_AVG_PRICE
+    WHERE SIDO_CD = #{sidoCd}
+      AND SIGUN_CD IN
+      <foreach collection="siguns" item="s" open="(" separator="," close=")">
+        #{s}
+      </foreach>
+  </select>
+</mapper>

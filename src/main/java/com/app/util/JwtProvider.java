@@ -27,7 +27,7 @@ public class JwtProvider {
 	private static final String SECRET_KEY = "thisissecretkeyforjwtreactconnectwithspringserverthisissecretkeyforjwtreactconnectwithspringserver";
 
 	// Access Token & Refresh Token 만료시간 설정
-	private static final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 30; // 30분
+	private static final long ACCESS_TOKEN_EXPIRATION = 1000 * 60 * 30 * 4 ; // 2시간
 	private static final long REFRESH_TOKEN_EXPIRATION = 1000 * 60 * 60 * 24 * 7; // 7일
 
 	//시크릿키 생성 (비밀키 변환으로 키 생성)
@@ -77,23 +77,45 @@ public class JwtProvider {
 					.compact();
     }
 
-	/* 토큰 해석 메소드 - 토큰을 해석하여 저장된 userId 를 획득한다 */
-	public static String getUserIdFromToken(String token) { // throws CustomException {
+	/* 토큰 해석 메소드 - 토큰을 해석하여 저장된 사용자 식별자 획득 */
+	public static String getUserIdFromToken(String token) {
+	    if (token == null || token.isBlank()) return null;
 
-		String userId = null;
-		try {
-			userId = Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token).getPayload()
-					.get("userId", String.class);
-		} catch (ExpiredJwtException e) {
-			System.out.println(e.getMessage());
-		} catch (Exception e) {
-			System.out.println(e.getMessage());
-		}
+	    try {
+	        Claims claims = Jwts.parser()
+	                .verifyWith(getSigningKey())
+	                .build()
+	                .parseSignedClaims(token)
+	                .getPayload();
 
-		System.out.println("토큰 해석 userId value : " + userId);
+	        // ✅ 클레임에서 사용자 아이디 후보들을 순서대로 꺼내기
+	        String userId = null;
 
-		return userId;
+	        if (claims.get("nickname") != null) {
+	            userId = claims.get("nickname", String.class);
+	        } else if (claims.get("username") != null) {
+	            userId = claims.get("username", String.class);
+	        } else if (claims.get("userId") != null) {   // 혹시 기존 구조 유지
+	            userId = claims.get("userId", String.class);
+	        } else if (claims.get("email") != null) {
+	            String email = claims.get("email", String.class);
+	            userId = (email != null && email.contains("@")) ? email.split("@")[0] : email;
+	        } else {
+	            // 마지막 fallback: JWT의 subject(sub)
+	            userId = claims.getSubject();
+	        }
+
+	        System.out.println("토큰 해석 userId value : " + userId);
+	        return userId;
+	    } catch (ExpiredJwtException e) {
+	        System.out.println("토큰 만료: " + e.getMessage());
+	        return null;
+	    } catch (Exception e) {
+	        System.out.println("토큰 파싱 오류: " + e.getMessage());
+	        return null;
+	    }
 	}
+
 
 	/* 유효성 확인(해독된 jwt) */
 	public static boolean isValidToken(String token) {
@@ -150,7 +172,7 @@ public class JwtProvider {
 		String bearerToken = request.getHeader("Authorization");
 		System.out.println(bearerToken);
 		if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-			return bearerToken.substring(7);
+			return bearerToken.substring(7).trim();
 		}
 		return null;
 	}

@@ -1,6 +1,7 @@
 import { useState } from "react";
+import "./ChargeFilterPanel.css"; // ✅ 외부 스타일 연결
 
-export default function ChargeFilterPanel({ handleChargeFilterSearch, onClose }) {
+export default function ChargeFilterPanel({ isOpen, handleChargeFilterSearch, onClose }) {
     const [selectedRegion, setSelectedRegion] = useState("44");
     const [selectedCity, setSelectedCity] = useState("44130");
     const [chargerType, setChargerType] = useState([]);
@@ -9,55 +10,26 @@ export default function ChargeFilterPanel({ handleChargeFilterSearch, onClose })
     const [status, setStatus] = useState("");
     const [twentyFour, setTwentyFour] = useState(false);
     const [floorType, setFloorType] = useState("");
-    const [nearbyMode, setNearbyMode] = useState(false); // ✅ 내 주변 주유소 모드 ON/OFF
+    const [nearbyMode, setNearbyMode] = useState(false);
     const [radius, setRadius] = useState("");
 
-    // ✅ 기본 좌표 (내 위치 저장 없을 때)
     const MY_COORD = { lat: 36.8072917, lon: 127.1471611 };
 
-    // ✅ 지역 코드 매핑
-    const regionCodes = {
-        서울: "01",
-        충남: "44",
-    };
+    const regionCodes = { 서울: "01", 충남: "44" };
 
-    // ✅ 시군구 코드 매핑
     const cityCodes = {
-        "01": {
-            "마포구": "0109",
-            "중구": "0102",
-            "성동구": "0104",
-            "서대문구": "0107",
-            "강서구": "0115",
-        },
-        "44": {
-            "천안시": "44130",
-            "공주시": "44150",
-            "보령시": "44180",
-            "아산시": "44200",
-            "서산시": "44210",
-            "논산시": "44230",
-            "계룡시": "44250",
-            "당진시": "44270",
-            "금산군": "44710",
-            "부여군": "44760",
-            "서천군": "44770",
-            "청양군": "44790",
-            "홍성군": "44800",
-            "예산군": "44810",
-            "태안군": "44825",
-        },
+        "01": { "마포구": "0109", "중구": "0102", "성동구": "0104", "서대문구": "0107", "강서구": "0115" },
+        "44": { "천안시": "44130", "공주시": "44150", "보령시": "44180", "아산시": "44200", "서산시": "44210" }
     };
 
-    // ✅ 체크박스 토글 핸들러
     const toggleCheckbox = (value, setState) => {
-        setState((prev) =>
-            prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+        setState(prev =>
+            prev.includes(value) ? prev.filter(v => v !== value) : [...prev, value]
         );
     };
 
-    // ✅ 검색 실행
     const doSearch = () => {
+        
 
         // 1) 🔵 내 주변 충전소 모드
         if (nearbyMode) {
@@ -71,68 +43,57 @@ export default function ChargeFilterPanel({ handleChargeFilterSearch, onClose })
             const payload = {
                 mode: "nearby",
                 lat: myCoord.lat,
-                lon: myCoord.lon,
+                lng: myCoord.lon,
                 radius: Number(radius), // km
+              //method,
+              //chargerType,
             };
             console.log("📍 내 주변 충전소 검색:", payload);
             handleChargeFilterSearch(payload);
             return;
         }
-        const statusMap = { "01": "1", "02": "2", "03": "3" }; // T_CHARGER_STATUS.STAT 매핑
+
+        const statusMap = { "01": "2", "02": "3", "03": "5" };
 
         const payload = {
-            region: selectedRegion || null,          // T_CHARGE.ZCODE (예: "44")
-            city: selectedCity || null,            // T_CHARGE.SCODE (예: "44130")
-            methods: method,                        // ["AC완속","DC콤보", ...] (TYPE_NM 부분매칭)
-            chargerType,                            // ["완속","급속","초급속"] → 출력구간 OR 매칭
-            minOutput: minOutput ? Number(minOutput) : null, // g.OUTPUT_KW >= minOutput
-            status: statusMap[status] || null,      // T_CHARGER_STATUS.STAT (1/2/3)
-            twentyFour,                             // USETIME 24시 여부
-            floorType: floorType || null            // T_CHARGE.FLOORTYPE ('G'/'B' 등)
+            region: selectedRegion || null,
+            city: selectedCity || null,
+            methods: method,
+            chargerType,
+            minOutput: minOutput ? Number(minOutput) : null,
+            status: statusMap[status] || null,
+            twentyFour,
+            floorType: floorType || null
         };
         console.log("🚀 충전소 필터 payload:", payload);
         handleChargeFilterSearch(payload);
     };
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", width: "300px", height: "100vh", background: "#fff", borderRight: "1px solid #e5e7eb" }}>
-            {/* 상단 헤더 (타이틀 명도 오일패널과 톤 맞춤) */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #e5e7eb" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "18px" }}>🔋</span>
-                    <h3 style={{ fontSize: "16px", fontWeight: "700", margin: 0 }}>충전소 찾기</h3>
+        <div className={`charge-panel ${isOpen ? "open" : ""}`}>
+            {/* 헤더 */}
+            <div className="panel-header">
+                <div className="panel-title">
+                    <span className="panel-icon">🔋</span>
+                    <h3>충전소 찾기</h3>
                 </div>
-                <button onClick={onClose} style={{ background: "transparent", border: "none", fontSize: "18px", cursor: "pointer", color: "#374151" }}>✕</button>
+                <button onClick={onClose} className="close-btn">✕</button>
             </div>
 
-            {/* 스크롤 영역 */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
-                {/* ⛔️ nearbyMode일 때 비활성화 (오일패널과 동일) */}
-                <fieldset
-                    disabled={nearbyMode}
-                    style={{ border: 0, padding: 0, margin: 0, opacity: nearbyMode ? 0.55 : 1, transition: "opacity .15s ease" }}
-                    aria-disabled={nearbyMode}
-                >
-                    {/* ✅ 지역 */}
-                    <div style={{ marginBottom: "20px" }}>
-                        <h4 style={titleStyle}>지역</h4>
-                        <select
-                            value={selectedRegion}
-                            onChange={(e) => { setSelectedRegion(e.target.value); setSelectedCity(""); }}
-                            style={selectStyle}
-                        >
+            {/* 본문 */}
+            <div className="panel-body">
+                <fieldset disabled={nearbyMode} className={nearbyMode ? "dimmed" : ""}>
+                    {/* 지역 */}
+                    <div className="filter-block">
+                        <h4>지역</h4>
+                        <select value={selectedRegion} onChange={(e) => { setSelectedRegion(e.target.value); setSelectedCity(""); }}>
                             <option value="">전체</option>
-                            {Object.keys(regionCodes).map((region) => (
-                                <option key={region} value={regionCodes[region]}>{region}</option>
+                            {Object.keys(regionCodes).map(r => (
+                                <option key={r} value={regionCodes[r]}>{r}</option>
                             ))}
                         </select>
-
                         {selectedRegion && cityCodes[selectedRegion] && (
-                            <select
-                                value={selectedCity}
-                                onChange={(e) => setSelectedCity(e.target.value)}
-                                style={{ ...selectStyle, marginTop: "10px" }}
-                            >
+                            <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>
                                 <option value="">전체</option>
                                 {Object.entries(cityCodes[selectedRegion]).map(([city, code]) => (
                                     <option key={city} value={code}>{city}</option>
@@ -141,46 +102,36 @@ export default function ChargeFilterPanel({ handleChargeFilterSearch, onClose })
                         )}
                     </div>
 
-                    {/* ✅ 충전기 타입 */}
-                    <div style={{ marginBottom: "20px" }}>
-                        <h4 style={titleStyle}>충전기 타입</h4>
-                        <div style={checkboxGrid}>
-                            {["완속", "급속", "초급속"].map((t) => (
-                                <label key={t} style={checkboxLabel}>
-                                    <input
-                                        type="checkbox"
-                                        checked={chargerType.includes(t)}
-                                        onChange={() => toggleCheckbox(t, setChargerType)}
-                                        style={{ marginRight: "6px" }}
-                                    />
+                    {/* 충전기 타입 */}
+                    <div className="filter-block">
+                        <h4>충전기 타입</h4>
+                        <div className="grid-2">
+                            {["완속", "급속", "초급속"].map(t => (
+                                <label key={t} className="checkbox-label">
+                                    <input type="checkbox" checked={chargerType.includes(t)} onChange={() => toggleCheckbox(t, setChargerType)} />
                                     {t}
                                 </label>
                             ))}
                         </div>
                     </div>
 
-                    {/* ✅ 충전 방식 */}
-                    <div style={{ marginBottom: "20px" }}>
-                        <h4 style={titleStyle}>충전 방식</h4>
-                        <div style={checkboxGrid}>
-                            {["AC완속", "DC차데모", "DC콤보", "AC3상"].map((m) => (
-                                <label key={m} style={checkboxLabel}>
-                                    <input
-                                        type="checkbox"
-                                        checked={method.includes(m)}
-                                        onChange={() => toggleCheckbox(m, setMethod)}
-                                        style={{ marginRight: "6px" }}
-                                    />
+                    {/* 충전 방식 */}
+                    <div className="filter-block">
+                        <h4>충전 방식</h4>
+                        <div className="grid-2">
+                            {["AC완속", "DC차데모", "DC콤보", "AC3상"].map(m => (
+                                <label key={m} className="checkbox-label">
+                                    <input type="checkbox" checked={method.includes(m)} onChange={() => toggleCheckbox(m, setMethod)} />
                                     {m}
                                 </label>
                             ))}
                         </div>
                     </div>
 
-                    {/* ✅ 충전 가능 여부 */}
-                    <div style={{ marginBottom: "20px" }}>
-                        <h4 style={titleStyle}>충전 가능 여부</h4>
-                        <select value={status} onChange={(e) => setStatus(e.target.value)} style={selectStyle}>
+                    {/* 충전 가능 여부 */}
+                    <div className="filter-block">
+                        <h4>충전 가능 여부</h4>
+                        <select value={status} onChange={(e) => setStatus(e.target.value)}>
                             <option value="">전체</option>
                             <option value="01">충전 가능</option>
                             <option value="02">충전 중</option>
@@ -188,68 +139,34 @@ export default function ChargeFilterPanel({ handleChargeFilterSearch, onClose })
                         </select>
                     </div>
 
-                    {/* ✅ 운영 시간 */}
-                    <div style={{ marginBottom: "20px" }}>
-                        <h4 style={titleStyle}>운영 시간</h4>
-                        <label style={checkboxLabel}>
-                            <input
-                                type="checkbox"
-                                checked={twentyFour}
-                                onChange={(e) => setTwentyFour(e.target.checked)}
-                                style={{ marginRight: "6px" }}
-                            />
+                    {/* 운영 시간 */}
+                    <div className="filter-block">
+                        <h4>운영 시간</h4>
+                        <label className="checkbox-label">
+                            <input type="checkbox" checked={twentyFour} onChange={(e) => setTwentyFour(e.target.checked)} />
                             24시간 운영
                         </label>
                     </div>
 
-                    {/* ✅ 설치 위치 */}
-                    <div style={{ marginBottom: "20px" }}>
-                        <h4 style={titleStyle}>설치 위치</h4>
-                        <select value={floorType} onChange={(e) => setFloorType(e.target.value)} style={selectStyle}>
+                    {/* 설치 위치 */}
+                    <div className="filter-block">
+                        <h4>설치 위치</h4>
+                        <select value={floorType} onChange={(e) => setFloorType(e.target.value)}>
                             <option value="">전체</option>
-                            <option value="G">지상</option>
+                            <option value="F">지상</option>
                             <option value="B">지하</option>
                         </select>
                     </div>
                 </fieldset>
 
-                {/* ✅ 내 주변 충전소 (오일패널과 동일 스타일) */}
-                <div style={{ marginBottom: "20px" }}>
-                    <button
-                        onClick={() => {
-                            const next = !nearbyMode;
-                            setNearbyMode(next);
-                            if (next && !radius) setRadius("3"); // 기본 3km
-                        }}
-                        aria-pressed={nearbyMode}
-                        style={{
-                            width: "100%",
-                            padding: "8px 10px",
-                            borderRadius: "6px",
-                            border: "1px solid #d1d5db",
-                            fontSize: "13px",
-                            backgroundColor: nearbyMode ? "#2563eb" : "#fff",
-                            color: nearbyMode ? "#fff" : "#111827",
-                            cursor: "pointer",
-                        }}
-                    >
+                {/* 내 주변 충전소 */}
+                <div className="filter-block">
+                    <button onClick={() => { const next = !nearbyMode; setNearbyMode(next); if (next && !radius) setRadius("3"); }}
+                        className={`nearby-btn ${nearbyMode ? "on" : ""}`}>
                         ⚡ 내 주변 충전소
                     </button>
-
                     {nearbyMode && (
-                        <select
-                            value={radius}
-                            onChange={(e) => setRadius(e.target.value)}
-                            style={{
-                                marginTop: "10px",
-                                width: "100%",
-                                padding: "8px 10px",
-                                borderRadius: "6px",
-                                border: "1px solid #d1d5db",
-                                fontSize: "13px",
-                                color: "#111827",
-                            }}
-                        >
+                        <select value={radius} onChange={(e) => setRadius(e.target.value)}>
                             <option value="">반경 선택</option>
                             <option value="1">1 km</option>
                             <option value="3">3 km</option>
@@ -259,60 +176,10 @@ export default function ChargeFilterPanel({ handleChargeFilterSearch, onClose })
                 </div>
             </div>
 
-            {/* 🔍 검색 버튼 (오일패널 동일 CSS) */}
-            <div style={{ padding: "16px 20px", borderTop: "1px solid #e5e7eb" }}>
-                <button
-                    onClick={doSearch}
-                    style={{
-                        width: "100%",
-                        padding: "10px",
-                        backgroundColor: "#2563eb",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "6px",
-                        fontSize: "14px",
-                        fontWeight: "600",
-                        cursor: "pointer",
-                    }}
-                >
-                    🔍 검색
-                </button>
+            {/* 푸터 */}
+            <div className="panel-footer">
+                <button onClick={doSearch} className="search-btn">🔍 검색</button>
             </div>
         </div>
     );
 }
-
-/* ✅ 오일패널과 동일 공통 스타일 */
-const titleStyle = {
-    fontSize: "13px",
-    fontWeight: "700",
-    marginBottom: "8px",
-    color: "#111827",
-};
-
-const selectStyle = {
-    width: "100%",
-    padding: "8px 10px",
-    borderRadius: "6px",
-    border: "1px solid #d1d5db",
-    fontSize: "13px",
-    color: "#111827",
-};
-
-const checkboxGrid = {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "8px",
-};
-
-const checkboxLabel = {
-    border: "1px solid #d1d5db",
-    borderRadius: "6px",
-    padding: "6px 8px",
-    fontSize: "13px",
-    color: "#374151",
-    display: "flex",
-    alignItems: "center",
-    cursor: "pointer",
-    background: "#fff",
-};

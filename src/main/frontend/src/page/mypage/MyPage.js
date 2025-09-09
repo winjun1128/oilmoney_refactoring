@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import './MyPage.css';
 import EditInfo from "./EditInfo";
 import axios from "axios";
@@ -6,11 +6,13 @@ import { useNavigate } from "react-router-dom";
 import CarRegist from "./CarRegist";
 import ReviewList from "./ReviewList";
 import FavList from "./FavList";
+import { UserContext } from "../contexts/UserContext";
 
-function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
+function MyPage({ setIsLogin, setIsLoginModalOpen }) {
+
+    const { userInfo, setUserInfo } = useContext(UserContext);
 
     const navigate = useNavigate();
-
     const token = localStorage.getItem("token");
 
     const [deletePw, setDeletePw] = useState("");
@@ -22,10 +24,35 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
     const [reviewCount, serReviewCount] = useState(0);
     const [favStations, setFavStations] = useState([]);
 
+    // 토큰 만료 시 setIsLoginModalOpen 오류 해결용
+    useEffect(() => {
+        const interceptor = axios.interceptors.response.use(
+            response => response,
+            error => {
+                if (error.response && error.response.status === 401) {
+                    // 토큰 만료 처리
+                    localStorage.removeItem("token");
+                    setIsLogin(false);
+                    alert("세션이 만료되었습니다. 다시 로그인해주세요.");
+                    if (typeof setIsLoginModalOpen === "function") {
+                        setIsLoginModalOpen(true);
+                    }
+                }
+                return Promise.reject(error);
+            }
+        );
+
+        return () => {
+            axios.interceptors.response.eject(interceptor);
+        };
+    }, [setIsLoginModalOpen]);
+
     useEffect(() => {
         if (!token) {
             setIsLogin(false);
-            setIsLoginModalOpen(true);
+            if (typeof setIsLoginModalOpen === "function") {
+                setIsLoginModalOpen(true);
+            }
             return;
         }
 
@@ -43,27 +70,38 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
                 console.log(err);
                 setIsLogin(false);
                 localStorage.removeItem("token");
-                setIsLoginModalOpen(true);
+                if (typeof setIsLoginModalOpen === "function") {
+                    setIsLoginModalOpen(true);
+                }
             });
     }, [token, navigate]);
 
     const handleDeleteAccount = async () => {
-        setDeleteModal(true);
+        //sns 로그인 계정으로 탈퇴 시 비밀번호 없이 탈퇴
+        const isSnsAccount = userInfo.userId.startsWith("google_");
+        if (isSnsAccount) {
+            if (window.confirm("탈퇴하시겠습니까?")) {
+                await confirmDeleteAccount(true);
+                navigate("/");
+            }
+        } else {
+            setDeleteModal(true);
+        }
     }
 
-    const confirmDeleteAccount = async () => {
+    const confirmDeleteAccount = async (isSns = false) => {
         try {
             const token = localStorage.getItem("token");
 
             const res = await axios.post("/auth/delete",
                 null,
                 {
-                    params: { pw: deletePw },
+                    params: { pw: isSns ? null : deletePw },
                     headers: { "Authorization": "Bearer " + token }
                 }
             );
             if (res.data.success) {
-                alert("회원 탈퇴가 완료되었습니다.");
+                alert("탈퇴가 완료되었습니다. 이용해주셔서 감사합니다.");
                 localStorage.removeItem("token");
                 //setIsLogin(false);
                 window.location.href = "/";
@@ -81,17 +119,37 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
     const handleLogout = () => {
         if (window.confirm("정말 로그아웃하시겠습니까?")) {
             localStorage.removeItem("token");
+            setUserInfo({});
             setIsLogin(false);
             navigate("/");
         }
     };
+
+    const fetchCars = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const res = await axios.get("/cars", {
+                params: { userId: userInfo.userId },
+                headers: { "Authorization": "Bearer " + token }
+            });
+            setCars(res.data);           // 차량 목록 업데이트
+            setCarCount(res.data.length); // 차량 수 업데이트
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    useEffect(() => {
+        if (!token) return;
+        fetchCars();
+    }, [token]);
 
     return (
         <div>
             <div className="mypage-container">
                 <div className="mypage-left">
                     <div className="mypage-left-profile">
-                        <img src={userInfo.profileUrl ? userInfo.profileUrl : "/images/mypage/profile.jpg"} alt="프로필 사진" className="mypage-profile-img" />
+                        <img src={userInfo?.profileUrl ? userInfo.profileUrl : "/images/mypage/profile.jpg"} alt="프로필 사진" className="mypage-profile-img" />
                         <span>{userInfo.name}</span>
                         <span>{userInfo.email}</span>
                     </div>
@@ -125,9 +183,9 @@ function MyPage({ userInfo, setUserInfo, setIsLogin, setIsLoginModalOpen }) {
 
                 <div className="mypage-right">
                     <div>
-                        <EditInfo userInfo={userInfo} setUserInfo={setUserInfo} />
-                        <CarRegist cars={cars} setCars={setCars} />
+                        <CarRegist cars={cars} setCars={setCars} userInfo={userInfo} fetchCars={fetchCars} />
                         <div className="mypage-fav-review">
+                            <EditInfo userInfo={userInfo} setUserInfo={setUserInfo} />
                             <FavList stations={favStations} />
                             <ReviewList />
                         </div>

@@ -13,4 +13,5 @@ public class Car {
 	String fuelType;
 	String carType;
 	String regDate;
+	String isMain;
 }
