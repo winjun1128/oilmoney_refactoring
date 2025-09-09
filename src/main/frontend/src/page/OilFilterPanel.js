@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect,useRef } from "react";
 import "./OilFilterPanel.css";  // 외부 스타일 연결
 
 export default function OilFilterPanel({ isOpen, setStations, handleOilFilterSearch, onClose }) {

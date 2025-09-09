@@ -1,11 +1,19 @@
 package com.app.controller;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
+import javax.servlet.http.HttpServletRequest;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,6 +27,7 @@ import com.app.dto.OilSearchDTO;
 import com.app.dto.StationDTO;
 import com.app.service.Oil.OilService;
 import com.app.service.charge.ChargeService;
+import com.app.util.JwtProvider;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -98,6 +107,44 @@ public class ReactRestController {
 	    System.out.println("최종 추출 결과: " + result);
 	    return result;
 	}
+	
+	public class IdTokenReq {
+	    public String token;
+	}
+	
+	@GetMapping(value = "/idtoken", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<?> idToken(
+	        @RequestParam(value = "token", required = false) String token,  // ?token=abc 지원(옵션)
+	        HttpServletRequest request
+	) {
+	    try {
+	        // 1) 쿼리 파라미터가 없으면 Authorization 헤더에서 추출
+	        if (token == null || token.isBlank()) {
+	            token = JwtProvider.extractToken(request); // "Authorization: Bearer xxx"
+	        }
+	        if (token == null || token.isBlank() || !JwtProvider.isValidToken(token)) {
+	            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+	                    .body(Map.of("error", "unauthorized"));
+	        }
+
+	        // 2) 토큰에서 userId 꺼내기
+	        String userId = JwtProvider.getUserIdFromToken(token);
+	        if (userId == null || userId.isBlank() || "accessToken".equals(userId)) {
+	            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+	                    .body(Map.of("error", "no_userId"));
+	        }
+
+	        // 3) 즐겨찾기 조회 후 반환
+	        List<StationDTO> list = oilService.findFavOilStations(userId);
+	        return ResponseEntity.ok(list);
+
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+	                .body(Map.of("error", "server_error", "message", e.getMessage()));
+	    }
+	}
 
 
 }
+

@@ -35,5 +35,11 @@ public class OilServiceImpl implements OilService{
 	        return oilDAO.findNearby(param);
 	}
 
+	@Override
+	public List<StationDTO> findFavOilStations(String userId) {
+		List<StationDTO> data = oilDAO.findFavOilStations(userId);
+		return data;
+	}
+
 
 }
