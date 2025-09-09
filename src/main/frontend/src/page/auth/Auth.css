@@ -18,7 +18,7 @@
 
 .auth-modal-content {
     background-color: #fff;
-    padding: 30px;
+    padding: 15px;
     border-radius: 10px;
     min-width: 300px;
     max-width: 330px;
@@ -35,12 +35,31 @@
     padding: 7px;
     font-size: 15px;
     border-radius: 5px;
+}
 
+.auth-input2 {
+    border: 1px solid rgb(180, 180, 180);
+    width: 230px;
+    height: 20px;
+    margin: 5px;
+    padding: 7px;
+    font-size: 15px;
+    border-radius: 5px;
 }
 
 .auth-button {
     margin-top: 12px;
     width: 246px;
+    height: 35px;
+    font-size: 15px;
+    border: 1px solid rgb(191, 224, 255);
+    background-color: rgb(204, 230, 255);
+    border-radius: 3px;
+}
+
+.auth-button2 {
+    margin-top: 12px;
+    width: 290px;
     height: 35px;
     font-size: 15px;
     border: 1px solid rgb(191, 224, 255);
@@ -93,7 +112,7 @@
 .login-signup {
     font-size: 13px;
     cursor: pointer;
-    margin-top: 18px;
+    margin-top: 12px;
     color: rgb(145, 145, 145);
     display: flex;
     justify-content: center;
@@ -136,4 +155,156 @@
 
 #auth-agree-all{
     font-size: 15px;
+}
+
+/* 폼 카드 테두리 */
+.auth-form {
+  border: 1px solid #e5e7eb;  /* 테두리 색 */
+  border-radius: 12px;        /* 둥근 모서리 */
+  padding: 16px 18px;         /* 안쪽 여백 */
+  background: #fff;           /* 배경 */
+  text-align: left;           /* 가운데 정렬 상속 방지 */
+  box-shadow: 0 1px 8px rgba(0,0,0,.04); /* (선택) 살짝 입체감 */
+}
+
+/* 섹션 구분선 (선택) */
+.auth-form .auth-agreement-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+/* ===== 폼 내부 요소를 테두리에 맞춰 정렬(덮어쓰기) ===== */
+
+/* 폼 자체 */
+.auth-form{
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 18px;
+  background:#fff;
+  text-align: left;
+  box-shadow: 0 1px 8px rgba(0,0,0,.04);
+}
+
+/* 인풋/버튼은 폼의 가로폭에 맞춤 */
+.auth-input2{
+  width: 100% !important;         /* 230px 고정폭 제거 */
+  height: 36px;
+  margin: 6px 0;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  border-radius: 6px;
+}
+.auth-button2{
+  width: 100% !important;         /* 제출 버튼도 가득 채움 */
+  height: 40px;
+  border-radius: 6px;
+}
+
+/* 한 줄에 입력 + 우측 버튼 */
+.auth-inline{ display:flex; gap:8px; align-items:center; }
+.auth-inline .auth-input{ flex:1; }
+
+/* 확인/인증 버튼: absolute 제거, 폼 폭 기준 정렬 */
+.auth-confirm-button{
+  position: static !important;    /* ← absolute 덮어쓰기 */
+  height: 36px;
+  padding: 0 12px;
+  margin: 0;
+  border: 1px solid rgb(191,224,255);
+  background: rgb(204,230,255);
+  border-radius: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* 인증번호 입력 줄과 타이머 정렬 */
+.auth-verification-section{ display:flex; align-items:center; gap:8px; margin-top:6px; }
+.auth-verification-section .auth-input{ flex:1; }
+.auth-timer{ position: static !important; margin:0; font-size:12px; color:#ef4444; }
+
+/* 약관 영역: 폼 안쪽 폭에 맞춰 좌측 정렬 */
+.auth-agreement-section{
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin: 14px 0 6px 0 !important;   /* 기존 margin-left 제거 */
+  text-align: left;
+  font-size: 13px;
+}
+#auth-agree-all{
+  display:flex; align-items:center; gap:10px;
+  font-size: 13px; margin-bottom:6px;
+}
+.agree-item{
+  display:flex; align-items:center; justify-content:flex-start;
+  gap:10px; margin:3px 0;
+}
+.agree-item > label{
+  display:flex; align-items:center; gap:10px; flex:1; line-height:1.4;
+}
+
+/* 체크박스 ↔ 텍스트 간격 */
+#auth-agree-all input[type="checkbox"],
+.agree-item input[type="checkbox"]{
+  margin: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* 약관보기 버튼(슬림) */
+.auth-link-button{
+  height: 28px; padding: 0 10px;
+  border: 1px solid #d1d5db; background:#f9fafb; border-radius: 999px;
+  font-size: 12px; white-space: nowrap; display:inline-flex; align-items:center; justify-content:center;
+}
+.auth-link-button:hover{ background:#eef2ff; border-color:#c7d2fe; }
+
+/* 폼 내 구분선(선택) */
+.auth-form .auth-agreement-section{
+  margin-top: 12px; padding-top: 15px; border-top: 1px dashed #e5e7eb;
+}
+/* 약관 모달 오버레이 & 박스 */
+.terms-overlay {
+  position: fixed;
+  inset: 0;                                /* top/right/bottom/left: 0 */
+  background: rgba(0, 0, 0, .35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4000;                           /* 회원가입 모달(1000)보다 크게 */
+}
+
+.terms-modal {
+  width: 520px;
+  max-width: 92vw;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.terms-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.terms-header h3 { margin: 0; font-size: 16px; }
+.terms-close   { width: 32px; height: 32px; border: 0; background: transparent; font-size: 22px; cursor: pointer; }
+
+.terms-body { padding: 12px 16px; max-height: 60vh; overflow: auto; }
+.terms-pre  { white-space: pre-wrap; font-size: 13px; line-height: 1.6; color: #374151; margin: 0; }
+
+.terms-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
