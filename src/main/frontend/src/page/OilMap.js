@@ -15,6 +15,41 @@ const MAX_LEVEL = 12;
 const PRICE_DIFF_THRESH = 30;                     // 임계값(원)
 const BASIS_KEY = "route.priceBasis.v1";
 
+// 파일 상단 헬퍼들 근처에 추가
+const tip = (text) =>
+  `<span class="tt" title="${escapeHtml(text)}" data-tip="${escapeHtml(text)}">${escapeHtml(text)}</span>`;
+
+
+// ★ 상표명 통일
+const brandName = (raw = "", group = "") => {
+  const s = String(raw || "").trim();
+  const g = String(group || "").trim().toUpperCase();
+  if (!s && !g) return "";
+
+  // 그룹 힌트 우선
+  if (/NHO|NH[-_ ]?OIL|RTO/.test(g)) return "알뜰(농협)";
+  if (/HDO/.test(g)) return "알뜰(도로공사)";
+
+  const su = s.toUpperCase().replace(/[.\-·\s]/g, "");
+
+  // 대표 브랜드 매핑
+  if (/^SK|SK에너지|SKENERGY/.test(su)) return "SK에너지";
+  if (/^GS|GSCALTEX|GS칼텍스/.test(su)) return "GS칼텍스";
+  // S-OIL 표기 변형: SOIL, SOL, (한글) 에스오일/에쓰오일
+  if (/^(?:SOIL|SOL)$/.test(su) || /(에스오일|에쓰오일)/.test(s)) return "S-OIL";
+  if (/HYUNDAI|OILBANK|현대/.test(su)) return "현대오일뱅크";
+
+  // 알뜰 파생 코드
+  if (/NHO|NH[-_ ]?OIL|RTO/.test(su)) return "알뜰(농협)";
+  if (/HDO/.test(su)) return "알뜰(도로공사)";
+
+  // 무폴/자가
+  if (/(자영|무폴|자가)/.test(s)) return "자가(무폴)";
+
+  return s; // 알 수 없으면 원문 유지
+};
+
+
 // 공통: 주유소 ID(가격 조회용) 추출
 // 공통: 주유소 ID(가격 조회용) 추출 — 일반/주변 응답 모두 커버
 // ✅ 주유소 가격 ID(UNI) 뽑기: 6~12자리 숫자만 인정
@@ -746,22 +781,23 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
     const centerCoord = selectedCoord ?? MY_COORD;
 
     drawList.forEach((s0) => {
-      const s = normalizeStation(s0);                 // ← 여기서 통일
-      // avgMap에서 평균/차이 붙이기
-      const uni = getOilId(s);
-      const extra = uni ? (avgMap.get(uni) || {}) : {};
-      const sPlus = {
-        ...s,
-        uni,
-        stationId: uni || s.stationId,
-        prices: extra.prices || {},
-        avg: extra.avg || {},
-        diff: extra.diff || {},
-        updatedAt: extra.updatedAt || s.updatedAt,
-      };
-      if (!Number.isFinite(sPlus.lat) || !Number.isFinite(sPlus.lon)) return;
-      const pos = new window.kakao.maps.LatLng(sPlus.lat, sPlus.lon);
-      const isCharge = !!sPlus.statId;
+       const s = normalizeStation(s0);                 // ← 여기서 통일
+       // avgMap에서 평균/차이 붙이기
+  const uni   = getOilId(s);
+  const extra = uni ? (avgMap.get(uni) || {}) : {};
+  const sPlus = {
+    ...s,
+    uni,
+    stationId: uni || s.stationId,
+    brandGroup: s.brandGroup ?? s.BRAND_GROUP,
+    prices:   extra.prices || {},
+    avg:      extra.avg    || {},
+    diff:     extra.diff   || {},
+    updatedAt: extra.updatedAt || s.updatedAt,
+  };
+  if (!Number.isFinite(sPlus.lat) || !Number.isFinite(sPlus.lon)) return;
+  const pos = new window.kakao.maps.LatLng(sPlus.lat, sPlus.lon);
+  const isCharge = !!sPlus.statId;
 
       const favKey = favKeyOf(sPlus, isCharge ? "ev" : "oil");
       const isFav = !!(favKey && favSetRef.current?.has(favKey));
@@ -802,7 +838,7 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
         <div style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
           <div style="flex:1;min-width:0;">
             <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              ${escapeHtml(sPlus.statNm ?? "충전소")}
+              ${tip(sPlus.statNm ?? "충전소")}
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:6px">
@@ -930,19 +966,19 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
           } catch (e) {
             const fail = `
         <div class="info-window">
-          <div class="info-title">${escapeHtml(sPlus.statNm ?? "충전소")}</div>
+          <div class="info-title">${tip(sPlus.statNm ?? "충전소")}</div>
           ${sPlus.addr ? `<div class="info-row">📍 ${escapeHtml(sPlus.addr)}</div>` : ""}
           <div class="info-row" style="color:#c0392b">⚠️ 상태 조회 실패</div>
         </div>`.trim();
-            setInfoHtml(fail, marker);
-          }
-        } else {
-          // ───────── 주유소 인포윈도우 ─────────
-          const mode = "oil";
-          const stationName = sPlus.name ?? sPlus.NAME ?? "이름없음";
-          const addr = sPlus.address ?? sPlus.ADDR ?? sPlus.ADDRESS ?? "";
-          const brand = sPlus.brand ?? sPlus.BRAND ?? "";
-          const isLpg = (sPlus.lpgYN ?? sPlus.LPG_YN) === "Y";
+      setInfoHtml(fail, marker);
+    }
+  } else {
+    // ───────── 주유소 인포윈도우 ─────────
+    const mode = "oil";
+    const stationName = sPlus.name ?? sPlus.NAME ?? "이름없음";
+    const addr  = sPlus.address ?? sPlus.ADDR ?? sPlus.ADDRESS ?? "";
+    const brand = brandName(sPlus.brand ?? sPlus.BRAND, sPlus.brandGroup);
+    const isLpg = (sPlus.lpgYN ?? sPlus.LPG_YN) === "Y";
 
           const favKey = favKeyOf(sPlus, mode);
           const starredNow = !!(favKey && favSetRef.current?.has(favKey));
@@ -960,7 +996,7 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
         <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
           <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
             <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              ${escapeHtml(stationName)}
+              ${tip(stationName)}
             </div>
             ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
           </div>
@@ -1035,7 +1071,7 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
         <div class="info-header" style="display:flex;align-items:center;gap:8px;justify-content:space-between;">
           <div style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;">
             <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              ${escapeHtml(stationName)}
+              ${tip(stationName)}
             </div>
             ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
           </div>
