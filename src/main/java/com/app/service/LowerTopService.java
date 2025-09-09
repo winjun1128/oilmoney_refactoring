@@ -20,8 +20,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Service
 public class LowerTopService {
 
-	//private final String API_KEY = "F250822740";
-	private final String API_KEY = "F250904769";
+	private final String API_KEY = "F250822740";
+	//private final String API_KEY = "F250904769";
 	
 	// 선택된 시군(area) 코드로 최저가 주유소 가져오기
 	public List<LowerTopPrice> getAndProcessOilPrices(String area, String prodcd) {
