@@ -168,6 +168,17 @@ public class MyPageController {
 	public List<Car> getCarsByUserId(@RequestParam String userId) {
         return usersService.getCarsByUserId(userId);
     }
+	
+	@GetMapping(value="/mainCar",produces="application/json")
+	public ResponseEntity<?> getMainCarByUserId(HttpServletRequest request){
+		String token = JwtProvider.extractToken(request);
+		String userId = JwtProvider.getUserIdFromToken(token);
+		 Car car = usersService.mainCarByUserId(userId);
+		 return ResponseEntity.ok(Map.of(
+	                "ok", true,
+	                "item", car
+	        ));
+	}
 
 //	즐겨찾기 목록
 	@PostMapping("/favorites")

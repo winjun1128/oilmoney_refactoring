@@ -112,6 +112,48 @@ const chargerTypeName = (code = "") =>
     "10": "기타",
   }[String(code).padStart(2, "0")] || String(code));
 
+  // 메인카 정보 → 화면 필터로 매핑 (교체 버전)
+const _lc = (s) => String(s || "").toLowerCase();
+
+function inferFiltersFromCar(car = {}) {
+  const fuel = _lc(car.fuelType || car.fuel || car.energy || car.oilType || "");
+  const evRaw =
+    car.chargingType || car.evType || car.chargerType || car.chgerType ||
+    car.chargeSpec || car.chargerTypeNm || "";
+  const evStr = String(evRaw).trim();
+  const ev = _lc(evStr);
+
+  // EV 여부
+  if (fuel.includes("ev") || fuel.includes("전기") || fuel.includes("electric")) {
+    // ① 텍스트 기반 판별
+    let hasDC = /(dc|콤보|combo|차데모|급속|초고속|super|슈퍼)/i.test(ev);
+    let hasAC = /(ac|완속|3상)/i.test(ev);
+
+    // ② 숫자 코드 기반 판별 (예: 07=AC3상, 04/05/09=DC콤보 등)
+    const codes = (evStr.match(/\d{1,2}/g) || []).map(c => c.padStart(2, "0"));
+    const DC_SET = new Set(["01","03","04","05","06","08","09"]); // DC 포함
+    const AC_SET = new Set(["02","03","06","07","08"]);           // AC 포함
+    if (codes.length) {
+      if (codes.some(c => DC_SET.has(c))) hasDC = true;
+      if (codes.some(c => AC_SET.has(c))) hasAC = true;
+    }
+
+    let evType = "any";
+    if (hasDC && hasAC) evType = "combo";
+    else if (hasDC)     evType = "dc";
+    else if (hasAC)     evType = "ac";
+
+    return { cat: "ev", basis: "B027", evType };
+  }
+
+  if (fuel.includes("lpg")) return { cat: "lpg", basis: "K015", evType: "any" };
+  if (fuel.includes("경유") || fuel.includes("diesel"))
+    return { cat: "oil", basis: "D047", evType: "any" };
+
+  return { cat: "oil", basis: "B027", evType: "any" };
+}
+
+
 /* ───────── 숫자/좌표 유틸 ───────── */
 const parseNum = (v) => {
   if (v == null) return NaN;
@@ -1047,6 +1089,53 @@ useEffect(() => {
     try { setSavedRoutes(await listSavedRoutes()); } catch (e) { console.warn(e); }
   })();
 }, [isAuthed]);
+
+
+// 메인카 읽어서 필터 패널 자동 바인딩
+useEffect(() => {
+  let ignore = false;
+  (async () => {
+    try {
+      if (!isAuthed) return; // 로그인일 때만 시도
+      const token = getToken();
+      const r = await fetch("/mainCar", {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      const j = await requireJson(r); // 401/403 처리 포함
+      const car = j?.item ?? j;      // 컨트롤러가 { ok, item } 형태로 반환
+
+      if (!car || ignore) return;
+
+      const pref = inferFiltersFromCar(car);
+
+      // 1) 종류
+      setActiveCat(pref.cat);
+
+      // 2) 연료 색상 기준 (주유소/LPG일 때만 의미 있음)
+      setPriceBasis(pref.basis);
+
+      // 3) 충전 타입 (EV일 때만 의미 있음) + enabled 스위치
+      setFilters((v) => ({
+        ev: {
+          ...v.ev,
+          enabled: pref.cat === "ev",
+          status: "any",
+          type: pref.evType, // dc | ac | combo | any
+        },
+        oil: { ...v.oil, enabled: pref.cat === "oil" },
+        lpg: { ...v.lpg, enabled: pref.cat === "lpg" },
+      }));
+
+      // UI에 바로 반영
+      setTimeout(() => applyFiltersToMarkers(), 0);
+    } catch (e) {
+      // 메인카가 없거나 토큰 만료 등은 조용히 무시
+      console.warn("메인카 자동 바인딩 실패:", e?.message || e);
+    }
+  })();
+  return () => { ignore = true; };
+}, [isAuthed]);
+
 
 // datalist 옵션(로그인 상태에서만 채움)
 const dedup = (arr) => [...new Set(arr.filter(Boolean))];

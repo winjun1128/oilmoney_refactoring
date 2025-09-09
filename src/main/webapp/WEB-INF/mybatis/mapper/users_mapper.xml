@@ -113,6 +113,11 @@
 		select count(*) from t_car where user_id = #{userId}
 	</select>
 	
+	<!-- 등록 차량 수 -->
+	<select id="mainCarByUserId" parameterType="String" resultType="Car">
+		select * from t_car where user_id = #{userId} AND is_main = 'Y'
+	</select>
+	
 	<!-- 즐겨찾기 -->
 	<select id="countFavByUserId" parameterType="String" resultType="int">
 		select count(*) from fav where user_id = #{userId}
