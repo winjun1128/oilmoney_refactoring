@@ -17,6 +17,7 @@ export default function OilDashboard() {
     const [sidoPriceData, setSidoPriceData] = useState([]);
     const [sigunList, setSigunList] = useState([]); // 새로운 상태 추가
     const [lowerTopData, setLowerTopData] = useState([]); // 새로운 상태 추가
+    
 
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -77,6 +78,7 @@ export default function OilDashboard() {
                     allAvgData={allAvgData} // 데이터 전달
                     selectedSidoName={selectedSidoName}
                     selectedFuel={selectedFuel}
+                    //sidoOilData={sidoOilData}
                 />
                 <AvgRecentPrice
                     activeFuel={selectedFuel}
@@ -85,9 +87,9 @@ export default function OilDashboard() {
             </div>
             <div className="dashboard-section-bottom">
                 <SidoPrice
-                    //selectedSidoName={selectedSidoName}
+                    selectedSidoName={selectedSidoName}
                     setSelectedSidoName={setSelectedSidoName}
-                    //selectedFuel={selectedFuel}
+                    selectedFuel={selectedFuel}
                     sidoPriceData={sidoPriceData} // 데이터 전달
                 />
                 <RegionSelector

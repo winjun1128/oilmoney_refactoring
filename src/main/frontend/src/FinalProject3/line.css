@@ -1,0 +1,8 @@
+.line {
+  border: none;              /* 기본 선 제거 */
+  height: 1px;               /* 두께 */
+  background-color: #535353;    /* 색상 */
+  margin: 0px 0px 15px 0px;            /* 위아래 여백 */
+  width: 100%;               /* 가로 길이 (필요에 따라 %) */
+  background: linear-gradient(to right, transparent, #aaa, transparent);
+}

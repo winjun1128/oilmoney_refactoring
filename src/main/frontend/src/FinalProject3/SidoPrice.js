@@ -1,7 +1,6 @@
 // components/SidoPrice.js
 import { useState, useEffect } from "react";
 import axios from "axios";
-import FlipNumbers from 'react-flip-numbers';
 import './components.css';
 import './SidoPrice.css';
 import { PINS } from './pinsData';
@@ -46,6 +45,7 @@ export default function SidoPrice({ selectedSidoName, setSelectedSidoName, selec
         <div className="card-container sido-price">
             <div className="map-section">
                 <h2 className="card-title">지역별 평균유가</h2>
+                <hr className="line" />
                 <div className="main-map-container">
                     <img src="/images/main_map.png" alt="대한민국 지도" className="main-map-image" />
                     {PINS.map((pin, index) => (
