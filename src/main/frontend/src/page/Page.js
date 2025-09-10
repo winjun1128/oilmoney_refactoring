@@ -6,7 +6,7 @@ import OilMap from "./OilMap";
 import axios from "axios";
 
 export default function Page({ isLogin, setIsLoginModalOpen }) {
-    const [activeFilter, setActiveFilter] = useState(null);
+    const [activeFilter, setActiveFilter] = useState("oil");
     const [stations, setStations] = useState([]); // ✅ 주유소 검색 결과
     const latestReqRef = useRef(0);
     // state 추가

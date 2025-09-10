@@ -89,7 +89,6 @@ function CarRegist({ cars, setCars, userInfo }) {
                 { carId: car.carId },
                 { headers: { "Authorization": "Bearer " + token } }
             );
-            //setCars(prev => prev.filter(c => c.carId !== car.carId));
             fetchCars();
         } catch (error) {
             console.log(error);
@@ -135,7 +134,7 @@ function CarRegist({ cars, setCars, userInfo }) {
     return (
         <div className="car-container">
             <div className='edit-title'>
-                <span className='edit-title-text'>내 차 관리</span>
+                <span className='edit-title-text'>내 차 정보</span>
                 <button type="button" className='edit-button' onClick={handleAddClick}>등록</button>
             </div>
 
@@ -148,29 +147,29 @@ function CarRegist({ cars, setCars, userInfo }) {
                             <div key={car.carId} className={`car-card ${car.isMain === 'Y' ? 'main-car-card' : ''}`}>
                                 {/* 차량 헤더 */}
                                 <div className="car-header">
+                                    {/* {car.isMain === 'Y' && <span className="main-label">대표차</span>} */}
+                                    <button className={`set-main-btn ${car.isMain === 'Y' ? 'active' : ''}`}
+                                        onClick={() => {
+                                            if (car.isMain !== 'Y') {
+                                                setMainCar(car, car.carId);
+                                            }
+                                        }}> 대표차 </button>
+                                    <button className="car-delete-btn" onClick={() => handleDelete(car)}>
+                                        <i className="fa-solid fa-xmark"></i>
+                                    </button>
+                                </div>
+                                <div className='car-info-title'>
                                     <img src="/images/mypage/suv.png" alt={car.carType} className="car-photo" />
                                     <div className='car-title'>
                                         <div className="car-basic-info">
-                                            <h3 className="car-nickname">{car.nickname || "내 차"}</h3>
-                                            <span>모델명: {car.carType || "-"}</span><br></br>
-                                            <span>연료: {car.fuelType}</span><br></br>
+                                            <span>모델명 : {car.carType || "-"}</span><br></br>
+                                            <span>연료 : {car.fuelType}</span>
                                             {car.fuelType === "전기차" && car.chargerType && (
-                                                <span>충전기 타입: {getChargerLabel(car.chargerType)}</span>
+                                                <span id='charger-type'> (충전기 타입: {getChargerLabel(car.chargerType)})</span>
                                             )}
-                                            {car.isMain === 'Y' && <span className="main-label">대표차</span>}
-                                        </div>
-                                        {/* 액션 버튼 */}
-                                        <div className="car-actions">
-                                            {car.isMain !== 'Y' && (
-                                                <button className="set-main-btn" onClick={() => setMainCar(car, car.carId)}>대표차로 설정</button>
-                                            )}
-                                            <button className="car-delete-btn" onClick={() => handleDelete(car)}>
-                                                <i className="fa-solid fa-xmark"></i>
-                                            </button>
                                         </div>
                                     </div>
                                 </div>
-
                                 <EnergyRecord car={car} />
                             </div>
                         ))}

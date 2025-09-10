@@ -7,15 +7,15 @@
 
 	<!-- 주유/충전 기록 -->
 	<insert id="insertRecord" parameterType="EnergyRecord" keyProperty="recordId">
-		INSERT INTO t_energy_record (record_id, car_id, recode_date, station, amount, price, fuel_type)
-		VALUES (t_energy_record_seq.NEXTVAL, #{carId}, systimestamp, #{station}, #{amount}, #{price}, #{fuelType})
+		INSERT INTO t_energy_record (record_id, car_id, record_date, station, amount, price, fuel_type)
+		VALUES (t_energy_record_seq.NEXTVAL, #{carId}, #{recordDate}, #{station}, #{amount}, #{price}, #{fuelType})
 	</insert>
 
 	<select id="selectRecordsByCarId" parameterType="int" resultType="EnergyRecord">
-		SELECT record_id, car_id, recode_date as recodeDate, station, amount, price, fuel_type
+		SELECT record_id, car_id, record_date as recordDate, station, amount, price, fuel_type
 		FROM t_energy_record
 		WHERE car_id = #{carId}
-		ORDER BY recode_date DESC
+		ORDER BY record_date DESC
 	</select>
 
 	<delete id="deleteRecord" parameterType="int">

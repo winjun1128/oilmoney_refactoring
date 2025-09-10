@@ -151,6 +151,55 @@
     margin: 4px 0;
 }
 
+/* 인포윈도 안 툴팁 */
+.info-window { position: relative; overflow: visible; }
+
+.info-window .tt {
+  position: relative;
+  cursor: help;
+}
+
+/* 말풍선 본체 */
+.info-window .tt::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: 100%;              /* 요소 위쪽으로 */
+  transform: translate(-50%, -8px);
+  display: none;
+  background: rgba(17,17,17,.92);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  max-width: 280px;
+  white-space: normal;
+  word-break: keep-all;
+  box-shadow: 0 6px 16px rgba(0,0,0,.2);
+  z-index: 1000;
+}
+
+/* 말풍선 화살표 */
+.info-window .tt::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 2px);
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(17,17,17,.92);
+  display: none;
+  z-index: 1001;
+}
+
+.info-window .tt:hover::after,
+.info-window .tt:hover::before {
+  display: block;
+}
+/* 말풍선 끝 */
+
+
 .price-box {
     display: flex;
     flex-direction: column;
