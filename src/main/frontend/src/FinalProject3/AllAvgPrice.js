@@ -63,8 +63,8 @@ export default function AllAvgPrice({ activeTab, setActiveTab, selectedSidoName,
                         <span>(원/리터)</span>
                     </div>
                     <strong className="price-value">{allAvgItem.PRICE} 원</strong>
-                    <span className={`price-diff ${Number(allAvgItem.DIFF) > 0 ? 'up' : Number(allAvgItem.DIFF) < 0 ? 'down' : ''}`}>
-                        {Number(allAvgItem.DIFF) > 0 ? '▲' : Number(allAvgItem.DIFF) < 0 ? '▼' : ''} {Math.abs(Number(allAvgItem.DIFF))}원
+                    <span className={`price-diff ${Number(allAvgItem.DIFF) > 0 ? 'up' : Number(allAvgItem.DIFF) < 0 ? 'down' : 'no-change'}`}>
+                        {Number(allAvgItem.DIFF) > 0 ? '▲' : Number(allAvgItem.DIFF) < 0 ? '▼' : '-'} {Math.abs(Number(allAvgItem.DIFF)).toFixed(2)}원
                     </span>
                 </div>
             )}
@@ -77,8 +77,8 @@ export default function AllAvgPrice({ activeTab, setActiveTab, selectedSidoName,
                 {sidoItem ? (
                     <>
                         <strong className="price-value">{sidoItem.PRICE} 원</strong>
-                        <span className={`price-diff ${Number(sidoItem.DIFF) > 0 ? 'up' : Number(sidoItem.DIFF) < 0 ? 'down' : ''}`}>
-                            {Number(sidoItem.DIFF) > 0 ? '▲' : Number(sidoItem.DIFF) < 0 ? '▼' : ''} {Math.abs(Number(sidoItem.DIFF))}원
+                        <span className={`price-diff ${Number(sidoItem.DIFF) > 0 ? 'up' : Number(sidoItem.DIFF) < 0 ? 'down' : 'no-change'}`}>
+                            {Number(sidoItem.DIFF) > 0 ? '▲' : Number(sidoItem.DIFF) < 0 ? '▼' : '-'} {Math.abs(Number(sidoItem.DIFF)).toFixed(2)}원
                         </span>
                     </>
                 ) : (

@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGasPump, faChargingStation, faShare, faChartSimple } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 import { handleMyInfoClick } from "./utils/authHelpers";
-import "./SideBar.css";   // ✅ 외부 스타일 파일 연결
+import "./RouteSideBar.css";   // ✅ 외부 스타일 파일 연결
 import { UserContext } from "./contexts/UserContext";
 
 export default function SideBar({ onFilterChange, isLogin, setIsLoginModalOpen }) {
@@ -19,14 +19,14 @@ export default function SideBar({ onFilterChange, isLogin, setIsLoginModalOpen }
     const { userInfo } = useContext(UserContext);
 
     return (
-        <aside className="sidebar">
+        <aside className="root-dock">
             {/* ✅ 위쪽 (로고 + 메뉴) */}
-            <div className="sidebar-top">
-                <div className="sidebar-logo">
+            <div className="root-dock__top">
+                <div className="root-dock__logo">
                     <img src="/images/logo_square.png" alt="로고" />
                 </div>
 
-                <nav className="sidebar-menu">
+                <nav className="root-dock__nav">
                     {itemsTop.map((it, idx) => (
                         <DockButton key={idx} label={it.label} onClick={it.action}>
                             {it.icon}
@@ -36,7 +36,7 @@ export default function SideBar({ onFilterChange, isLogin, setIsLoginModalOpen }
             </div>
 
             {/* ✅ 아래쪽 (내정보) */}
-            <div className="sidebar-bottom">
+            <div className="root-dock__bottom">
                 <DockButton label={userInfo?.name ? `${userInfo.name}님` : "내정보"} onClick={() => handleMyInfoClick({ isLogin, setIsLoginModalOpen, navigate })}>
                     <User />
                 </DockButton>
@@ -47,9 +47,9 @@ export default function SideBar({ onFilterChange, isLogin, setIsLoginModalOpen }
 
 function DockButton({ children, label, onClick = () => { } }) {
     return (
-        <button className="dock-btn" onClick={onClick}>
-            <span className="dock-icon">{children}</span>
-            <span className="dock-label">{label}</span>
+        <button className="dock-item" onClick={onClick}>
+            <span className="icon-wrap">{children}</span>
+            <span className="label">{label}</span>
         </button>
     );
 }
