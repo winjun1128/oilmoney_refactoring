@@ -943,6 +943,7 @@
         max-width: none;
         height: auto;
         margin: 0;
+        width: 100%;
     }
 
     .fav-info-container,
@@ -950,17 +951,11 @@
         max-width: none;
         height: 350px;
         margin: 0;
+        width: 100%;
     }
 
     .review-info-container {
         margin-bottom: 75px;
-    }
-
-    .edit-info-container,
-    .fav-info-container,
-    .review-info-container {
-        width: 100%;
-        max-width: 280px;
     }
 
     .mypage-left-profile {
