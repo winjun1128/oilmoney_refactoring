@@ -431,6 +431,59 @@
 }
 
 
+/* ===========================================
+   📱 모바일: 슬라이드 → 페이드(팝) 전환 패치
+   - width 애니메이션 제거 (슬라이드 X)
+   - 고정 너비 + opacity/visibility로 등장/퇴장
+   - 살짝 scale로 '팝' 느낌 추가 (원하면 제거 가능)
+   =========================================== */
+@media (max-width: 768px){
+  .filter-flyout{
+    /* 위치 고정 */
+    left: 6px;
+    right: auto;
+    top: calc(var(--mobile-gap, 10px) + env(safe-area-inset-top,0px) + var(--trim-top, 16px));
+    bottom: calc(var(--dock-h, 64px) + var(--mobile-gap, 10px) + env(safe-area-inset-bottom,0px));
+    height: auto;
+
+    /* 🔑 슬라이드 금지: 폭 고정 + 트랜지션에서 width 제거 */
+    width: var(--mobile-panel-w, 268px);
+    overflow: visible;
+
+    /* 기본은 보이지 않게 */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+
+    /* 🔑 페이드 전용 트랜지션 (슬라이드 X) */
+    transition:
+      opacity var(--fade-dur, .12s) var(--slide-ease, cubic-bezier(.22,.61,.36,1)),
+      visibility 0s linear var(--fade-dur, .12s);
+
+    will-change: opacity;
+  }
+
+  .filter-flyout.open{
+    /* 등장: 그냥 보이기만 */
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+
+    /* 즉시 visible 처리 */
+    transition:
+      opacity var(--fade-dur, .12s) var(--slide-ease, cubic-bezier(.22,.61,.36,1)) 0s,
+      visibility 0s linear 0s;
+  }
+
+  /* 카드 자체에 '팝' 느낌 살짝 (원하면 아래 2줄만 삭제) */
+  .sidebar-card{
+    transform: scale(.98);
+    transition: transform var(--fade-dur, .12s) var(--slide-ease, cubic-bezier(.22,.61,.36,1));
+  }
+  .filter-flyout.open .sidebar-card{
+    transform: none;
+  }
+}
 
 
 
