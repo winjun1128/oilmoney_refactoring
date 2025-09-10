@@ -1,71 +1,71 @@
-import { useState,useEffect } from "react";
+import { useState, useEffect } from "react";
 import "./ChargeFilterPanel.css"; // ✅ 외부 스타일 연결
 
 // maxKw 기준 우선, 없으면 방법으로 추정
 const inferSpeedFrom = (methods, maxKw) => {
-  if (Number(maxKw) > 0) {
-    if (maxKw >= 100) return ["초급속"];
-    if (maxKw >= 50)  return ["급속"];
-    return ["완속"];
-  }
-  const hasDC = methods.some(m => m.startsWith("DC"));
-  const hasAC = methods.some(m => m.startsWith("AC"));
-  if (hasDC && !hasAC) return ["급속"];
-  if (!hasDC && hasAC) return ["완속"];   // ★ AC3상만 있으면 완속
-  return []; // AC/DC 혼합이면 모호 → 미선택
+    if (Number(maxKw) > 0) {
+        if (maxKw >= 100) return ["초급속"];
+        if (maxKw >= 50) return ["급속"];
+        return ["완속"];
+    }
+    const hasDC = methods.some(m => m.startsWith("DC"));
+    const hasAC = methods.some(m => m.startsWith("AC"));
+    if (hasDC && !hasAC) return ["급속"];
+    if (!hasDC && hasAC) return ["완속"];   // ★ AC3상만 있으면 완속
+    return []; // AC/DC 혼합이면 모호 → 미선택
 };
 
 // ChargeFilterPanel.jsx 상단 helpers 교체/보강
 const codeToMethods = (code) => {
-  switch (String(code).padStart(2, "0")) {
-    case "01": return ["DC차데모"];
-    case "02": return ["AC완속"];
-    case "03": return ["DC차데모", "AC3상"];
-    case "04": return ["DC차데모", "DC콤보"];
-    case "05": return ["DC차데모", "AC3상", "DC콤보"];
-    case "06": return ["DC콤보"];
-    case "07": return ["AC3상"]; // ★ 여기가 질문의 핵심
-    default:  return [];
-  }
+    switch (String(code).padStart(2, "0")) {
+        case "01": return ["DC차데모"];
+        case "02": return ["AC완속"];
+        case "03": return ["DC차데모", "AC3상"];
+        case "04": return ["DC차데모", "DC콤보"];
+        case "05": return ["DC차데모", "AC3상", "DC콤보"];
+        case "06": return ["DC콤보"];
+        case "07": return ["AC3상"]; // ★ 여기가 질문의 핵심
+        default: return [];
+    }
 };
 
 const inferEvFromCar = (car) => {
-  const fuelRaw = String(
-    car?.fuelType ?? car?.fuel ?? car?.powertrain ?? car?.type ?? ""
-  ).toUpperCase();
+    const fuelRaw = String(
+        car?.fuelType ?? car?.fuel ?? car?.powertrain ?? car?.type ?? ""
+    ).toUpperCase();
 
-  const isEv =
-    fuelRaw.includes("EV") ||
-    fuelRaw.includes("ELECTRIC") ||
-    fuelRaw.includes("전기");
+    const isEv =
+        fuelRaw.includes("EV") ||
+        fuelRaw.includes("ELECTRIC") ||
+        fuelRaw.includes("전기");
 
-  // 1) 숫자 코드 우선 매핑
-  const methods = new Set(codeToMethods(car?.chargerType));
+    // 1) 숫자 코드 우선 매핑
+    const methods = new Set(codeToMethods(car?.chargerType));
 
-  // 2) 텍스트도 있으면 보완
-  const plugRaw = String(
-    car?.connector ?? car?.plugType ?? car?.chargeType ?? ""
-  ).toUpperCase();
+    // 2) 텍스트도 있으면 보완
+    const plugRaw = String(
+        car?.connector ?? car?.plugType ?? car?.chargeType ?? ""
+    ).toUpperCase();
 
-  if (plugRaw.includes("CCS") || plugRaw.includes("콤보")) methods.add("DC콤보");
-  if (plugRaw.includes("차데모") || plugRaw.includes("CHADEMO")) methods.add("DC차데모");
-  if (plugRaw.includes("AC3상")) methods.add("AC3상");
-  // ⚠️ 'AC'만으로 AC완속 추가하던 로직은 오검출(AC3상에 끼어듦)이 있어 제거/완화
-  if (plugRaw.includes("AC완속")) methods.add("AC완속");
+    if (plugRaw.includes("CCS") || plugRaw.includes("콤보")) methods.add("DC콤보");
+    if (plugRaw.includes("차데모") || plugRaw.includes("CHADEMO")) methods.add("DC차데모");
+    if (plugRaw.includes("AC3상")) methods.add("AC3상");
+    // ⚠️ 'AC'만으로 AC완속 추가하던 로직은 오검출(AC3상에 끼어듦)이 있어 제거/완화
+    if (plugRaw.includes("AC완속")) methods.add("AC완속");
 
-  // 출력으로 속도 유추(선택 사항)
-  const maxKw = Number(car?.maxKw ?? car?.maxOutput ?? car?.kw ?? 0);
-  const methodArr = Array.from(methods);
- const chargerTypes = new Set(inferSpeedFrom(methodArr, maxKw));
-  if (maxKw >= 100) chargerTypes.add("초급속");
-  else if (maxKw >= 50) chargerTypes.add("급속");
-  else if (maxKw > 0) chargerTypes.add("완속");
+    // 출력으로 속도 유추(선택 사항)
+    const maxKw = Number(car?.maxKw ?? car?.maxOutput ?? car?.kw ?? 0);
+    const methodArr = Array.from(methods);
+    const chargerTypes = new Set(inferSpeedFrom(methodArr, maxKw));
+    if (maxKw >= 100) chargerTypes.add("초급속");
+    else if (maxKw >= 50) chargerTypes.add("급속");
+    else if (maxKw > 0) chargerTypes.add("완속");
 
-  return {
-    isEv,
-    method: methodArr,
-    chargerType: Array.from(chargerTypes),
-  };
+    return {
+        isEv,
+        method: methodArr,
+        chargerType: Array.from(chargerTypes),
+    };
 };
 
 
@@ -98,7 +98,7 @@ export default function ChargeFilterPanel({ isOpen, handleChargeFilterSearch, on
     };
 
     const doSearch = () => {
-        
+
 
         // 1) 🔵 내 주변 충전소 모드
         if (nearbyMode) {
@@ -114,8 +114,8 @@ export default function ChargeFilterPanel({ isOpen, handleChargeFilterSearch, on
                 lat: myCoord.lat,
                 lng: myCoord.lon,
                 radius: Number(radius), // km
-              //method,
-              //chargerType,
+                //method,
+                //chargerType,
             };
             console.log("📍 내 주변 충전소 검색:", payload);
             handleChargeFilterSearch(payload);
@@ -139,40 +139,40 @@ export default function ChargeFilterPanel({ isOpen, handleChargeFilterSearch, on
     };
 
     // ChargeFilterPanel.jsx
-useEffect(() => {
-  (async () => {
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) return;
+    useEffect(() => {
+        (async () => {
+            try {
+                const token = localStorage.getItem("token");
+                if (!token) return;
 
-      const res = await fetch("/mainCar", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",        // ★ JSON 요청 강제
-        },
-      });
+                const res = await fetch("/mainCar", {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: "application/json",        // ★ JSON 요청 강제
+                    },
+                });
 
-      // 혹시 서버가 또 JSON이 아닌 걸 줄 경우 대비한 안전장치 (디버깅용)
-      const ct = res.headers.get("content-type") || "";
-      if (!ct.includes("application/json")) {
-        const t = await res.text();
-        console.warn("[/mainCar] non-JSON response:", t);
-        return; // JSON 아니라면 여기서 종료 (바인딩 회피)
-      }
+                // 혹시 서버가 또 JSON이 아닌 걸 줄 경우 대비한 안전장치 (디버깅용)
+                const ct = res.headers.get("content-type") || "";
+                if (!ct.includes("application/json")) {
+                    const t = await res.text();
+                    console.warn("[/mainCar] non-JSON response:", t);
+                    return; // JSON 아니라면 여기서 종료 (바인딩 회피)
+                }
 
-      const { ok, item: car } = await res.json();
-      if (!ok || !car) return;
+                const { ok, item: car } = await res.json();
+                if (!ok || !car) return;
 
-      const pref = inferEvFromCar(car); // 이전에 드린 헬퍼
-      if (pref.isEv) {
-        if (pref.method.length) setMethod(pref.method);
-        if (pref.chargerType.length) setChargerType(pref.chargerType);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  })();
-}, []);
+                const pref = inferEvFromCar(car); // 이전에 드린 헬퍼
+                if (pref.isEv) {
+                    if (pref.method.length) setMethod(pref.method);
+                    if (pref.chargerType.length) setChargerType(pref.chargerType);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        })();
+    }, []);
 
 
 
@@ -274,7 +274,6 @@ useEffect(() => {
                     </button>
                     {nearbyMode && (
                         <select value={radius} onChange={(e) => setRadius(e.target.value)}>
-                            <option value="">반경 선택</option>
                             <option value="1">1 km</option>
                             <option value="3">3 km</option>
                             <option value="5">5 km</option>

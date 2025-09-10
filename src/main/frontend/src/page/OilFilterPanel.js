@@ -260,7 +260,6 @@ export default function OilFilterPanel({ isOpen, setStations, handleOilFilterSea
                     </button>
                     {nearbyMode && (
                         <select value={radius} onChange={(e) => setRadius(e.target.value)}>
-                            <option value="">반경 선택</option>
                             <option value="1">1 km</option>
                             <option value="3">3 km</option>
                             <option value="5">5 km</option>

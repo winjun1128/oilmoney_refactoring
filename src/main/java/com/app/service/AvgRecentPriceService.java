@@ -20,9 +20,9 @@ import java.util.List;
 @Service
 public class AvgRecentPriceService {
 
-	//private final String API_KEY = "F250822740";
+	private final String API_KEY = "F250822740";
 	//private final String API_KEY = "F250904769";
-	private final String API_KEY = "F250909785";
+	//private final String API_KEY = "F250909785";
 	
 	public List<AvgRecentPrice> getAndProcessOilPrices() {
 		String apiUrl = "http://www.opinet.co.kr/api/avgRecentPrice.do?out=json&date&code=" + API_KEY;
