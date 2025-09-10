@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef,useEffect } from "react";
 import SideBar from "./SideBar";
 import OilFilterPanel from "./OilFilterPanel";
 import ChargeFilterPanel from "./ChargeFilterPanel";
@@ -12,6 +12,45 @@ export default function Page({ isLogin, setIsLoginModalOpen }) {
     // state 추가
     const [queryType, setQueryType] = useState("nearby");   // 'nearby' | 'filter'
     const [nearbyParams, setNearbyParams] = useState(null); // {lat, lon, radius} | null
+
+
+    // OilFilterPanel 컴포넌트 내부
+        useEffect(() => {
+            // 페이지 로드(마운트) 시 1회만
+            (async () => {
+                try {
+                    const token = localStorage.getItem("token");
+                    if (!token) return;
+    
+                    const res = await fetch("/mainCar", {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                            Accept: "application/json", // ★ JSON으로 받도록 강제
+                        },
+                    });
+                    if (!res.ok) return;
+    
+                    // 혹시 서버가 XML이나 다른 포맷을 줄 경우 대비 (무한 에러 방지)
+                    const ct = res.headers.get("content-type") || "";
+                    if (!ct.includes("application/json")) {
+                        const text = await res.text();
+                        console.warn("[/mainCar] non-JSON response:", text);
+                        return;
+                    }
+    
+                    const { ok, item: car } = await res.json();
+                    if (!ok || !car) return;
+
+                    const fuelType = car.fuelType;
+
+                    if(fuelType==="전기차")setActiveFilter("charge");
+                } catch (e) {
+                    // 비로그인/네트워크 오류 등은 조용히 무시
+                    console.error(e);
+                }
+            })();
+        }, []); // 마운트 시 1회
+    
 
     // ✅ 내 주변 검색
     const handleLocationSearch = (coord, radiusKm) => {

@@ -1,7 +1,34 @@
 import { useState,useEffect } from "react";
 import "./ChargeFilterPanel.css"; // ✅ 외부 스타일 연결
 
-// ChargeFilterPanel.jsx 상단 import들 아래에 헬퍼 추가
+// maxKw 기준 우선, 없으면 방법으로 추정
+const inferSpeedFrom = (methods, maxKw) => {
+  if (Number(maxKw) > 0) {
+    if (maxKw >= 100) return ["초급속"];
+    if (maxKw >= 50)  return ["급속"];
+    return ["완속"];
+  }
+  const hasDC = methods.some(m => m.startsWith("DC"));
+  const hasAC = methods.some(m => m.startsWith("AC"));
+  if (hasDC && !hasAC) return ["급속"];
+  if (!hasDC && hasAC) return ["완속"];   // ★ AC3상만 있으면 완속
+  return []; // AC/DC 혼합이면 모호 → 미선택
+};
+
+// ChargeFilterPanel.jsx 상단 helpers 교체/보강
+const codeToMethods = (code) => {
+  switch (String(code).padStart(2, "0")) {
+    case "01": return ["DC차데모"];
+    case "02": return ["AC완속"];
+    case "03": return ["DC차데모", "AC3상"];
+    case "04": return ["DC차데모", "DC콤보"];
+    case "05": return ["DC차데모", "AC3상", "DC콤보"];
+    case "06": return ["DC콤보"];
+    case "07": return ["AC3상"]; // ★ 여기가 질문의 핵심
+    default:  return [];
+  }
+};
+
 const inferEvFromCar = (car) => {
   const fuelRaw = String(
     car?.fuelType ?? car?.fuel ?? car?.powertrain ?? car?.type ?? ""
@@ -12,33 +39,35 @@ const inferEvFromCar = (car) => {
     fuelRaw.includes("ELECTRIC") ||
     fuelRaw.includes("전기");
 
-  // 커넥터/방식/출력 추정
+  // 1) 숫자 코드 우선 매핑
+  const methods = new Set(codeToMethods(car?.chargerType));
+
+  // 2) 텍스트도 있으면 보완
   const plugRaw = String(
     car?.connector ?? car?.plugType ?? car?.chargeType ?? ""
   ).toUpperCase();
-  const maxKw = Number(car?.maxKw ?? car?.maxOutput ?? car?.kw ?? 0);
 
-  const methods = new Set();
   if (plugRaw.includes("CCS") || plugRaw.includes("콤보")) methods.add("DC콤보");
   if (plugRaw.includes("차데모") || plugRaw.includes("CHADEMO")) methods.add("DC차데모");
   if (plugRaw.includes("AC3상")) methods.add("AC3상");
-  if (plugRaw.includes("AC완속") || plugRaw.includes("AC")) methods.add("AC완속");
+  // ⚠️ 'AC'만으로 AC완속 추가하던 로직은 오검출(AC3상에 끼어듦)이 있어 제거/완화
+  if (plugRaw.includes("AC완속")) methods.add("AC완속");
 
-  const chargerTypes = new Set();
+  // 출력으로 속도 유추(선택 사항)
+  const maxKw = Number(car?.maxKw ?? car?.maxOutput ?? car?.kw ?? 0);
+  const methodArr = Array.from(methods);
+ const chargerTypes = new Set(inferSpeedFrom(methodArr, maxKw));
   if (maxKw >= 100) chargerTypes.add("초급속");
   else if (maxKw >= 50) chargerTypes.add("급속");
   else if (maxKw > 0) chargerTypes.add("완속");
 
-  // 정보가 모호하면 한국 기본값(DC콤보/급속) 추천
-  if (isEv && methods.size === 0) methods.add("DC콤보");
-  if (isEv && chargerTypes.size === 0) chargerTypes.add("급속");
-
   return {
     isEv,
-    method: Array.from(methods),
+    method: methodArr,
     chargerType: Array.from(chargerTypes),
   };
 };
+
 
 
 export default function ChargeFilterPanel({ isOpen, handleChargeFilterSearch, onClose }) {

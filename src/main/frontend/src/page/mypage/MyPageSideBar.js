@@ -14,7 +14,7 @@ export default function RouteSideBar({ isLogin, setIsLoginModalOpen }) {
     const itemsTop = [
         { icon: <FontAwesomeIcon icon={faGasPump} className="icon" />, label: "주유소", onClick: () => navigate("/") },
         { icon: <FontAwesomeIcon icon={faChargingStation} className="icon" />, label: "충전소", onClick: () => navigate("/") },
-        { icon: <FontAwesomeIcon icon={faShare} className="icon" />, label: "목적지", onClick: () => navigate("route") },
+        { icon: <FontAwesomeIcon icon={faShare} className="icon" />, label: "목적지", onClick: () => navigate("/route") },
         { icon: <FontAwesomeIcon icon={faChartSimple} className="icon" />, label: "유가정보", onClick: () => navigate("/oilPrice") },
     ];
 
