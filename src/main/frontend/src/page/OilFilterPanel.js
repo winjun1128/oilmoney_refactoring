@@ -1,5 +1,27 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./OilFilterPanel.css";  // 외부 스타일 연결
+
+
+// OilFilterPanel.jsx 상단 import들 아래에 헬퍼 추가
+const inferBasisFromCar = (car) => {
+    const raw = String(
+        car?.fuelType ?? car?.fuel ?? car?.fuelCd ?? car?.fuel_code ?? car?.fuel_kind ?? ""
+    ).toUpperCase();
+
+    // 한/영/코드 혼용 대응
+    if (raw.includes("LPG") || raw.includes("K015") || raw.includes("액화석유")) {
+        return { basis: "K015", isLpg: true };
+    }
+    if (raw.includes("DIESEL") || raw.includes("경유") || raw.includes("D047")) {
+        return { basis: "D047", isLpg: false };
+    }
+    if (raw.includes("GASOLINE") || raw.includes("휘발유") || raw.includes("B027") ||
+        raw.includes("PETROL") || raw.includes("BENZ")) {
+        return { basis: "B027", isLpg: false };
+    }
+    // 모르면 휘발유로
+    return { basis: "B027", isLpg: false };
+};
 
 export default function OilFilterPanel({ isOpen, setStations, handleOilFilterSearch, onClose }) {
     const [nearbyMode, setNearbyMode] = useState(false);
@@ -17,7 +39,23 @@ export default function OilFilterPanel({ isOpen, setStations, handleOilFilterSea
     const regionCodes = { 서울: "01", 충남: "05" };
     const cityCodes = {
         "01": { "마포구": "0109", "중구": "0102", "성동구": "0104", "서대문구": "0107", "강서구": "0115" },
-        "05": { "천안시": "0502", "공주시": "0503", "아산시": "0504" }
+        "05": {
+            "천안시": "0502",
+            "공주시": "0503",
+            "아산시": "0504",
+            "보령시": "0505",
+            "서산시": "0506",
+            "논산시": "0507",
+            "계룡시": "0508",
+            "금산군": "0521",
+            "부여군": "0526",
+            "서천군": "0527",
+            "청양군": "0529",
+            "홍성군": "0530",
+            "예산군": "0531",
+            "당진시": "0533",
+            "태안군": "0537"
+        }
     };
 
     const [selectedRegion, setSelectedRegion] = useState("충남");
@@ -65,6 +103,7 @@ export default function OilFilterPanel({ isOpen, setStations, handleOilFilterSea
             if (brands.etc) brandCodes.push("ETC");
 
             handleOilFilterSearch({
+                mode: "filter",
                 region: selectedRegion ? regionCodes[selectedRegion] : "",
                 city: selectedCity ? cityCodes[regionCodes[selectedRegion]][selectedCity] : "",
                 ...extras,
@@ -73,6 +112,48 @@ export default function OilFilterPanel({ isOpen, setStations, handleOilFilterSea
         }
         onClose(); // 검색 후 패널 닫기
     };
+
+    // OilFilterPanel 컴포넌트 내부
+    useEffect(() => {
+        // 페이지 로드(마운트) 시 1회만
+        (async () => {
+            try {
+                const token = localStorage.getItem("token");
+                if (!token) return;
+
+                const res = await fetch("/mainCar", {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        Accept: "application/json", // ★ JSON으로 받도록 강제
+                    },
+                });
+                if (!res.ok) return;
+
+                // 혹시 서버가 XML이나 다른 포맷을 줄 경우 대비 (무한 에러 방지)
+                const ct = res.headers.get("content-type") || "";
+                if (!ct.includes("application/json")) {
+                    const text = await res.text();
+                    console.warn("[/mainCar] non-JSON response:", text);
+                    return;
+                }
+
+                const { ok, item: car } = await res.json();
+                if (!ok || !car) return;
+
+                const { basis: b, isLpg } = inferBasisFromCar(car);
+
+                // lpg 체크 반영
+                setExtras((prev) => ({ ...prev, lpg: isLpg }));
+                // 기준 반영 + 이벤트 브로드캐스트
+                if (b !== basis) sendBasis(b);
+            } catch (e) {
+                // 비로그인/네트워크 오류 등은 조용히 무시
+                console.error(e);
+            }
+        })();
+    }, []); // 마운트 시 1회
+
+
 
     return (
         <div className={`oil-panel oil-panel--floating ${isOpen ? "open" : ""}`}>

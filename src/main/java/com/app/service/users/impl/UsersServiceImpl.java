@@ -274,4 +274,9 @@ public class UsersServiceImpl implements UsersService {
 		System.out.println("[Service] 대표차 변경 완료 - userId : " + userId + ", carId : " + carId);
 	}
 
+	@Override
+	public Car mainCarByUserId(String userId) {
+		return usersDAO.mainCarByUserId(userId);
+	}
+
 }
