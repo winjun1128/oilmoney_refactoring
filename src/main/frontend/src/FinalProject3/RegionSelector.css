@@ -2,7 +2,7 @@
 
 
 .sigun-select {
-    width: 100%;
+    width: 250px;
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -66,5 +66,13 @@
         /* 여백은 취향 */
         border: 1px solid #ddd;
         margin-bottom: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sigun-select {
+        width: 100%; /* 부모 요소의 너비에 맞춰서 100%로 설정 */
+        max-width: 300px; /* 너무 넓어지는 것을 방지하기 위한 최대 너비 설정 */
+        box-sizing: border-box; /* 패딩과 보더가 너비에 포함되도록 설정 */
     }
 }

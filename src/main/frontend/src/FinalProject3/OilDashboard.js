@@ -114,11 +114,13 @@ export default function OilDashboard() {
                 <SidoPrice
                     selectedSidoName={selectedSidoName}
                     setSelectedSidoName={setSelectedSidoName}
+                    sidoPriceData={sidoPriceData} // ✅ sidoPriceData props 추가
+                    selectedFuel={selectedFuel}   // ✅ selectedFuel props 추가
+                    fuelCodeMap={fuelCodeMap} // ✅ 이 부분을 추가합니다.
                 />
                 <RegionSelector
                     // ✅ props로 Map 객체들을 전달
                     sidoName={selectedSidoName}
-                    selectedFuel={selectedFuel}
                     sigunList={sigunList}
                     lowerTopData={lowerTopData}
                     setSelectedSigunCode={setSelectedSigunCode}

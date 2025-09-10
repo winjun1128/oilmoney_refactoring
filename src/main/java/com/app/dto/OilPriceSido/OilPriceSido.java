@@ -19,6 +19,6 @@ public class OilPriceSido {
 	    private String price;
 	    
 	    @JsonProperty("DIFF")
-	    private String diff;
+	    private double diff;
 	
 }

@@ -41,7 +41,7 @@ public class OilPriceController {
     	
     	System.out.println("전국 평균가 유가정보");
     	List<OilAllPrice> data = oilAllPriceService.getAndProcessOilPrices();
-
+    	
         return data;
     }
     
@@ -50,7 +50,7 @@ public class OilPriceController {
     	
     	System.out.println("시,도 별 평균 유가정보");
     	List<OilPriceSido> data = oilPriceSidoService.getAndProcessOilPrices();
-
+    	System.out.println(data);
         return data;
     }
 
