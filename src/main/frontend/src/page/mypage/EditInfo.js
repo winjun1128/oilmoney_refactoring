@@ -19,6 +19,28 @@ function EditInfo({ userInfo, setUserInfo }) {
         setAddr(userInfo.addr || "");
     }, [userInfo]);
 
+    // 전화번호 실시간 포맷 적용
+    const handlePhoneChange = (e) => {
+        let onlyNums = e.target.value.replace(/\D/g, '');
+
+        if (onlyNums.length > 11) {
+            alert("전화번호는 11자리까지만 입력 가능합니다.");
+            onlyNums = onlyNums.slice(0, 11);
+        }
+
+        let formatted = onlyNums;
+
+        if (onlyNums.startsWith('010')) {
+            if (onlyNums.length > 3 && onlyNums.length <= 7) {
+                formatted = onlyNums.replace(/(\d{3})(\d+)/, '$1-$2');
+            } else if (onlyNums.length > 7) {
+                formatted = onlyNums.replace(/(\d{3})(\d{4})(\d{0,4})/, '$1-$2-$3');
+            }
+        }
+
+        setPhoneNum(formatted);
+    };
+
     const handleCancel = () => {
         setEmail(userInfo.email || "");
         setPhoneNum(userInfo.phoneNum || "");
@@ -41,6 +63,7 @@ function EditInfo({ userInfo, setUserInfo }) {
         }
 
         try {
+            const formattedPhone = phoneNum;
             const formData = new FormData();
             formData.append("email", email);
             formData.append("phoneNum", phoneNum);
@@ -84,7 +107,7 @@ function EditInfo({ userInfo, setUserInfo }) {
                         </div>
                     </>
                 ) : (
-                    <form>
+                    <form noValidate>
                         <div className='edit-title'>
                             <span className='edit-title-text'>개인정보 수정</span>
                             <div className='edit-buttons'>
@@ -103,7 +126,7 @@ function EditInfo({ userInfo, setUserInfo }) {
                                     <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} placeholder='새 비밀번호' />
                                     <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} placeholder='새 비밀번호 확인' />
                                     전화번호 :
-                                    <input type="text" value={phoneNum} onChange={(e) => setPhoneNum(e.target.value)} />
+                                    <input type="text" value={phoneNum} onChange={handlePhoneChange} />
                                     주소 :
                                     <input type="text" value={addr} onChange={(e) => setAddr(e.target.value)} />
                                 </div>

@@ -20,8 +20,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @Service
 public class LowerTopService {
 
-	private final String API_KEY = "F250822740";
+	//private final String API_KEY = "F250822740";
 	//private final String API_KEY = "F250904769";
+	private final String API_KEY = "F250909785";
 	
 	// 선택된 시군(area) 코드로 최저가 주유소 가져오기
 	public List<LowerTopPrice> getAndProcessOilPrices(String area, String prodcd) {
@@ -35,12 +36,11 @@ public class LowerTopService {
 		String apiUrl = "https://www.opinet.co.kr/api/lowTop10.do?out=json"
 				+ "&prodcd=" + prodcd 
 				+ "&area=" + area
-				+ "&cnt=5"
+				+ "&cnt=7"
 				+ "&code=" + API_KEY;
 		
 		RestTemplate restTemplate = new RestTemplate();
 		ObjectMapper mapper = new ObjectMapper();
-		System.out.println("1");
 		
 		try {
 			HttpHeaders headers = new HttpHeaders();
@@ -54,18 +54,13 @@ public class LowerTopService {
 					String.class
 			);
 			
-			System.out.println("2");
-			
 			if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
 				String json = response.getBody();
 				
 				log.info("=== API 응답 === {}", json);
-				System.out.println("3");
 				
 				LowerTopPriceResult result = mapper.readValue(json, LowerTopPriceResult.class);
-				
-				System.out.println("결과값" + result);
-
+				System.out.println(result);
 				return result.getResult().getOilList();
 			}
 		} catch (Exception e) {

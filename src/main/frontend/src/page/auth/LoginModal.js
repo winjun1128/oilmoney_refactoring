@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 
-function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo }) {
+function LoginModal({ isOpen, onClose, onSwitchToSignUp, onSwitchToFindId, onSwitchToFindPw, setIsLogin, setUserInfo }) {
 
     const navigate = useNavigate();
 
@@ -82,8 +82,8 @@ function LoginModal({ isOpen, onClose, onSwitchToSignUp, setIsLogin, setUserInfo
                     </div>
                 </div>
                 <div className='login-signup'>
-                    <span onClick={onSwitchToSignUp}>아이디 찾기 |</span>
-                    <span onClick={onSwitchToSignUp}>비밀번호 찾기 |</span>
+                    <span onClick={onSwitchToFindId}>아이디 찾기 |</span>
+                    <span onClick={onSwitchToFindPw}>비밀번호 찾기 |</span>
                     <span onClick={onSwitchToSignUp}>회원가입 </span>
                 </div>
             </div>

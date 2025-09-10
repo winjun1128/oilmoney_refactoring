@@ -41,7 +41,7 @@ public class OilPriceController {
     	
     	System.out.println("전국 평균가 유가정보");
     	List<OilAllPrice> data = oilAllPriceService.getAndProcessOilPrices();
-
+    	
         return data;
     }
     
@@ -50,7 +50,7 @@ public class OilPriceController {
     	
     	System.out.println("시,도 별 평균 유가정보");
     	List<OilPriceSido> data = oilPriceSidoService.getAndProcessOilPrices();
-
+    	System.out.println(data);
         return data;
     }
 
@@ -71,16 +71,16 @@ public class OilPriceController {
     	
     	SigunCodeResult scr = siGunService.getSigunList(area);
     	
-//    	System.out.println(scr);
-    	
         return scr; // 서비스에서 Opinet areaCode.do 호출
     }
     
     // 선택된 시군 최저가 TOP 5
     @GetMapping("/main/oilPrice/lowerTop")
     public List<LowerTopPrice> getLowerTopPrices(@RequestParam String area, @RequestParam String prodcd) {
+    	
     	System.out.println("최저가 top5 요청: area=" + area + ", prodcd=" + prodcd);
-        return lowerTopService.getAndProcessOilPrices(area, prodcd);
+        
+    	return lowerTopService.getAndProcessOilPrices(area, prodcd);
     }
 
 }
