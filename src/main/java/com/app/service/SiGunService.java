@@ -16,15 +16,14 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class SiGunService {
 
-	private final String API_KEY = "F250822740";
+	//private final String API_KEY = "F250822740";
 	//private final String API_KEY = "F250904769";
+	private final String API_KEY = "F250909785";
 	
     public SigunCodeResult getSigunList(String sidoCode) {
         String apiUrl = "https://www.opinet.co.kr/api/areaCode.do?out=json&code=" + API_KEY + "&area=" + sidoCode;
         RestTemplate restTemplate = new RestTemplate();
         ObjectMapper mapper = new ObjectMapper();
-        
-        System.out.println("11");
         
         try {
             HttpHeaders headers = new HttpHeaders();
@@ -38,13 +37,9 @@ public class SiGunService {
                 String.class
             );
             
-            System.out.println("22");
-            
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 String json = response.getBody();
-                System.out.println("2.53");
                 log.info("=== 시군 API 응답 === {}", json);
-                System.out.println("33");
                 return mapper.readValue(json, SigunCodeResult.class);
             }
         } catch (Exception e) {

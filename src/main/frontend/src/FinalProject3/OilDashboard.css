@@ -1,16 +1,22 @@
 /* OilDashboard.css */
 .oil-dashboard-container {
-    padding: 10px;
-    background-color: #f7f9fc;
+    padding: 20px;
+    background-color: #d2e4ff;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.dashboard-section-top,
-.dashboard-section-bottom {
+.dashboard-section-top{
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 10px;
+    align-items: stretch;
+}
+
+.dashboard-section-bottom {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
     align-items: stretch;
 }
 
