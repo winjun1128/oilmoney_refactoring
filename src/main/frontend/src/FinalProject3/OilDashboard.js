@@ -11,7 +11,7 @@ import './components.css';
 
 export default function OilDashboard() {
     const [selectedFuel, setSelectedFuel] = useState('휘발유');
-    const [selectedSidoName, setSelectedSidoName] = useState("서울");
+    const [selectedSidoName, setSelectedSidoName] = useState("충남");
     const [allAvgData, setAllAvgData] = useState([]);
     const [avgRecentData, setAvgRecentData] = useState([]);
     const [sidoPriceData, setSidoPriceData] = useState([]);
