@@ -2,6 +2,7 @@
 /* 🖥 데스크탑 기본 스타일 */
 /* ============================= */
 .charge-panel {
+  margin-left:80px;
   display: flex;
   flex-direction: column;
   width: 300px;
@@ -140,6 +141,7 @@
 /* ============================= */
 @media (max-width: 768px) {
   .charge-panel {
+    margin-left:0;
     position: absolute;
     top: 100px;
     left: 6px;
