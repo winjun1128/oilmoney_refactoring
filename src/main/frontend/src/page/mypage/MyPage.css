@@ -1,3 +1,8 @@
+.mypage-wrapper {
+    display: flex;
+    border-style: none;
+}
+
 .mypage-sidebar-wrapper {
     background: #f3f4f6;
     border-right: 1px solid black;
@@ -647,7 +652,8 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    flex-shrink: 0; /* 버튼 크기 유지 */
+    flex-shrink: 0;
+    /* 버튼 크기 유지 */
 }
 
 .record-submit-btn:hover {
@@ -876,13 +882,6 @@
     width: min(886px, 100%);
 }
 
-.edit-info-container,
-.fav-info-container,
-.review-info-container {
-    width: 100%;
-    max-width: 280px;
-}
-
 /* ---------- 웹 정렬(>768px) ---------- */
 @media (min-width: 769px) {
     .mypage-sidebar-wrapper {
@@ -895,14 +894,21 @@
 
 /* ---------- 모바일 정렬(<=768px) ---------- */
 @media (max-width: 768px) {
+    .mypage-wrapper {
+        display: flex;
+        flex-direction: column;
+        margin: 0;
+    }
+
     .mypage-sidebar-wrapper {
         border-right: none;
-        border-top: 1px solid black;
     }
 
     .mypage-container {
         flex-direction: column;
         margin: 0;
+        box-shadow: none;
+        border-style: none;
     }
 
     .mypage-left {
@@ -910,7 +916,7 @@
         max-width: 100% !important;
         height: auto;
         box-shadow: none;
-        border-right: none;
+        border-style: none;
     }
 
     .mypage-right>div {
@@ -950,7 +956,14 @@
         margin-bottom: 75px;
     }
 
-    .mypage-left-profile{
+    .edit-info-container,
+    .fav-info-container,
+    .review-info-container {
+        width: 100%;
+        max-width: 280px;
+    }
+
+    .mypage-left-profile {
         margin-top: 20px;
     }
 
@@ -968,7 +981,7 @@
         width: 100%;
     }
 
-    .energy-record-table{
+    .energy-record-table {
         overflow-x: scroll;
     }
 
@@ -979,11 +992,11 @@
         width: 100%;
     }
 
-    .car-modal-content{
+    .car-modal-content {
         width: 280px;
     }
 
-    .car-card{
+    .car-card {
         padding: 15px 10px 10px 10px;
     }
 }

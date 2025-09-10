@@ -140,7 +140,7 @@ function EnergyRecord({ car }) {
                                     <td className="date-column">{record.recordDate}</td>
                                     <td className="station-column" title={record.station}>{record.station}</td>
                                     <td>{record.amount}</td>
-                                    <td>{record.price}</td>
+                                    <td>{Number(record.price).toLocaleString()}</td>
                                     <td>
                                         <button onClick={() => handleDeleteRecord(record.recordId)}>X</button>
                                     </td>

@@ -75,12 +75,18 @@ function CarRegist({ cars, setCars, userInfo }) {
     };
 
     const handleDelete = async (car) => {
-        if (car.isMain === 'Y') {
+        
+        const carCount = cars.length;
+
+        if (car.isMain === 'Y' && carCount === 1) {
+            if (!window.confirm("이 차량을 삭제하면 대표차가 없어집니다. 그래도 삭제하시겠습니까?"))
+                return;
+        } else if(car.isMain === 'Y') {
             alert("대표차는 삭제할 수 없습니다. 다른 차를 대표차로 설정 후 삭제해주세요.");
             return;
+        } else {
+            if (!window.confirm(car.carType + "(" + car.fuelType + ")를 삭제하시겠습니까?")) return;
         }
-
-        if (!window.confirm(car.carType + "(" + car.fuelType + ")를 삭제하시겠습니까?")) return;
 
         try {
             const token = localStorage.getItem("token");
@@ -97,7 +103,7 @@ function CarRegist({ cars, setCars, userInfo }) {
     };
 
     const setMainCar = async (car, carId) => {
-        const confirmed = window.confirm(car.carType + "(" + car.fuelType + ")으로 설정하시겠습니까?");
+        const confirmed = window.confirm(car.carType + "(" + car.fuelType + ")를 대표차로 설정하시겠습니까?");
         if (!confirmed) return;
         try {
             await axios.post("/setmain", null, {
