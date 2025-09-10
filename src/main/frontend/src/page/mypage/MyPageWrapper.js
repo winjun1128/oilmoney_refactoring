@@ -30,7 +30,7 @@ export default function MyPageWrapper() {
 
     return (
         <div style={{ display: "flex", height: "100vh" }}>
-            <div style={{ width: "80px", background: "#f3f4f6", borderRight: "1px solid black" }}>
+            <div className="mypage-sidebar-wrapper">
                 <MyPageSideBar isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />
             </div>
 

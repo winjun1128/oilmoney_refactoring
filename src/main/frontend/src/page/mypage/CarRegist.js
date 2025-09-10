@@ -147,7 +147,6 @@ function CarRegist({ cars, setCars, userInfo }) {
                             <div key={car.carId} className={`car-card ${car.isMain === 'Y' ? 'main-car-card' : ''}`}>
                                 {/* 차량 헤더 */}
                                 <div className="car-header">
-                                    {/* {car.isMain === 'Y' && <span className="main-label">대표차</span>} */}
                                     <button className={`set-main-btn ${car.isMain === 'Y' ? 'active' : ''}`}
                                         onClick={() => {
                                             if (car.isMain !== 'Y') {

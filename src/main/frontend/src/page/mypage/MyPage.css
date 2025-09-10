@@ -1,12 +1,19 @@
+.mypage-sidebar-wrapper {
+    background: #f3f4f6;
+    border-right: 1px solid black;
+    order: 0;
+}
+
 .mypage-container {
-    /* margin: 10px; */
     display: flex;
+    flex-direction: row;
+    min-height: 100vh;
 }
 
 .mypage-left {
     width: 250px;
     box-shadow: 3px 1px 8px 0 rgba(168, 168, 168, 0.411);
-    height: 100vh;
+    flex-shrink: 0;
 }
 
 .mypage-left-profile {
@@ -159,7 +166,6 @@
 /* EditInfo css */
 .edit-info-container {
     margin: 15px;
-    /* border: 3px solid rgb(191, 224, 255); */
     border: 1px solid rgb(191, 224, 255);
     box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.315);
     width: 280px;
@@ -210,7 +216,6 @@
 .edit-contents-box {
     display: flex;
     gap: 80px;
-    /* justify-content: center; */
 }
 
 .edit-info-contents {
@@ -577,10 +582,6 @@
     background-color: rgb(191, 224, 255);
 }
 
-.record-table {
-    width: 365px;
-}
-
 /* 기록 추가 폼 css */
 .add-record-form {
     display: flex;
@@ -631,7 +632,6 @@
     border-radius: 6px;
     font-size: 14px;
     width: 115px;
-
 }
 
 .form-row2 input:focus {
@@ -647,8 +647,7 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    flex-shrink: 0;
-    /* 버튼 크기 유지 */
+    flex-shrink: 0; /* 버튼 크기 유지 */
 }
 
 .record-submit-btn:hover {
@@ -718,8 +717,6 @@
     background-color: #d9363e;
     color: white;
 }
-
-/*  */
 
 /* FavList css */
 .fav-info-container {
@@ -864,4 +861,135 @@
 .review-date {
     font-size: 12px;
     color: #888;
+}
+
+/***************반응형*******************/
+.mypage-container {
+    width: 100%;
+}
+
+.mypage-right {
+    min-width: 0;
+}
+
+.car-container {
+    width: min(886px, 100%);
+}
+
+.edit-info-container,
+.fav-info-container,
+.review-info-container {
+    width: 100%;
+    max-width: 280px;
+}
+
+/* ---------- 웹 정렬(>768px) ---------- */
+@media (min-width: 769px) {
+    .mypage-sidebar-wrapper {
+        width: 80px;
+        border-right: 1px solid black;
+        border-top: none;
+        order: 0;
+    }
+}
+
+/* ---------- 모바일 정렬(<=768px) ---------- */
+@media (max-width: 768px) {
+    .mypage-sidebar-wrapper {
+        border-right: none;
+        border-top: 1px solid black;
+    }
+
+    .mypage-container {
+        flex-direction: column;
+        margin: 0;
+    }
+
+    .mypage-left {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto;
+        box-shadow: none;
+        border-right: none;
+    }
+
+    .mypage-right>div {
+        padding-inline: 12px;
+    }
+
+    .mypage-fav-review {
+        flex-direction: column;
+        align-items: stretch;
+        margin: 0;
+        gap: 12px;
+    }
+
+    .car-container {
+        width: 100%;
+        margin: 16px 0;
+    }
+
+    .cars-container {
+        grid-template-columns: 1fr;
+    }
+
+    .edit-info-container {
+        max-width: none;
+        height: auto;
+        margin: 0;
+    }
+
+    .fav-info-container,
+    .review-info-container {
+        max-width: none;
+        height: 350px;
+        margin: 0;
+    }
+
+    .review-info-container {
+        margin-bottom: 75px;
+    }
+
+    .mypage-left-profile{
+        margin-top: 20px;
+    }
+
+    .mypage-left-menu {
+        margin: 24px 0 16px 0;
+        display: none;
+    }
+
+    .mypage-left-footer {
+        margin-top: 10px;
+    }
+
+    .energy-record-container,
+    .record-table {
+        width: 100%;
+    }
+
+    .energy-record-table{
+        overflow-x: scroll;
+    }
+
+    .edit-email,
+    .record-input,
+    .form-row input,
+    .form-row2 input {
+        width: 100%;
+    }
+
+    .car-modal-content{
+        width: 280px;
+    }
+
+    .car-card{
+        padding: 15px 10px 10px 10px;
+    }
+}
+
+/* 혹시 남는 가로 스크롤 방지 */
+html,
+body {
+    overflow-x: hidden;
 }
