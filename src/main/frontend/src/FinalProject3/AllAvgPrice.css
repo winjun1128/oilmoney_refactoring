@@ -6,13 +6,13 @@
 
 .fuel-tabs {
     display: flex;
-    gap: 20px;
+    gap: 1px;
     margin-bottom: 20px;
     justify-content: space-around;
 }
 
 .fuel-tab-btn {
-    padding: 8px 10px;
+    padding: 9px 21px;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
     background-color: #f8f9fa;
@@ -27,23 +27,25 @@
     border-color: #4a90e2;
 }
 
-.price-content {
+.national-price-content {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    padding: 5px 15px;
-    background-color: #f0f4f8;
-    border-top-left-radius: 15px;
-    border-top-right-radius: 15px;
+    justify-content: space-between; /* 이미 존재 */
+    padding: 5px 15px; /* 패딩을 더 크게 만들 수 있습니다. 예: 10px 20px */
+    background-color: #f5f9ff;
+    border-radius: 7px;
+    margin: 25px 0px 25px 0px;
+    align-items: center;
+    border: 1px solid #e2e8f0;
 }
 
+/* 폰트 사이즈 조절 */
 .price-label {
-    font-size: 1rem;
-    color: #718096;
+    font-size: 1.4rem; /* 더 크게: 1.6rem */
+    color: #000000;
 }
 
 .price-value {
-    font-size: 1.8rem;
+    font-size: 1.8rem; /* 더 크게: 2rem */
     font-weight: bold;
     color: #1b65e4;
 }
@@ -54,29 +56,28 @@
 }
 
 .price-diff.up {
-    color: red; /* ▲ 상승 화살표 빨간색 */
+    color: red;
+    /* ▲ 상승 화살표 빨간색 */
 }
 
 .price-diff.down {
-    color: rgb(21, 184, 0); /* ▼ 하락 화살표 파란색으로 변경 */
+    color: rgb(21, 184, 0);
+    /* ▼ 하락 화살표 파란색으로 변경 */
 }
 
-.local-price-card {
-    padding: 0px 15px;
-    border-bottom-left-radius: 15px;
-    border-bottom-right-radius: 15px;
-    background-color: #f0f4f8;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.price-diff.no-change {
+    color: rgb(255, 162, 55);
+    /*DIFF가 바뀌지 않으면 주황색*/
 }
 
-.price-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-} 
-
-.flip-numbers-container {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+@media (max-width:768px) {
+    .fuel-tab-btn {
+        padding: 3px 13px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        background-color: #f8f9fa;
+        color: #000000;
+        cursor: pointer;
+        transition: all 0.3s ease-in-out;
+    }
 }

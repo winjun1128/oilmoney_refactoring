@@ -1,65 +1,88 @@
-// components/SidoPrice.js
-import { useState, useEffect } from "react";
-import axios from "axios";
+// SidoPrice.js
+import React, { useMemo } from "react";
 import './components.css';
 import './SidoPrice.css';
 import { PINS } from './pinsData';
 
-export default function SidoPrice({ selectedSidoName, setSelectedSidoName, selectedFuel }) {
-    const [oilData, setOilData] = useState([]);
-    const [selectedIndex, setSelectedIndex] = useState(PINS.findIndex(p => p.name === selectedSidoName));
+// ✅ props에 fuelCodeMap을 추가합니다.
+export default React.memo(function SidoPrice({ selectedSidoName, setSelectedSidoName, sidoPriceData, selectedFuel, fuelCodeMap }) {
 
-    useEffect(() => {
-        const fetchOilData = async () => {
-            try {
-                const response = await axios.get('/main/oilPrice/sido');
-                setOilData(response.data || []);
-            } catch (error) {
-                console.error(error);
-                setOilData([]);
+    // ✅ useMemo의 의존성 배열에 fuelCodeMap을 추가합니다.
+    const priceMap = useMemo(() => {
+        const selectedProdCD = fuelCodeMap[selectedFuel];
+        const map = new Map();
+
+        sidoPriceData.forEach(item => {
+            // ✅ PRODCD를 사용하여 필터링합니다.
+            if (item.SIDONM !== '전국' && item.PRODCD === selectedProdCD) {
+                map.set(item.SIDONM, {
+                    price: Number(item.PRICE),
+                    diff: Number(item.DIFF)
+                });
             }
-        };
-        fetchOilData();
-    }, []);
+        });
+        return map;
+    }, [sidoPriceData, selectedFuel, fuelCodeMap]);
 
-    useEffect(() => {
-        const index = PINS.findIndex(p => p.name === selectedSidoName);
-        if (index !== -1) {
-            setSelectedIndex(index);
+    const getPinStyle = (sidoName) => {
+        const item = priceMap.get(sidoName);
+
+        // 데이터가 없거나 DIFF 값이 비정상적일 때 기본 스타일 반환
+        if (!item || item.diff === item.price) {
+            return {
+                borderColor: '#ccc',
+                backgroundColor: '#fff',
+                borderWidth: '1px',
+                borderStyle: 'solid'
+            };
         }
-    }, [selectedSidoName]);
 
-    const handlePinClick = (index) => {
-        setSelectedSidoName(PINS[index].name);
+        const diff = item.diff;
+        let borderColor = '#ccc';
+        let backgroundColor = '#fff';
+        let borderWidth = '1px'; // 기본 두께 설정
+        let borderStyle = 'solid'; // 기본 스타일 추가
+
+        if (diff > 0) {
+            borderColor = '#ff1414ff';
+            borderWidth = '2px'; // 상승 시 두껍게
+        } else if (diff < 0) {
+            borderColor = '#14ac07ff';
+            borderWidth = '2px'; // 상승 시 두껍게
+        } else if (diff == 0) {
+            borderColor = '#ff9f22ff';
+            borderWidth = '2px';
+        }
+
+        return {
+            borderColor,
+            backgroundColor,
+            borderWidth, // ✅ borderWidth 속성 추가
+            borderStyle
+        };
     };
-
-    const filteredData = oilData.filter(item =>
-        item.SIDONM === selectedSidoName &&
-        ((selectedFuel === "휘발유" && item.PRODCD === "B027") ||
-            (selectedFuel === "고급휘발유" && item.PRODCD === "B034") ||
-            (selectedFuel === "경유" && item.PRODCD === "D047") ||
-            (selectedFuel === "LPG" && item.PRODCD === "K015"))
-    );
 
     return (
         <div className="card-container sido-price">
-            <div className="map-section">
-                <h2 className="card-title">지역별 평균유가</h2>
-                <hr className="line" />
-                <div className="main-map-container">
-                    <img src="/images/main_map.png" alt="대한민국 지도" className="main-map-image" />
-                    {PINS.map((pin, index) => (
-                        <button
-                            className={`map-pin-button ${selectedIndex === index ? 'active' : ''}`}
-                            key={index}
-                            onClick={() => handlePinClick(index)}
-                            style={{ top: pin.top, left: pin.left }}
-                        >
-                            {pin.name}
-                        </button>
-                    ))}
-                </div>
+            <h2 className="card-title">&nbsp;&nbsp;시도별 평균 가격</h2>
+            <hr className="line" />
+            <div className="main-map-container">
+                <img src="/images/main_map.png" alt="대한민국 지도" className="main-map-image" />
+                {PINS.map((pin, index) => (
+                    <button
+                        className={`map-pin-button ${selectedSidoName === pin.name ? 'active' : ''}`}
+                        key={index}
+                        onClick={() => setSelectedSidoName(pin.name)}
+                        style={{
+                            top: pin.top,
+                            left: pin.left,
+                            ...getPinStyle(pin.name)
+                        }}
+                    >
+                        {pin.name}
+                    </button>
+                ))}
             </div>
         </div>
     );
-}
+});

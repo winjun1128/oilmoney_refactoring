@@ -1,10 +1,8 @@
 /* RegionSelector.css */
-.region-selector {
-    /* min-width: 450px; */
-}
+
 
 .sigun-select {
-    width: 100%;
+    width: 250px;
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 8px;
@@ -30,8 +28,51 @@
 }
 
 .list-item {
-  display: flex;                 /* 가로 정렬 */
-  justify-content: space-between; /* 좌우 끝으로 벌림 */
-  align-items: center;            /* 세로 가운데 정렬 */
-  padding: 4px 8px;               /* 여백은 취향 */
+    display: flex;
+    /* 가로 정렬 */
+    justify-content: space-between;
+    /* 좌우 끝으로 벌림 */
+    align-items: center;
+    /* 세로 가운데 정렬 */
+    padding: 4px 8px;
+    /* 여백은 취향 */
+    border: 1px solid #ddd;
+    margin-bottom: 15px;
+}
+
+.price {
+    margin-right: 8px;
+}
+
+@media (max-width:768px) {
+
+    /* 또는 특정 클래스 내부에 있는 strong 태그만 적용 */
+    .list-item span {
+        font-size: 0.9rem; /* 폰트 크기를 0.8rem으로 줄임 */
+        /*font-weight: normal; /* 추가로 폰트 두께도 보통으로 변경 */
+    }
+    .list-item strong {
+        font-size: 0.7rem; /* 폰트 크기를 0.8rem으로 줄임 */
+        /*font-weight: normal; /* 추가로 폰트 두께도 보통으로 변경 */
+    }
+    .list-item {
+        display: flex;
+        /* 가로 정렬 */
+        justify-content: space-between;
+        /* 좌우 끝으로 벌림 */
+        align-items: center;
+        /* 세로 가운데 정렬 */
+        padding: 4px 8px;
+        /* 여백은 취향 */
+        border: 1px solid #ddd;
+        margin-bottom: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sigun-select {
+        width: 100%; /* 부모 요소의 너비에 맞춰서 100%로 설정 */
+        max-width: 300px; /* 너무 넓어지는 것을 방지하기 위한 최대 너비 설정 */
+        box-sizing: border-box; /* 패딩과 보더가 너비에 포함되도록 설정 */
+    }
 }
