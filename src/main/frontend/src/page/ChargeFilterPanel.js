@@ -90,6 +90,7 @@ export default function ChargeFilterPanel({ isOpen, handleChargeFilterSearch, on
             };
             console.log("📍 내 주변 충전소 검색:", payload);
             handleChargeFilterSearch(payload);
+            onClose();
             return;
         }
 
@@ -107,6 +108,7 @@ export default function ChargeFilterPanel({ isOpen, handleChargeFilterSearch, on
         };
         console.log("🚀 충전소 필터 payload:", payload);
         handleChargeFilterSearch(payload);
+        onClose();
     };
 
     // ChargeFilterPanel.jsx

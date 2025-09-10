@@ -109,6 +109,15 @@ export default function OilFilterPanel({ isOpen, setStations, handleOilFilterSea
                 ...extras,
                 brands: brandCodes,
             });
+
+            // 🔍 찍기
+console.log("검색 요청 파라미터:", {
+    mode: "filter",
+    region: selectedRegion ? regionCodes[selectedRegion] : "",
+    city: selectedCity ? cityCodes[regionCodes[selectedRegion]][selectedCity] : "",
+    ...extras,
+    brands: brandCodes,
+});
         }
         onClose(); // 검색 후 패널 닫기
     };

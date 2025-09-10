@@ -1130,9 +1130,9 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
           if (shouldRecenter) {
             mapRef.current.setCenter(bestCenter);
             try {
-              mapRef.current.setLevel(6, { animate: false, anchor: bestCenter, anchorAnimate: false });
+              mapRef.current.setLevel(7, { animate: false, anchor: bestCenter, anchorAnimate: false });
             } catch {
-              mapRef.current.setLevel(6);
+              mapRef.current.setLevel(7);
             }
           }
         }
