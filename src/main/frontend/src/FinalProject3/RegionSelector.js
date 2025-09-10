@@ -1,10 +1,10 @@
-// components/RegionSelector.js
+//RegionSelector.js
 import { useState } from "react";
 import './components.css';
 import './RegionSelector.css';
 import './line.css';
 
-export default function RegionSelector({ sidoName, selectedFuel, sigunList, lowerTopData, selectedSigunCode, setSelectedSigunCode }) {
+export default function RegionSelector({ sidoName,  sigunList, lowerTopData, selectedSigunCode, setSelectedSigunCode }) {
 
     const iconMap = {
         SKE: "https://www.opinet.co.kr/images/user/main/img_logo2.jpg",   // SK에너지
@@ -16,67 +16,17 @@ export default function RegionSelector({ sidoName, selectedFuel, sigunList, lowe
         NHO: "https://www.opinet.co.kr/images/user/main/img_logo11.jpg",   // 농협알뜰
         ETC: "https://www.opinet.co.kr/images/user/main/img_logo13.jpg",   // 자가상표
         E1G: "https://www.opinet.co.kr/images/user/main/img_logo10.jpg",   // E1
-        SKG: "https://www.opinet.co.kr/images/user/main/img_logo12.jpg"    // SK가스
+        SKG: "https://www.opinet.co.kr/images/user/main/img_logo12.jpg",   // SK가스
+        RTO: "https://www.opinet.co.kr/images/user/main/img_logo7.jpg"
     };
 
     // ✅ 부모로부터 받은 lowerTopData를 사용합니다.
     const gasStationData = lowerTopData;
-    // const [sigunList, setSigunList] = useState([]);
-    // const [selectedSigunCode, setSelectedSigunCode] = useState('');
-    // const [gasStationData, setGasStationData] = useState([]);
-
-    // ✅ 첫 번째 useEffect: sidoName이 바뀔 때만 시/군 목록을 가져옵니다.
-    // useEffect(() => {
-    //     if (!sidoName) return;
-    //     const fetchSigunData = async () => {
-    //         const regionCode = regionCodeMap[sidoName];
-    //         try {
-    //             const response = await axios.get(`/main/oilPrice/sigun?area=${regionCode}`);
-    //             const data = response.data.RESULT?.OIL || [];
-    //             setSigunList(data);
-    //             // 시/군 목록을 가져온 후, 첫 번째 시/군 코드로 상태를 업데이트합니다.
-    //             if (data.length > 0) {
-    //                 setSelectedSigunCode(data[0].AREA_CD);
-    //             } else {
-    //                 setSelectedSigunCode('');
-    //             }
-    //         } catch (error) {
-    //             console.error("시군 데이터를 불러오는 데 실패했습니다:", error);
-    //             setSigunList([]);
-    //             setSelectedSigunCode('');
-    //         }
-    //     };
-    //     fetchSigunData();
-    //     setGasStationData([]);
-    // }, [sidoName]); // 의존성 배열에 sidoName만 포함
-
-    // ✅ 두 번째 useEffect: selectedSigunCode나 selectedFuel이 바뀔 때만 주유소 목록을 가져옵니다.
-    // useEffect(() => {
-    //     if (!selectedSigunCode || !selectedFuel) {
-    //         setGasStationData([]);
-    //         return;
-    //     }
-    //     const fetchGasStations = async () => {
-    //         const prodcd = fuelCodeMap[selectedFuel];
-    //         if (!prodcd) {
-    //             console.error("유효하지 않은 유종:", selectedFuel);
-    //             return;
-    //         }
-    //         try {
-    //             const response = await axios.get(`/main/oilPrice/lowerTop?area=${selectedSigunCode}&prodcd=${prodcd}`);
-    //             setGasStationData(response.data || []);
-    //         } catch (error) {
-    //             console.error("주유소 정보를 불러오는 데 실패했습니다:", error);
-    //             setGasStationData([]);
-    //         }
-    //     };
-    //     fetchGasStations();
-    // }, [selectedSigunCode, selectedFuel]); // 의존성 배열 수정
 
     return (
         <div className="card-container region-selector">
 
-            <h2 className="card-title">&nbsp;&nbsp;{sidoName} 지역별 저렴한 주유소 TOP 5</h2>
+            <h2 className="card-title">&nbsp;&nbsp;{sidoName} 지역별 저렴한 주유소 TOP 7</h2>
             <hr className="line" />
             <select
                 className="sigun-select"
@@ -84,7 +34,7 @@ export default function RegionSelector({ sidoName, selectedFuel, sigunList, lowe
                 onChange={e => setSelectedSigunCode(e.target.value)}
             >
                 <option value="">시/군 선택</option>
-                {sigunList.map(sigun => (
+                {sigunList.sort((a, b) => a.AREA_NM.localeCompare(b.AREA_NM)).map(sigun => (
                     <option key={sigun.AREA_CD} value={sigun.AREA_CD}>
                         {sigun.AREA_NM}
                     </option>
@@ -99,13 +49,13 @@ export default function RegionSelector({ sidoName, selectedFuel, sigunList, lowe
                                     ? <img
                                         src={iconMap[station.POLL_DIV_CD]}
                                         alt={station.POLL_DIV_CD}
-                                        style={{ width: "55px", marginRight: "15px", verticalAlign: "middle" }}
+                                        style={{ width: "px", marginRight: "15px", verticalAlign: "middle" }}
                                     />
                                     : iconMap[station.POLL_DIV_CD] || "❓"
                                 }
                                 {station.OS_NM}
                             </strong>
-                            <span>{station.PRICE}원</span>
+                            <span className="price">{station.PRICE}원</span>
                         </li>
                     ))}
                 </ul>

@@ -65,6 +65,11 @@
     /* ▼ 하락 화살표 파란색으로 변경 */
 }
 
+.price-diff.no-change {
+    color: rgb(255, 162, 55);
+    /*DIFF가 바뀌지 않으면 주황색*/
+}
+
 @media (max-width:768px) {
     .fuel-tab-btn {
         padding: 3px 13px;

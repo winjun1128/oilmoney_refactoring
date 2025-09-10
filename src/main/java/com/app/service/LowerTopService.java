@@ -36,7 +36,7 @@ public class LowerTopService {
 		String apiUrl = "https://www.opinet.co.kr/api/lowTop10.do?out=json"
 				+ "&prodcd=" + prodcd 
 				+ "&area=" + area
-				+ "&cnt=5"
+				+ "&cnt=7"
 				+ "&code=" + API_KEY;
 		
 		RestTemplate restTemplate = new RestTemplate();
@@ -60,7 +60,7 @@ public class LowerTopService {
 				log.info("=== API 응답 === {}", json);
 				
 				LowerTopPriceResult result = mapper.readValue(json, LowerTopPriceResult.class);
-
+				System.out.println(result);
 				return result.getResult().getOilList();
 			}
 		} catch (Exception e) {

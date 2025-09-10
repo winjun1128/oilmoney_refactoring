@@ -17,8 +17,7 @@ export default function OilDashboard() {
     const [sidoPriceData, setSidoPriceData] = useState([]);
     const [sigunList, setSigunList] = useState([]);
     const [lowerTopData, setLowerTopData] = useState([]);
-    const [selectedSidoRecentData, setSelectedSidoRecentData] = useState([]);
-    const [selectedSigunCode, setSelectedSigunCode] = useState('');
+    const [selectedSigunCode, setSelectedSigunCode] = useState([]);
 
     // ✅ Map 객체들을 부모 컴포넌트에 정의
     const regionCodeMap = {
@@ -50,7 +49,7 @@ export default function OilDashboard() {
             }
         };
         fetchInitialData();
-    }, []); 
+    }, []);
 
     // ✅ 2. 'selectedSidoName'이 변경될 때 시/군 목록을 가져오는 훅
     useEffect(() => {
@@ -74,7 +73,7 @@ export default function OilDashboard() {
             }
         };
         fetchSigunData();
-    }, [selectedSidoName]); 
+    }, [selectedSidoName]);
 
     // ✅ 3. 'selectedSigunCode'나 'selectedFuel'이 변경될 때 주유소 목록을 가져오는 훅
     useEffect(() => {
@@ -94,6 +93,7 @@ export default function OilDashboard() {
         };
         fetchLowerTopData();
     }, [selectedSigunCode, selectedFuel]);
+
     return (
         <div className="oil-dashboard-container">
             <div className="dashboard-section-top">
@@ -108,7 +108,6 @@ export default function OilDashboard() {
                 <AvgRecentPrice
                     activeFuel={selectedFuel}
                     avgRecentData={avgRecentData} // 데이터 전달
-                    selectedSidoRecentData={selectedSidoRecentData}
                 />
             </div>
             <div className="dashboard-section-bottom">
@@ -117,13 +116,11 @@ export default function OilDashboard() {
                     setSelectedSidoName={setSelectedSidoName}
                 />
                 <RegionSelector
+                    // ✅ props로 Map 객체들을 전달
                     sidoName={selectedSidoName}
                     selectedFuel={selectedFuel}
                     sigunList={sigunList}
                     lowerTopData={lowerTopData}
-                    // ✅ props로 Map 객체들을 전달
-                    regionCodeMap={regionCodeMap}
-                    fuelCodeMap={fuelCodeMap}
                     setSelectedSigunCode={setSelectedSigunCode}
                 />
             </div>
