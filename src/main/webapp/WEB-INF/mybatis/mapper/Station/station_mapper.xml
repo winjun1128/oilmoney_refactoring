@@ -5,54 +5,65 @@
 
 <mapper namespace="station_mapper">
 
-<select id="oilFilter" parameterType="OilSearchDTO" resultType="StationDTO">
-    SELECT
-      UNI_CD       AS stationId,
-      NAME          AS name,
-      BRAND         AS brand,
-      ADDR          AS address,
-      SIDO_CD       AS region,
-      SIGUN_CD      AS city,
-      LAT,
-      LON,
-      CAR_WASH_YN   AS carWash,
-      CVS_YN        AS store,
-      MAINT_YN      AS repair,
-      SELF_YN       AS self,
-      KPETRO_YN     AS quality,
-      LPG_YN		AS lpgYN,
-      OPEN_24H_YN   AS twentyFour,
-      UPDATED_AT    AS updateTime
-    FROM T_GAS_STATION
-    <where>
-      <!-- 지역 -->
-      <if test="region != null and region != ''">
-        AND SIDO_CD = #{region}
-      </if>
-      <if test="city != null and city != ''">
-        AND SIGUN_CD = #{city}
-      </if>
+	<select id="oilFilter" parameterType="OilSearchDTO"
+		resultType="StationDTO">
+		SELECT
+		UNI_CD AS stationId,
+		NAME AS name,
+		BRAND AS brand,
+		ADDR AS address,
+		SIDO_CD AS region,
+		SIGUN_CD AS city,
+		LAT,
+		LON,
+		CAR_WASH_YN AS carWash,
+		CVS_YN AS store,
+		MAINT_YN AS repair,
+		SELF_YN AS self,
+		KPETRO_YN AS quality,
+		LPG_YN AS lpgYN,
+		OPEN_24H_YN AS twentyFour,
+		UPDATED_AT AS updateTime
+		FROM T_GAS_STATION
+		<where>
+			<!-- 지역 -->
+			<choose>
+				<when test="mode == 'filter'">
+					<!-- region/city 조건 -->
+					<if test="region != null and region != ''">
+						AND SIDO_CD = #{region}
+						<if test="city != null and city != ''">
+							AND SIGUN_CD = #{city}
+						</if>
+					</if>
+				</when>
+				<otherwise>
+					<!-- nearby 등 다른 모드면 지역 조건 무시 -->
+				</otherwise>
+			</choose>
 
-      <!-- 부가정보 (Boolean 값으로 판단) -->
-      <if test="carWash">   AND CAR_WASH_YN = 'Y'   </if>
-      <if test="store">     AND CVS_YN = 'Y'        </if>
-      <if test="repair">    AND MAINT_YN = 'Y'      </if>
-      <if test="self">      AND SELF_YN = 'Y'       </if>
-      <if test="quality">   AND KPETRO_YN = 'Y'     </if>
-      <if test="twentyFour">AND OPEN_24H_YN = 'Y'   </if>
-      <if test="lpg">         AND LPG_YN = 'Y'      </if> 
+			<!-- 부가정보 (Boolean 값으로 판단) -->
+			<if test="carWash"> AND CAR_WASH_YN = 'Y'   </if>
+			<if test="store"> AND CVS_YN = 'Y'        </if>
+			<if test="repair"> AND MAINT_YN = 'Y'      </if>
+			<if test="self"> AND SELF_YN = 'Y'       </if>
+			<if test="quality"> AND KPETRO_YN = 'Y'     </if>
+			<if test="twentyFour">AND OPEN_24H_YN = 'Y'   </if>
+			<if test="lpg"> AND LPG_YN = 'Y'      </if>
 
-      <!-- 상표 -->
-      <if test="brands != null and brands.size() > 0">
-        AND BRAND IN
-        <foreach collection="brands" item="brand" open="(" separator="," close=")">
-          #{brand}
-        </foreach>
-      </if>
-    </where>
-</select>
+			<!-- 상표 -->
+			<if test="brands != null and brands.size() > 0">
+				AND BRAND IN
+				<foreach collection="brands" item="brand" open="("
+					separator="," close=")">
+					#{brand}
+				</foreach>
+			</if>
+		</where>
+	</select>
 
-<select id="findNearby" parameterType="map" resultType="com.app.dto.StationDTO">
+	<select id="findNearby" parameterType="map"
+		resultType="com.app.dto.StationDTO">
   <![CDATA[
     SELECT
       UNI_CD       AS stationId,
@@ -90,45 +101,44 @@
     ) <= #{radius}
     ORDER BY distance_km ASC
   ]]>
-</select>
+	</select>
 
-<select id="findFavOilStations"
-          parameterType="string"
-          resultType="com.app.dto.StationDTO">
-    SELECT
-      s.UNI_CD          AS stationId,
-      s.NAME            AS name,
-      s.BRAND           AS brand,
-      s.ADDR            AS address,
+	<select id="findFavOilStations" parameterType="string"
+		resultType="com.app.dto.StationDTO">
+		SELECT
+		s.UNI_CD AS stationId,
+		s.NAME AS name,
+		s.BRAND AS brand,
+		s.ADDR AS address,
 
-      /* 아래 컬럼들이 테이블에 있으면 주석 해제해서 같이 매핑해도 됩니다 */
-       s.REGION        AS region, 
-       s.CITY          AS city, 
-       s.LAT           AS lat,    
-       s.LON           AS lon,    
+		/* 아래 컬럼들이 테이블에 있으면 주석 해제해서 같이 매핑해도 됩니다 */
+		s.REGION AS region,
+		s.CITY AS city,
+		s.LAT AS lat,
+		s.LON AS lon,
 
-      /* 편의시설/운영 여부 컬럼이 존재한다면 사용 */
-       s.CAR_WASH_YN   AS carWash,    
-       s.CVS_YN        AS store,      
-       s.MAINT_YN      AS repair,     
-       s.SELF_YN       AS self,       
-       s.KPETRO_YN     AS quality,    
-       s.LPG_YN        AS lpgYN,      
-       s.OPEN_24H_YN   AS twentyFour, 
-       s.UPDATE_TIME   AS updateTime  
+		/* 편의시설/운영 여부 컬럼이 존재한다면 사용 */
+		s.CAR_WASH_YN AS carWash,
+		s.CVS_YN AS store,
+		s.MAINT_YN AS repair,
+		s.SELF_YN AS self,
+		s.KPETRO_YN AS quality,
+		s.LPG_YN AS lpgYN,
+		s.OPEN_24H_YN AS twentyFour,
+		s.UPDATE_TIME AS updateTime
 
-      /* 필요하면 전화번호 등도 alias로 추가 가능: s.TEL AS tel */
-    FROM FAVORITES f
-    JOIN OIL_STATION s
-      ON s.UNI_CD = REPLACE(TRIM(f.FAV_KEY), 'oil:', '')
-    WHERE f.USER_ID = #{userId}
-      AND f.TYPE = 'oil'
-      AND f.FAV_KEY LIKE 'oil:%'
-    ORDER BY f.ID DESC
-  </select>
-
+		/* 필요하면 전화번호 등도 alias로 추가 가능: s.TEL AS tel */
+		FROM FAVORITES f
+		JOIN OIL_STATION s
+		ON s.UNI_CD = REPLACE(TRIM(f.FAV_KEY), 'oil:', '')
+		WHERE f.USER_ID = #{userId}
+		AND f.TYPE = 'oil'
+		AND f.FAV_KEY LIKE 'oil:%'
+		ORDER BY f.ID DESC
+	</select>
 
 
 
-  
-  </mapper>
+
+
+</mapper>

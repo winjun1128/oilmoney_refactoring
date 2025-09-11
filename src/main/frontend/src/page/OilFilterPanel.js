@@ -109,6 +109,15 @@ export default function OilFilterPanel({ isOpen, setStations, handleOilFilterSea
                 ...extras,
                 brands: brandCodes,
             });
+
+            // 🔍 찍기
+console.log("검색 요청 파라미터:", {
+    mode: "filter",
+    region: selectedRegion ? regionCodes[selectedRegion] : "",
+    city: selectedCity ? cityCodes[regionCodes[selectedRegion]][selectedCity] : "",
+    ...extras,
+    brands: brandCodes,
+});
         }
         onClose(); // 검색 후 패널 닫기
     };
@@ -204,8 +213,16 @@ export default function OilFilterPanel({ isOpen, setStations, handleOilFilterSea
                         <h4>지역</h4>
                         <select value={selectedRegion} onChange={(e) => { setSelectedRegion(e.target.value); setSelectedCity(""); }}>
                             <option value="">전체</option>
-                            <option value="충남">충남</option>
                             <option value="서울">서울</option>
+                            <option value="충남">경기</option>
+                            <option value="충남">인천</option>
+                            <option value="충남">강원</option>
+                            <option value="충남">충남</option>
+                            <option value="충남">충북</option>
+                            <option value="충남">전남</option>
+                            <option value="충남">전북</option>
+                            <option value="충남">부산</option>
+                            <option value="충남">제주</option>
                         </select>
                         {selectedRegion && cityCodes[regionCodes[selectedRegion]] && (
                             <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>
