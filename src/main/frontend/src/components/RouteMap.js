@@ -4087,8 +4087,8 @@ const ReviewsSection = () => (
             {(summary || detourSummary) && (
               <div className="map-summary">
                 <div className="map-summary__card">
-                  {summary && <div className="map-summary__row">✅ {summary}</div>}
-                  {detourSummary && <div className="map-summary__row">➡️ {detourSummary}</div>}
+                  {summary && <div className="map-summary__row">🔵 {summary}</div>}
+                  {detourSummary && <div className="map-summary__row">🟣 {detourSummary}</div>}
                 </div>
               </div>
             )}
