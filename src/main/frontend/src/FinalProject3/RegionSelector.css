@@ -27,7 +27,8 @@
     overflow-y: auto;
 }
 
-.list-item {
+.lower-station7-list{
+    width: 100%;
     display: flex;
     /* 가로 정렬 */
     justify-content: space-between;
@@ -37,8 +38,11 @@
     padding: 4px 8px;
     /* 여백은 취향 */
     border: 1px solid #ddd;
+    border-radius: 8px;
     margin-bottom: 15px;
     cursor: pointer;
+    background-color: #f5f9ff;
+
 }
 
 .price {
@@ -67,6 +71,7 @@
         /* 여백은 취향 */
         border: 1px solid #ddd;
         margin-bottom: 15px;
+        cursor: pointer;
     }
 }
 
