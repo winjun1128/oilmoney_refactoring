@@ -7,7 +7,7 @@ import { handleMyInfoClick } from "../utils/authHelpers";
 import { UserContext } from "../contexts/UserContext";
 import "../RouteSideBar.css";
 
-export default function RouteSideBar({ isLogin, setIsLoginModalOpen }) {
+export default function MyPgaeSideBar({ isLogin, setIsLoginModalOpen }) {
     const navigate = useNavigate();
     const { userInfo } = useContext(UserContext);
 

@@ -42,7 +42,7 @@ export default function RegionSelector({ sidoName,  sigunList, lowerTopData, sel
             {gasStationData.length > 0 ? (
                 <ul className="list-container gas-station-list">
                     {gasStationData.map(station => (
-                        <button key={station.UNI_ID} className="list-item" onClick={() => console.log(station.UNI_ID)}>
+                        <button key={station.UNI_ID} className="lower-station7-list" onClick={() => console.log(station.UNI_ID)}>
                             <strong>
                                 {iconMap[station.POLL_DIV_CD]?.startsWith("http")
                                     ? <img
