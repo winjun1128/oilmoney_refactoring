@@ -213,8 +213,16 @@ console.log("검색 요청 파라미터:", {
                         <h4>지역</h4>
                         <select value={selectedRegion} onChange={(e) => { setSelectedRegion(e.target.value); setSelectedCity(""); }}>
                             <option value="">전체</option>
-                            <option value="충남">충남</option>
                             <option value="서울">서울</option>
+                            <option value="충남">경기</option>
+                            <option value="충남">인천</option>
+                            <option value="충남">강원</option>
+                            <option value="충남">충남</option>
+                            <option value="충남">충북</option>
+                            <option value="충남">전남</option>
+                            <option value="충남">전북</option>
+                            <option value="충남">부산</option>
+                            <option value="충남">제주</option>
                         </select>
                         {selectedRegion && cityCodes[regionCodes[selectedRegion]] && (
                             <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>
@@ -269,7 +277,6 @@ console.log("검색 요청 파라미터:", {
                     </button>
                     {nearbyMode && (
                         <select value={radius} onChange={(e) => setRadius(e.target.value)}>
-                            <option value="">반경 선택</option>
                             <option value="1">1 km</option>
                             <option value="3">3 km</option>
                             <option value="5">5 km</option>
