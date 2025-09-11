@@ -16,18 +16,20 @@ const inferSpeedFrom = (methods, maxKw) => {
 };
 
 // ChargeFilterPanel.jsx 상단 helpers 교체/보강
+// 차량 기준으로 다시 정의 (조합형에서 차데모 제거)
 const codeToMethods = (code) => {
-    switch (String(code).padStart(2, "0")) {
-        case "01": return ["DC차데모"];
-        case "02": return ["AC완속"];
-        case "03": return ["DC차데모", "AC3상"];
-        case "04": return ["DC차데모", "DC콤보"];
-        case "05": return ["DC차데모", "AC3상", "DC콤보"];
-        case "06": return ["DC콤보"];
-        case "07": return ["AC3상"]; // ★ 여기가 질문의 핵심
-        default: return [];
-    }
+  switch (String(code).padStart(2, "0")) {
+    case "01": return ["DC차데모"];       // (국내 드묾)
+    case "02": return ["AC완속"];
+    case "03": return ["AC3상"];          // 기존: 차데모+AC3상 -> 차량은 3상만 취급
+    case "04": return ["DC콤보"];         // 기존: 차데모+콤보 -> 차량은 콤보만
+    case "05": return ["DC콤보", "AC3상"]; // 기존: 차데모+3상+콤보 -> 차량은 차데모 제외
+    case "06": return ["DC콤보"];
+    case "07": return ["AC3상"];
+    default:  return [];
+  }
 };
+
 
 const inferEvFromCar = (car) => {
     const fuelRaw = String(

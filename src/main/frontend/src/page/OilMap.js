@@ -867,6 +867,10 @@ const handlePick = (sPlus) => {
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:6px">
+          <button type="button" class="go-dest-btn-ev"
+                style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">
+                목적지로
+              </button>
             ${favBtnHtml(starredNow)}
             <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
           </div>
@@ -1038,9 +1042,12 @@ const handlePick = (sPlus) => {
             <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
               ${tip(stationName)}
             </div>
-            ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
           </div>
           <div style="display:flex;align-items:center;gap:6px">
+            <button type="button" class="go-dest-btn-oil"
+                style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">
+                목적지로
+              </button>
             ${favBtnHtml(starredNow)}
             <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
           </div>
@@ -1113,7 +1120,6 @@ const handlePick = (sPlus) => {
             <div class="info-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
               ${tip(stationName)}
             </div>
-            ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
           </div>
           <div style="display:flex;align-items:center;gap:6px">
           <button type="button" class="go-dest-btn-oil"

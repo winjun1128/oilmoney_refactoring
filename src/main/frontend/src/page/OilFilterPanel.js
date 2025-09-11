@@ -215,9 +215,9 @@ console.log("검색 요청 파라미터:", {
                             <option value="">전체</option>
                             <option value="서울">서울</option>
                             <option value="서울">경기</option>
-                            <option value="충남">인천</option>
+                            <option value="서울">인천</option>
                             <option value="서울">강원</option>
-                            <option value="서울">충남</option>
+                            <option value="충남">충남</option>
                             <option value="서울">충북</option>
                             <option value="서울">전남</option>
                             <option value="서울">전북</option>

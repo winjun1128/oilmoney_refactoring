@@ -1088,40 +1088,7 @@ const findSavedRoutesByLabels = (olab, dlab) => {
   return savedRoutes.filter(r => normLabel(r.olab) === o && normLabel(r.dlab || "") === d);
 };
 
-// 기존 deleteByLabelPair 전체를 이걸로 교체
-// const deleteByLabelPair = async () => {
-//   if (!isAuthed) { alert("로그인 후 삭제할 수 있습니다."); return; }
 
-//   const originLabel = normLabel(originInput);
-//   const destLabel   = normLabel(destInput); // 비어있으면 '출발만' 삭제
-//   if (!originLabel) { alert("출발지를 입력하세요."); return; }
-
-//   if (!window.confirm(`저장된 경로를 삭제할까요?\n“${originLabel}${destLabel ? ` → ${destLabel}` : " (출발만)"}”`)) return;
-
-//   try {
-//     const token = getToken();
-//     const qs = new URLSearchParams({ o: originLabel });
-//     if (destLabel) qs.set("d", destLabel);
-
-//     const r = await fetch(`/api/route/paths/by-labels?${qs.toString()}`, {
-//       method: "DELETE",
-//       headers: { Authorization: `Bearer ${token}` },
-//     });
-
-//     // 401/403 처리 등 공통 핸들러 사용(204도 OK)
-//     await requireJson(r);
-
-//     // 삭제된 항목들을 클라이언트 상태에서도 제거
-//     setSavedRoutes(prev => prev.filter(x =>
-//       !(normLabel(x.olab) === originLabel && normLabel(x.dlab) === destLabel)
-//     ));
-//     if (routeSel) setRouteSel("");
-//     alert("삭제됐습니다.");
-//   } catch (e) {
-//     console.warn(e);
-//     alert(e.message || "경로 삭제 실패");
-//   }
-// };
 
 
 
@@ -2920,23 +2887,7 @@ const statIdsOfSite = (site) =>
       console.warn("onlyDest=true 이지만 destKey가 없습니다. 일반 로직으로 폴백합니다.");
       // destKey가 없다면 그냥 아래 기존 분기들로 진행
     }
-
-    /* --- Plan B: 키가 없고 poiRefs에만 키→마커 맵이 있을 때 ---
-    const destMarker = poiRefs.current?.[ctx.destKey];
-    if (destMarker) {
-      arr.forEach((o) => {
-        const show = o.marker === destMarker;
-        o.marker.setMap(show ? mapRef.current : null);
-        if (o.overlay) o.overlay.setMap(show ? (LABEL_ALWAYS ? mapRef.current : null) : null);
-      });
-      if (clustererRef?.current) {
-        const c = clustererRef.current;
-        c.removeMarkers(arr.map(o => o.marker));
-        c.addMarker(destMarker);
-      }
-      return;
-    }
-    */
+    
   }
 
     // 출발지만 있는 모드(버튼 눌러 Top-N 프리뷰를 명시적으로 켰을 때만)
@@ -4087,8 +4038,8 @@ const ReviewsSection = () => (
             {(summary || detourSummary) && (
               <div className="map-summary">
                 <div className="map-summary__card">
-                  {summary && <div className="map-summary__row">✅ {summary}</div>}
-                  {detourSummary && <div className="map-summary__row">➡️ {detourSummary}</div>}
+                  {summary && <div className="map-summary__row">🔵 {summary}</div>}
+                  {detourSummary && <div className="map-summary__row">🟣 {detourSummary}</div>}
                 </div>
               </div>
             )}
@@ -4104,15 +4055,6 @@ const ReviewsSection = () => (
   <div onClick={zoomOut} role="button" title="축소">－</div>
   <div ref={zoomLabelRef} className="zoom-label">Lv -</div>
 </div>
-
-{/* 지도 우측 하단에 FAB 하나 추가 (RouteMap.jsx map 영역 내부) */}
-<button
-  className="fab"
-  onClick={() => window.dispatchEvent(new CustomEvent("ui:toggleFilters",{ detail:{ mode:"toggle" } }))}
-  aria-label="필터 열기"
->
-  ⚙️
-</button>
 
               {/* ✅ 원점 포커스 */}
                <button
