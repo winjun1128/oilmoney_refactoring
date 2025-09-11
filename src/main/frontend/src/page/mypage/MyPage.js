@@ -120,7 +120,6 @@ function MyPage({ setIsLogin, setIsLoginModalOpen }) {
     }, [userInfo]);
 
     const handleDeleteAccount = async () => {
-        //sns 로그인 계정으로 탈퇴 시 비밀번호 없이 탈퇴
         const isSnsAccount = userInfo.userId.startsWith("google_");
         if (isSnsAccount) {
             if (window.confirm("탈퇴하시겠습니까?")) {
@@ -132,31 +131,24 @@ function MyPage({ setIsLogin, setIsLoginModalOpen }) {
         }
     }
 
-    const confirmDeleteAccount = async (isSns = false) => {
+    const confirmDeleteAccount = async () => {
         try {
             const token = localStorage.getItem("token");
-
-            const res = await axios.post("/auth/delete",
-                null,
+            const res = await axios.post("/auth/delete", null,
                 {
-                    params: { pw: isSns ? null : deletePw },
+                    params: { pw: deletePw },
                     headers: { "Authorization": "Bearer " + token }
-                }
-            );
+                });
             if (res.data.success) {
-                alert("탈퇴가 완료되었습니다. 이용해주셔서 감사합니다.");
+                alert("회원 탈퇴가 완료되었습니다.");
                 localStorage.removeItem("token");
-                //setIsLogin(false);
                 window.location.href = "/";
             } else {
                 alert(res.data.message);
                 setDeletePw("");
             }
-
-        } catch (error) {
-            console.log(error);
-            alert("탈퇴 중 오류가 발생했습니다.");
         }
+        catch (error) { console.log(error); alert("탈퇴 중 오류가 발생했습니다."); }
     };
 
     const handleLogout = () => {
@@ -188,7 +180,6 @@ function MyPage({ setIsLogin, setIsLoginModalOpen }) {
         fetchCars();
     }, [token, userInfo]);
 
-
     return (
         <div>
             <div className="mypage-container">
@@ -196,7 +187,7 @@ function MyPage({ setIsLogin, setIsLoginModalOpen }) {
                     <div className="mypage-left-profile">
                         <div className="profile-img-wrapper">
                             <img src={profilePreview} alt="프로필 사진" className="mypage-profile-img" />
-                            <button className="edit-icon" onClick={handleEditProfile}><img src="/images/mypage/camera.png" alt="카메라" id="edit-image"/></button>
+                            <button className="edit-icon" onClick={handleEditProfile}><img src="/images/mypage/camera.png" alt="카메라" id="edit-image" /></button>
                             <input type="file" id="profileFileInput" style={{ display: "none" }} accept="image/*" onChange={handleProfileChange} />
                         </div>
                         <span>{userInfo.name}</span>

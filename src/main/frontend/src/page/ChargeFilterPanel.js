@@ -136,6 +136,7 @@ export default function ChargeFilterPanel({ isOpen, handleChargeFilterSearch, on
         };
         console.log("🚀 충전소 필터 payload:", payload);
         handleChargeFilterSearch(payload);
+        onClose();
     };
 
     // ChargeFilterPanel.jsx

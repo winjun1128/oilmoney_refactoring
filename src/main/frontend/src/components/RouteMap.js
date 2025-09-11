@@ -1,7 +1,26 @@
 // src/components/RouteMap.jsx
 import "./RouteMap.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState,useLayoutEffect } from "react";
 import proj4 from "proj4";
+
+
+
+// 세션/이벤트 detail 객체에서 주소 후보를 뽑아냄
+const pickAddress = (st = {}) => {
+  const cands = [
+    st.addr, st.address, st.roadAddr, st.ROAD_ADDR,
+    st.NEW_ADR, st.YAN_ADR, st.VAN_ADR, st.OLD_ADR, st.RN_ADR, st.RNADR,
+  ];
+  const hit = cands.map(x => String(x ?? "").trim()).find(Boolean);
+  return hit || "";
+};
+
+// 세션 detail에서 위도/경도를 얻어냄(키 여러 가지 대응)
+const pickLatLng = (st = {}) => {
+  const lat = Number(st.LAT ?? st.lat ?? st.Y ?? st.GIS_Y ?? st.GIS_Y_COOR);
+  const lng = Number(st.LON ?? st.lon ?? st.X ?? st.GIS_X ?? st.GIS_X_COOR);
+  return { lat, lng };
+};
 
 
 // RouteMap.jsx 내부 어디든(컴포넌트 선언 위쪽) 넣어주세요.
@@ -25,6 +44,7 @@ const BasisToggle = ({ active, onClick, children, disabled }) => (
     {children}
   </button>
 );
+
 
 // ---- auth helpers (must be above first use) ----
 function getToken() {
@@ -74,6 +94,35 @@ const tip = (text) => `<span class="tt" title="${escapeHtml(text)}" data-tip="${
 ////////////
 /** 원점(홈) 저장 키 & 카카오 스타마커 이미지 */
 const HOME_KEY = "route.home.coord.v1";
+const HOME_SESSION_KEY = "route.home.coord.pending.v1";
+
+// 기존 normalizeStoredCoord 대체
+const normalizeStoredCoord = (raw) => {
+  try {
+    // raw 가 JSON string 일 수도 있고, 객체일 수도, "lon,lat" 문자열일 수도 있음
+    const v = typeof raw === "string" ? (() => { try { return JSON.parse(raw); } catch { return raw; } })() : raw;
+
+    // "127.147169,36.807313" 같은 문자열 지원
+    if (typeof v === "string" && v.includes(",")) {
+      const [lonS, latS] = v.split(",").map(s => Number(String(s).trim()));
+      if (Number.isFinite(latS) && Number.isFinite(lonS)) return { lat: latS, lng: lonS };
+    }
+
+    if (v && typeof v === "object") {
+      // 다양한 키 케이스(LAT/LON, X/Y, GIS_X/Y 등)를 pickLatLng 로 처리
+      const { lat, lng } = pickLatLng(v);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+
+      // 혹시 모를 잔여 케이스(대소문자 혼용) 보강
+      const la = Number(v.lat ?? v.Lat ?? v.latitude ?? v.LAT);
+      const lg = Number(v.lng ?? v.lon ?? v.Lng ?? v.longitude ?? v.LON);
+      if (Number.isFinite(la) && Number.isFinite(lg)) return { lat: la, lng: lg };
+    }
+  } catch {}
+  return null;
+};
+
+
 const KAKAO_STAR_IMG = "https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png";
 
 const SHOW_HOME_LABEL = false; // ← 원점 글자 숨김
@@ -435,6 +484,9 @@ const addLabeledMarker = ({ map, kakao, type, lat, lng, name, onClick, labelAlwa
 /* ───────────────────────────────────────────────────────────────────── */
 
 export default function RouteMap() {
+
+
+
   
   // 화면이 좁으면 모바일로 간주
 const isMobileScreen = () =>
@@ -454,6 +506,14 @@ const setInfoHtml = (html, anchorMarker, onAfterMount) => {
   infoRef.current.setZIndex(INFOWIN_Z); // 항상 맨 위
   if (typeof onAfterMount === "function") onAfterMount(box);
 };
+
+
+// 다른 ref들 근처
+const clustererRef = useRef(null);
+
+// 도착지를 리스트에서 골라 포커스했는지, 그 키는 무엇인지 보관
+const onlyDestNextRef = useRef(false);
+const destFocusKeyRef = useRef("");
 
 
 
@@ -491,6 +551,8 @@ const zoomOut = () => {
 };
 
 
+
+
     // ⭐️ 홈(원점)
   const homeMarkerRef = useRef(null);
   const homeLabelRef = useRef(null);
@@ -524,13 +586,14 @@ const zoomOut = () => {
   };
 
   // 저장+그리기
-  const saveHome = (lat, lng) => {
-    const v = { lat: Number(lat), lng: Number(lng) };
+  const saveHome = (lat, lng, label) => {
+  const v = { lat: Number(lat), lng: Number(lng), label: label ? String(label).trim() : undefined };
     setHomeCoord(v);
     try { localStorage.setItem(HOME_KEY, JSON.stringify(v)); } catch {}
     drawHomeMarker(v);
   };
 
+  
 
   const routeCtxRef = useRef(null);
   const allMarkersRef = useRef([]); // {marker, overlay, type, cat, lat, lng, data}
@@ -576,6 +639,11 @@ const zoomOut = () => {
   const [summary, setSummary] = useState("");
   const [detourSummary, setDetourSummary] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // 같은 객체로 통일 (iframe 여부 무관)
+const eventTarget =
+  typeof window !== "undefined" ? (window.top ?? window) : null;
+
 
   // state 모음 근처
   const [isFilterOpen, setIsFilterOpen] = useState(true);
@@ -1597,10 +1665,26 @@ const hideMarkers = () => {
       const container = document.getElementById("map");
       if (!kakao?.maps || !container) return;
 
-      const map = new kakao.maps.Map(container, {
-        center: new kakao.maps.LatLng(homeCoord.lat, homeCoord.lng),
-        level: 7,
-      });
+      // ① 세션에 포커스 객체가 있으면 먼저 좌표를 꺼냄
+ let initCenter = new kakao.maps.LatLng(homeCoord.lat, homeCoord.lng);
+ let initLevel = typeof DEFAULT_LEVEL === "number" ? DEFAULT_LEVEL : 6;
+ try {
+   const raw =
+     sessionStorage.getItem("pendingFocusOilStation") ||
+     sessionStorage.getItem("pendingFocusEvStation");
+   if (raw) {
+     const st = JSON.parse(raw);
+     const { lat, lng } = pickLatLng(st); // 이미 파일 상단에 있음
+     if (Number.isFinite(lat) && Number.isFinite(lng)) {
+       initCenter = new kakao.maps.LatLng(lat, lng);
+     }
+   }
+ } catch {}
+
+ const map = new kakao.maps.Map(container, {
+   center: initCenter,
+   level: initLevel,
+ });
       mapRef.current = map;
        // ← 지도 제스처 허용(드래그/휠/핀치)
  map.setDraggable(true);
@@ -1621,9 +1705,70 @@ kakao.maps.event.addListener(map, "zoom_changed", updateZoomBar);
 
       drawHomeMarker(homeCoord);
 
+
+      
       // services 준비
       geocoderRef.current = new kakao.maps.services.Geocoder();
       placesRef.current = new kakao.maps.services.Places(map);
+
+      // 🔽 오일맵에서 넘긴 세션 원점이 있으면 한 번만 적용
+try {
+  const raw = sessionStorage.getItem(HOME_SESSION_KEY);
+  if (raw) {
+    sessionStorage.removeItem(HOME_SESSION_KEY); // 1회성
+
+    // raw 를 파싱해서 좌표/주소 모두 확보
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { parsed = raw; }
+
+    const p = normalizeStoredCoord(raw); // ← raw 그대로 넘겨도 동작
+    if (p) {
+      let label = "";
+      try { label = pickAddress(parsed); } catch {}
+      if (!label) label = await coordToLabel(p.lat, p.lng);
+      setOriginInput(label);
+
+      // 2) 홈 저장 + 마커 + 카메라 (라벨까지 영속화)
+      saveHome(p.lat, p.lng, label);
+      mapRef.current.setCenter(new window.kakao.maps.LatLng(p.lat, p.lng));
+      mapRef.current.setLevel(7);
+
+      // 3) 출발지 핀
+      replaceOriginPin({ lat: p.lat, lng: p.lng, name: "출발" });
+
+      // 4) 컨텍스트
+      routeCtxRef.current = {
+        origin: [p.lng, p.lat],
+        dest: null,
+        baseMeters: 0,
+        baseSeconds: 0,
+        path: null,
+        destFixed: false,
+        previewTopN: false,
+      };
+      setSummary("오일맵에서 변경한 좌표로 원점이 갱신되었습니다.");
+      hideMarkers();
+    }
+  }
+  else {
+    // 세션키가 없으면 저장된 홈으로 출발지 인풋만 하이드레이트
+    try {
+      const s = localStorage.getItem(HOME_KEY);
+      if (s) {
+        const o = JSON.parse(s);
+        if (Number.isFinite(o?.lat) && Number.isFinite(o?.lng)) {
+          const label = o.label || await coordToLabel(o.lat, o.lng);
+          setOriginInput(label);
+        }
+      }
+    } catch {}
+  }
+} catch (e) {
+  console.warn("HOME_SESSION_KEY read failed:", e);
+}
+
+
+
 
       // 지도 클릭 → 출발/도착 지정
       kakao.maps.event.addListener(map, "click", (e) => {
@@ -1669,7 +1814,43 @@ kakao.maps.event.addListener(map, "zoom_changed", updateZoomBar);
         drawEvMarkers(evSites);
         drawOilMarkers(oilEnriched);     // ← merge된 걸 넘김
 
+        // ✅ drawEvMarkers / drawOilMarkers 호출이 끝난 바로 다음에
+try {
+  // 두 키 모두 지원 (예전 EV 흐름 호환)
+  const raw =
+    sessionStorage.getItem("pendingFocusOilStation") ||
+    sessionStorage.getItem("pendingFocusEvStation");
+
+  if (raw) {
+    sessionStorage.removeItem("pendingFocusOilStation");
+    sessionStorage.removeItem("pendingFocusEvStation");
+
+    const st = JSON.parse(raw);
+
+    // 2-1) 도착지 입력칸에 주소 자동 바인딩
+    let label = pickAddress(st);
+    if (!label) {
+      const { lat, lng } = pickLatLng(st);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        // 역지오코딩으로 주소 만들어 채우기
+        label = await coordToLabel(lat, lng);
+      }
+    }
+    if (label) setDestInput(label);
+
+    // 2-2) 곧장 포커스 이벤트 발행 → 마커 클릭/인포윈도우 열림
+    (window.top ?? window).dispatchEvent(
+      new CustomEvent("oil:focusStation", { detail: st })
+    );
+  }
+} catch (e) {
+  console.warn("pendingFocusStation parse failed", e);
+}
+
+
         applyFiltersToMarkers();
+
+
       } catch (e) {
         console.error(e);
         alert("마커 로드 중 오류가 발생했습니다.");
@@ -1961,12 +2142,15 @@ const handleResetHome = () => {
           origin: ctx.origin, dest: null,
           baseMeters: 0, baseSeconds: 0,
           path: null, destFixed: false,
-          previewTopN: true,          // ← Top-N 유지!
+          previewTopN: false,          // ← Top-N 유지!
           destKey: undefined, viaKey: undefined,
         };
-        setSummary(`출발지 설정됨 · 가까운 추천 ${nearestCountRef.current}개 표시`);
+        setSummary(`출발지 설정됨 · ‘경로 & 표시’를 눌러 추천을 보세요`);
         setDetourSummary("");
-        applyFiltersToMarkers();
+        hideMarkers();          // 게이트 닫기(즐겨찾기/활성만 노출)
+
+        /** ✅ 목적지 해제 시 도착지 입력칸 비우기 */
+      setDestInput("");
         return;
       }
 
@@ -1986,7 +2170,9 @@ const handleResetHome = () => {
         blue.setMap(mapRef.current);
         polyRef.current = blue;
 
-        replaceDestPin({ lat: point.lat, lng: point.lng, name: "도착", keepBehindPoi: true });
+        // ⚠️ 프리뷰 모드에서는 도착 '핀'을 만들지 않습니다(클릭 방해 방지).
+   if (odRef.current.dest)      { odRef.current.dest.setMap(null);      odRef.current.dest = null; }
+   if (odRef.current.destLabel) { odRef.current.destLabel.setMap(null); odRef.current.destLabel = null; }
 
         routeCtxRef.current = {
           origin: ctx.origin, dest,
@@ -2007,6 +2193,12 @@ const handleResetHome = () => {
         path.forEach((pt) => bounds.extend(pt));
         mapRef.current.setBounds(bounds);
         applyFiltersToMarkers();
+
+        /** ✅ 목적지 지정 시 도착지 입력칸에 주소 바인딩 */
+        try {
+          const label = await coordToLabel(point.lat, point.lng);
+          if (label) setDestInput(label);
+        } catch {}
       } catch (e) {
         console.error(e); alert("경로를 계산하지 못했습니다.");
       }
@@ -2023,11 +2215,14 @@ const handleResetHome = () => {
       routeCtxRef.current = {
         origin: ctx.origin, dest: null,
         baseMeters: 0, baseSeconds: 0, path: null,
-        destFixed: false, previewTopN: true, destKey: undefined, viaKey: undefined,
+        destFixed: false, previewTopN: false, destKey: undefined, viaKey: undefined,
       };
-      setSummary(`출발지 설정됨 · 가까운 추천 ${nearestCountRef.current}개 표시`);
+      setSummary(`출발지 설정됨 · ‘경로 & 표시’를 눌러 추천을 보세요`);
       setDetourSummary("");
-      applyFiltersToMarkers();
+      hideMarkers();   // 게이트 닫기
+
+      /** ✅ 목적지 해제 시 도착지 입력칸 비우기 */
+    setDestInput("");
       return;
     }
 
@@ -2444,7 +2639,7 @@ const statIdsOfSite = (site) =>
 
 
 
-      allMarkersRef.current.push({ marker, overlay, type: "ev", cat: "ev", lat: it.lat, lng: it.lng, data: it, favKey });
+      allMarkersRef.current.push({ marker, overlay, type: "ev", cat: "ev", lat: it.lat, lng: it.lng, data: it, favKey,key: favKey, });
     });
   };
 
@@ -2461,6 +2656,7 @@ const statIdsOfSite = (site) =>
   let markerType = markerTypeByBasis(gs, cat, priceBasisRef.current);
 
     const favKey = favKeyOf(gs, "oil");
+    const uniKey = String(gs.uni ?? "").trim();
     const starred0 = isLoggedIn() && !!(favKey && favSetRef.current?.has(favKey));
 
     const wantMap = (markersVisibleRef.current || starred0) ? mapRef.current : null;
@@ -2624,8 +2820,16 @@ const statIdsOfSite = (site) =>
 });
 
 
-    allMarkersRef.current.push({ marker, overlay, type: markerType, cat, lat: gs.lat, lng: gs.lng, data: gs, favKey });
-  });
+    allMarkersRef.current.push({
+     marker, overlay,
+     type: markerType,   // oil / oil-cheap / oil-exp
+     cat,                // ← 카테고리(항상 'oil' 또는 'lpg')
+     key: favKey,          // ★ ctx.destKey("oil:...")와 같은 규격으로 맞춤
+    uniKey,               // (선택) 다른 곳에서 UNI가 필요하면 이 필드 사용
+     lat: gs.lat, lng: gs.lng,
+     data: gs, favKey
+   });
+ });
 };
 
 
@@ -2674,19 +2878,66 @@ const statIdsOfSite = (site) =>
 
   /** 현재 필터/줌 기준 적용 */
   const applyFiltersToMarkers = () => {
-    // ⛔ 경로&표시 이전엔 전부 숨김
+    // ⛔ ‘경로 & 표시’ 이전(게이트 OFF): 활성 마커만 보이게
   if (!markersVisibleRef.current) {
-   const map = mapRef.current;
-   const favOn = (o) => isLoggedIn() && !!(o.favKey && favSetRef.current?.has(o.favKey));
-   allMarkersRef.current.forEach(o => {
-     const show = favOn(o); // ★ 즐겨찾기만 보이게
-     o.marker.setMap(show ? map : null);
-     if (o.overlay) o.overlay.setMap(show ? (LABEL_ALWAYS ? map : null) : null);
-   });
-   return;
- }
+    const map = mapRef.current;
+    const active = activeMarkerRef.current?.marker || null;
+    allMarkersRef.current.forEach((o) => {
+      const fav = isLoggedIn() && !!(o.favKey && favSetRef.current?.has(o.favKey));
+      const show = (o.marker === active) || fav;
+      o.marker.setMap(show ? map : null);
+      if (o.overlay) o.overlay.setMap(show ? (LABEL_ALWAYS ? map : null) : null);
+    });
+    return;
+  }
     const arr = allMarkersRef.current;
     const ctx = routeCtxRef.current;
+
+     // ✅ 1) 도착지만 보기(onlyDest) 최우선
+  //  - allMarkersRef 항목에 o.key(= poi.key)가 있어야 비교가 쉽습니다.
+  //  - 없다면 아래 주석된 “마커 참조 비교(Plan B)”를 쓰세요.
+  if (ctx?.onlyDest) {
+    const dk = ctx.destKey;
+    if (dk) {
+      // --- Plan A: key로 비교 ---
+      arr.forEach((o) => {
+        const show = o.key === dk;   // ← allMarkersRef에 o.key 넣어두세요
+        o.marker.setMap(show ? mapRef.current : null);
+        if (o.overlay) o.overlay.setMap(show ? (LABEL_ALWAYS ? mapRef.current : null) : null);
+      });
+
+      // (선택) 클러스터러 사용 시
+      if (clustererRef?.current) {
+        const c = clustererRef.current;
+        // 모든 마커 제거 후 도착지만 다시 추가
+        c.removeMarkers(arr.map(o => o.marker));
+        const keep = arr.find(o => o.key === dk)?.marker;
+        if (keep) c.addMarker(keep);
+      }
+
+      return; // ← 여기서 끝! 아래 일반/Top-N 로직 스킵
+    } else {
+      console.warn("onlyDest=true 이지만 destKey가 없습니다. 일반 로직으로 폴백합니다.");
+      // destKey가 없다면 그냥 아래 기존 분기들로 진행
+    }
+
+    /* --- Plan B: 키가 없고 poiRefs에만 키→마커 맵이 있을 때 ---
+    const destMarker = poiRefs.current?.[ctx.destKey];
+    if (destMarker) {
+      arr.forEach((o) => {
+        const show = o.marker === destMarker;
+        o.marker.setMap(show ? mapRef.current : null);
+        if (o.overlay) o.overlay.setMap(show ? (LABEL_ALWAYS ? mapRef.current : null) : null);
+      });
+      if (clustererRef?.current) {
+        const c = clustererRef.current;
+        c.removeMarkers(arr.map(o => o.marker));
+        c.addMarker(destMarker);
+      }
+      return;
+    }
+    */
+  }
 
     // 출발지만 있는 모드(버튼 눌러 Top-N 프리뷰를 명시적으로 켰을 때만)
   if (ctx && ctx.origin && ctx.destFixed === false && ctx.previewTopN) {
@@ -2740,6 +2991,131 @@ const statIdsOfSite = (site) =>
       if (o.overlay) o.overlay.setMap(show ? (LABEL_ALWAYS ? mapRef.current : null) : null);
     });
   };
+
+  // RouteMap.jsx (마운트 시 한 번)
+// useEffect(() => {
+//   const s = sessionStorage.getItem("pendingFocusStation");
+//   if (s) {
+//     sessionStorage.removeItem("pendingFocusStation");
+//     const station = JSON.parse(s);
+//     window.dispatchEvent(new CustomEvent("oil:focusStation", { detail: station }));
+//   }
+// }, []);
+
+
+  const DEFAULT_LEVEL = 6;
+  // RouteMap.jsx (helpers 위/아래 아무데나)
+
+  //!!!!연동해서 나타내기!!!!
+useLayoutEffect(() => {
+  const tag = "%c[oil:focusStation]";
+  const style = "background:#2563eb;color:#fff;padding:2px 6px;border-radius:4px";
+  console.log(tag, style, "listener mounted");
+
+  const onFocusFromList = (e) => {
+    console.groupCollapsed(tag + " event", style);
+    const st = e?.detail ?? {};
+    console.log("raw detail:", st);
+
+    // ✅ 키들 넓게 받기 (EV: statId / 주유소: UNI)
+    const uniId  = String(st.UNI_ID ?? st.UNI ?? st.uni ?? st.key ?? "").trim();
+    const statId = String(st.statId ?? st.STAT_ID ?? st.csId ?? st.id ?? "").trim();
+
+    // ✅ 좌표도 넓게 받기
+    const lat = Number(st.LAT ?? st.lat ?? st.Y ?? st.GIS_Y ?? st.GIS_Y_COOR);
+    const lon = Number(st.LON ?? st.lon ?? st.X ?? st.GIS_X ?? st.GIS_X_COOR);
+
+    console.table({ uniId, statId, lat, lon });
+
+    const { kakao } = window;
+    const map = mapRef.current;
+    if (!map || !kakao?.maps) { console.warn("❌ map not ready"); console.groupEnd(); return; }
+
+    // ▶ 도착지 입력칸 자동 채우기
+    (async () => {
+      let label = pickAddress(st);
+      if (!label && Number.isFinite(lat) && Number.isFinite(lon)) label = await coordToLabel(lat, lon);
+      if (label) setDestInput(label);
+    })();
+
+    // ✅ 마커 탐색 (EV → UNI → 좌표 근접 순서)
+    const all = allMarkersRef.current || [];
+    let found = null;
+
+    // 1) EV: statId로 매칭
+    if (statId) {
+      for (const o of all) {
+        if (o?.cat !== "ev") continue;
+        const ids = statIdsOfSite(o.data).map(String);
+        if (ids.includes(statId)) { found = o; break; }
+      }
+    }
+
+    // 2) 주유소/LPG: UNI로 매칭
+    if (!found && uniId) {
+      for (const o of all) {
+        if (o?.cat !== "oil" && o?.cat !== "lpg") continue;
+        const k = String(o?.key ?? o?.data?.uni ?? "").trim();
+        if (k && k === uniId) { found = o; break; }
+      }
+    }
+
+    // 3) 그래도 없으면 좌표 근접(≤ 80m)
+    if (!found && Number.isFinite(lat) && Number.isFinite(lon)) {
+      let best = null, bestKm = Infinity;
+      for (const o of all) {
+        const dKm = havKm(lat, lon, o.lat, o.lng);
+        if (dKm < bestKm) { bestKm = dKm; best = o; }
+      }
+      if (best && bestKm < 0.08) found = best;
+    }
+
+    const LEVEL = typeof DEFAULT_LEVEL === "number" ? DEFAULT_LEVEL : 5;
+
+    if (found?.marker) {
+      routeCtxRef.current = {
+       ...(routeCtxRef.current || {}),
+       onlyDest: true,                 // ← applyFiltersToMarkers()가 이 플래그를 봅니다
+       destKey: found.key || found.favKey || "",
+     };
+      // 도착지는 이 포커스된 한 곳만 보여 달라는 힌트 저장
+  onlyDestNextRef.current = true;
+  destFocusKeyRef.current = found.favKey || ""; // oil:UNI..., ev:... 형태
+      // 게이트가 닫혀 있어도 보이게
+      if (!found.marker.getMap()) {
+        found.marker.setMap(map);
+        if (found.overlay && LABEL_ALWAYS) found.overlay.setMap(map);
+      }
+      // 선택 마커 하이라이트
+      try {
+        const starred = isLoggedIn() && !!(found.favKey && favSetRef.current?.has(found.favKey));
+        setActiveMarker({ marker: found.marker, type: found.type, starred, overlay: found.overlay });
+        applyFiltersToMarkers(); // 활성만 보이기 유지
+      } catch {}
+
+      kakao.maps.event.trigger(found.marker, "click"); // 인포윈도우 열기
+      map.panTo(found.marker.getPosition());
+      map.setLevel(LEVEL);
+      console.groupEnd();
+      return;
+    }
+
+    // 매칭 실패 시 좌표만 이동
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      const pos = new kakao.maps.LatLng(lat, lon);
+      map.panTo(pos);
+      map.setLevel(LEVEL);
+    } else {
+      console.warn("❌ invalid coords; skip pan");
+    }
+    console.groupEnd();
+  };
+
+  if (eventTarget) eventTarget.addEventListener("oil:focusStation", onFocusFromList);
+ return () => { if (eventTarget) eventTarget.removeEventListener("oil:focusStation", onFocusFromList); };
+}, [eventTarget]);
+
+
 
   /* ───────── EV 자동 재조회 ───────── */
   useEffect(() => {
@@ -2878,7 +3254,9 @@ const drawDetourForPoint = async (p) => {
       blue.setMap(mapRef.current);
       polyRef.current = blue;
 
-      replaceDestPin({ lat: p.lat, lng: p.lng, name: "도착", keepBehindPoi: true });
+      // ⚠️ 프리뷰 모드에서는 도착 핀 제거
+ if (odRef.current.dest)      { odRef.current.dest.setMap(null);      odRef.current.dest = null; }
+ if (odRef.current.destLabel) { odRef.current.destLabel.setMap(null); odRef.current.destLabel = null; }
 
       routeCtxRef.current = {
         origin: ctx.origin,
@@ -3035,7 +3413,7 @@ const onMapClick = async ({ lat, lng }) => {
           baseSeconds: 0,
           path: null,
           destFixed: false, // ← 도착지 아직 '고정' 아님(마커 클릭할 때마다 도착지로 갱신)
-          previewTopN: true, // ★ 여기서만 Top-N 프리뷰 ON
+          previewTopN: true, // ★ 여기서만 Top-N 프리뷰 ON //false하면 전체가 나옴
         };
 
         const { kakao } = window;
@@ -3046,8 +3424,21 @@ const onMapClick = async ({ lat, lng }) => {
         odRef.current.origin = marker; odRef.current.originLabel = overlay; overlay.setMap(mapRef.current);
 
         mapRef.current.setCenter(new kakao.maps.LatLng(origin[1], origin[0]));
-        setSummary(`출발지 설정됨 · 가까운 추천 ${nearestCountRef.current || nearestCount}개 표시`);
+        setSummary(`출발지 설정됨 · ‘경로 & 표시’를 눌러 추천을 보세요`);
         setDetourSummary("");
+         hideMarkers();   // 게이트 OFF: 활성/즐겨찾기 외 마커 숨김
+
+        // [one-shot] 외부 포커스 직후 첫 '경로 & 표시'에서는 그 지점만 보이게
+if (onlyDestNextRef.current && destFocusKeyRef.current) {
+  routeCtxRef.current = {
+    ...(routeCtxRef.current || {}),
+    onlyDest: true,                 // ← applyFiltersToMarkers의 onlyDest 분기 사용
+    destKey: destFocusKeyRef.current,
+  };
+  onlyDestNextRef.current = false;  // 한 번만 적용되도록 리셋
+  destFocusKeyRef.current = "";
+}
+
         showMarkers();
    applyFiltersToMarkers();
 
@@ -3082,68 +3473,92 @@ try {
         return;
       }
 
-      // 도착지가 있으면 기본 경로 계산
-      const dest = await resolveTextToLonLat(destInput);
-      const route = await fetchOsrm(origin, dest);
+      // ✅ 도착지가 있으면 기본 경로 계산
+const dest = await resolveTextToLonLat(destInput);
+const route = await fetchOsrm(origin, dest);
 
-      const { kakao } = window;
-      const coords = route.geometry.coordinates;
-      const path = coords.map(([lon, lat]) => new kakao.maps.LatLng(lat, lon));
+const { kakao } = window;
+const coords = route.geometry.coordinates;
+const path = coords.map(([lon, lat]) => new kakao.maps.LatLng(lat, lon));
 
-      routeCtxRef.current = {
-        origin, dest,
-        baseMeters: route.distance,
-        baseSeconds: route.duration,
-        path,
-        destFixed: true, // ← 도착지 '고정'(이후 마커는 경유로 계산)
-        destKey: undefined, // 수동 입력으로 만든 목적지는 키 없음
-      viaKey: undefined,
-      };
+// ★ 여기서 '한 곳만 보기' / '포커스된 도착 키' 소모·해석
+const onlyOne = !!(onlyDestNextRef.current && destFocusKeyRef.current);
+const destKeyFromFocus = onlyOne ? destFocusKeyRef.current : undefined;
 
-      const km = (route.distance / 1000).toFixed(2);
-      const min = Math.round(route.duration / 60);
-      setSummary(`기본 경로: 총 ${km} km / 약 ${min} 분`);
-      setDetourSummary("");
+// ✅ 경로 컨텍스트 저장(기존 블록 교체)
+//    - destKey/onlyDest 반영, viaKey는 초기화
+routeCtxRef.current = {
+  origin, dest,
+  baseMeters: route.distance,
+  baseSeconds: route.duration,
+  path,
+  destFixed: true,          // 도착 고정(이후 마커는 경유)
+  destKey: destKeyFromFocus,
+  onlyDest: onlyOne,        // true면 도착지만 보이도록 필터에서 활용
+  viaKey: undefined,
+};
 
-      const polyline = new kakao.maps.Polyline({
-        path, strokeWeight: 5, strokeColor: "#1e88e5", strokeOpacity: 0.9, strokeStyle: "solid",
-      });
-      polyline.setMap(mapRef.current);
-      polyRef.current = polyline;
+// 안내문
+const km = (route.distance / 1000).toFixed(2);
+const min = Math.round(route.duration / 60);
+setSummary(`기본 경로: 총 ${km} km / 약 ${min} 분`);
+setDetourSummary("");
 
-      {
-        const { marker, overlay } = addLabeledMarker({
-          map: mapRef.current, kakao, type: "origin", lat: origin[1], lng: origin[0], name: "출발", labelAlways: true,
-        });
-        odRef.current.origin = marker; odRef.current.originLabel = overlay; overlay.setMap(mapRef.current);
-      }
-      {
-        const { marker, overlay } = addLabeledMarker({
-          map: mapRef.current, kakao, type: "dest", lat: dest[1], lng: dest[0], name: "도착", labelAlways: true,
-        });
-        odRef.current.dest = marker; odRef.current.destLabel = overlay; overlay.setMap(mapRef.current);
-      }
+// 폴리라인 세팅
+const polyline = new kakao.maps.Polyline({
+  path, strokeWeight: 5, strokeColor: "#1e88e5", strokeOpacity: 0.9, strokeStyle: "solid",
+});
+polyline.setMap(mapRef.current);
+polyRef.current = polyline;
 
-      showMarkers();
-   applyFiltersToMarkers();
+// 출발 마커 세팅(이전과 동일)
+{
+  const { marker, overlay } = addLabeledMarker({
+    map: mapRef.current, kakao, type: "origin",
+    lat: origin[1], lng: origin[0], name: "출발", labelAlways: true,
+  });
+  odRef.current.origin = marker;
+  odRef.current.originLabel = overlay;
+  overlay.setMap(mapRef.current);
+}
 
-      const bounds = new kakao.maps.LatLngBounds();
-      path.forEach((p) => bounds.extend(p));
-      mapRef.current.setBounds(bounds);
-       // ✅ 출발도착 모두 있는 경우도 DB에 저장
-     try {
-        if (isAuthed) {
+// ❌ (중요) 기존의 '도착 마커 직접 추가' 블록은 삭제하세요!
+// {
+//   const { marker, overlay } = addLabeledMarker({ ... type: "dest", ... });
+//   odRef.current.dest = marker; odRef.current.destLabel = overlay; overlay.setMap(mapRef.current);
+// }
+
+// ✅ 도착 핀을 POI 아래(zIndex 뒤)로 배치 — POI 클릭이 가능해짐
+replaceDestPin({
+  lat: dest[1],
+  lng: dest[0],
+  name: "도착",
+  keepBehindPoi: true,     // ← 이게 핵심
+});
+
+// 마커 보이기 + 필터 적용(onlyDest가 true면 내부에서 도착만 남기도록 처리)
+showMarkers();
+applyFiltersToMarkers();
+
+// 화면 bounds
+const bounds = new kakao.maps.LatLngBounds();
+path.forEach((p) => bounds.extend(p));
+mapRef.current.setBounds(bounds);
+
+// ★ 한 번 썼으면 플래그/키를 소모(초기화)
+onlyDestNextRef.current = false;
+destFocusKeyRef.current = "";
+
+// ↓↓↓ (저장 로직은 기존 그대로 유지) ↓↓↓
+try {
+  if (isAuthed) {
     const newItem = {
       olab: originInput, dlab: destInput,
       olon: origin[0],  olat: origin[1],
       dlon: dest[0],    dlat: dest[1],
     };
-
-    // 1) 임시 ID로 낙관적 추가
     const tempId = `local:${Date.now()}`;
     setSavedRoutes(prev => [{ id: tempId, ...newItem }, ...prev].slice(0, 200));
-
-    // 2) 서버 저장
     let newId = "";
     try {
       const res = await createSavedRoute(newItem);
@@ -3151,21 +3566,14 @@ try {
     } catch (e) {
       console.warn("createSavedRoute failed:", e);
     }
-
-    // 3) 해당 임시 항목 한 건만 서버 ID로 치환
     if (newId) {
-      setSavedRoutes(prev =>
-        prev.map(x => (x.id === tempId ? { ...x, id: newId } : x))
-      );
-    } else {
-      // (선택) 실패 시 임시 항목 제거
-      // setSavedRoutes(prev => prev.filter(x => x.id !== tempId));
+      setSavedRoutes(prev => prev.map(x => (x.id === tempId ? { ...x, id: newId } : x)));
     }
   }
+} catch (e) {
+  console.warn("경로 저장 실패:", e);
+}
 
-     } catch (e) {
-       console.warn("경로 저장 실패:", e);
-     }
 
     } catch (err) {
       console.error("❌ handleRoute 실패:", err);
@@ -3964,6 +4372,9 @@ function normalizeOilPriceItems(json, uniHint) {
       out.push({ product: prodNm, price, ts, uni: String(uniHint || "") });
     }
   };
+
+
+
   const isPriceRow = (node) =>
     node && typeof node === "object" &&
     ("PRICE" in node || "PRICE_WON" in node || "PRIS" in node) &&
@@ -3995,3 +4406,4 @@ function normalizeEvStatusForModal(json) {
     lastTs: o.statUpdDt || o.updateTime || o.lastTs || o.UPDT_DT || o.LAST_TS || o.stat_upd_dt || "",
   }));
 }
+

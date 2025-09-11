@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import RouteSideBar from './RouteSideBar';
+import PriceSideBar from "./PriceSideBar";
 
 import OilDashboard from '.././FinalProject3/OilDashboard'
 import '../App.css';
@@ -16,7 +17,7 @@ export default function OilPrice({ isLogin, setIsLoginModalOpen }) {
     return (
         <div>
             {/* 왼쪽 사이드바 */}
-            <RouteSideBar isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />
+            <PriceSideBar isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />
 
             {/* 오른쪽 구역 */}
             <div
