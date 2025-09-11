@@ -38,6 +38,7 @@
     /* 여백은 취향 */
     border: 1px solid #ddd;
     margin-bottom: 15px;
+    cursor: pointer;
 }
 
 .price {

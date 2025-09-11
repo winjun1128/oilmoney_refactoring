@@ -59,11 +59,14 @@ export default function OilDashboard() {
             try {
                 const sigunRes = await axios.get(`/main/oilPrice/sigun?area=${regionCode}`);
                 const sigunData = sigunRes.data.RESULT?.OIL || [];
+
+                console.log("시/군 목록 로딩:", sigunData); // ✅ 로딩된 데이터 확인
                 setSigunList(sigunData);
 
                 // 시/군 목록을 가져온 후, 첫 번째 시/군 코드로 상태를 업데이트
                 if (sigunData.length > 0) {
                     setSelectedSigunCode(sigunData[0].AREA_CD);
+                    console.log("선택된 시/군 코드:", sigunData[0].AREA_CD);
                 } else {
                     setSelectedSigunCode('');
                 }

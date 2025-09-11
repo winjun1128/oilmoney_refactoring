@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import axios from "axios";
 import "./OilMap.css"; // ✅ 외부 스타일 연결
+
+
+const HOME_KEY = "route.home.coord.v1";
+const HOME_SESSION_KEY = "route.home.coord.pending.v1";
+
 
 
 const APP_KEY = "a0bf78472bc0a1b7bbc6d29dacbebd9a";
@@ -276,6 +283,9 @@ const favKeyOf = (station, mode) => {
 
 
 export default function OilMap({ stations, handleLocationSearch, handleOilFilterSearch, queryType, nearbyParams }) {
+
+  const navigate = useNavigate();
+
   const mapDivRef = useRef(null);
   const mapRef = useRef(null);
   const markersRef = useRef([]);
@@ -762,6 +772,21 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
     });
   }
 
+  // 교체 ⬇
+const handlePick = (sPlus) => {
+  const isEv = !!(sPlus.statId || sPlus.STAT_ID);
+  const key = isEv ? "pendingFocusEvStation" : "pendingFocusOilStation";
+  // 필요한 최소정보만 보낼거면 아래처럼 정리해도 됩니다.
+  const payload = {
+    ...sPlus,
+    lat: Number(sPlus.lat ?? sPlus.LAT),
+    lon: Number(sPlus.lon ?? sPlus.LON ?? sPlus.lng),
+    stationId: getOilId(sPlus) || sPlus.stationId,
+  };
+  sessionStorage.setItem(key, JSON.stringify(payload));
+  navigate("/route");
+};
+
   useEffect(() => {
     if (!mapReady || !window.kakao || !mapRef.current) return;
     // ✅ 결과 타입이 정해지기 전엔 아예 그리지 않음 (대구 점프 방지)
@@ -923,6 +948,10 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:6px">
+              <button type="button" class="go-dest-btn-ev"
+                style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">
+                목적지로
+              </button>
               ${favBtnHtml(nowStar)}
               <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
             </div>
@@ -944,6 +973,17 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
         </div>`.trim();
 
             setInfoHtml(html2, marker, (root) => {
+              // 1) 목적지 페이지 이동
+  const goBtn = root.querySelector(".go-dest-btn-ev");
+  if (goBtn) {
+    goBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      // 원하는 방식으로 처리:
+      handlePick(sPlus);                          // 커스텀 이벤트/상위 콜백
+      // window.dispatchEvent(new CustomEvent("ui:goDest", { detail: sPlus }));
+      // navigate("/dest", { state: sPlus });
+    });
+  }
               const btn = root.querySelector(".fav-btn");
               if (btn && !btn.disabled) {
                 btn.addEventListener("click", async (e) => {
@@ -1076,6 +1116,10 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
             ${brand ? `<span class="info-badge">${escapeHtml(brand)}</span>` : ""}
           </div>
           <div style="display:flex;align-items:center;gap:6px">
+          <button type="button" class="go-dest-btn-oil"
+                style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">
+                목적지로
+              </button>
             ${favBtnHtml(starredNow)}
             <button class="review-btn" style="border:1px solid #e5e7eb;background:#fff;padding:4px 8px;border-radius:8px;font-size:12px;cursor:pointer">리뷰보기</button>
           </div>
@@ -1097,6 +1141,14 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
       </div>`.trim();
 
           setInfoHtml(html, marker, (root) => {
+            // ⬇ 추가: 목적지 이동
+  const goBtn = root.querySelector(".go-dest-btn-oil");
+  if (goBtn) {
+    goBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handlePick(sPlus); // 공용 함수: 오일이면 pendingFocusOilStation으로 저장됨
+    });
+  }
             const btn = root.querySelector(".fav-btn");
             if (btn && !btn.disabled) {
               btn.addEventListener("click", async (e) => {
@@ -1198,6 +1250,12 @@ export default function OilMap({ stations, handleLocationSearch, handleOilFilter
 
     // localStorage 저장
     localStorage.setItem("savedCoord", JSON.stringify(newPos));
+
+      // 영구 저장(기본 홈)
+  localStorage.setItem(HOME_KEY, JSON.stringify(newPos));
+
+  // 루트맵으로 1회 전달
+  sessionStorage.setItem(HOME_SESSION_KEY, JSON.stringify(newPos));
 
     if (myMarkerRef.current) {
       myMarkerRef.current.setPosition(

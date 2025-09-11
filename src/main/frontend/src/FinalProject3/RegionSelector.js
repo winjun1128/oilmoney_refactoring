@@ -26,14 +26,13 @@ export default function RegionSelector({ sidoName,  sigunList, lowerTopData, sel
     return (
         <div className="card-container region-selector">
 
-            <h2 className="card-title">&nbsp;&nbsp;{sidoName} 지역별 저렴한 주유소 TOP 7</h2>
+            <h2 className="card-title">&nbsp;&nbsp;{sidoName}지역별 저렴한 주유소 TOP 7</h2>
             <hr className="line" />
             <select
                 className="sigun-select"
                 value={selectedSigunCode}
                 onChange={e => setSelectedSigunCode(e.target.value)}
             >
-                <option value="">시/군 선택</option>
                 {sigunList.sort((a, b) => a.AREA_NM.localeCompare(b.AREA_NM)).map(sigun => (
                     <option key={sigun.AREA_CD} value={sigun.AREA_CD}>
                         {sigun.AREA_NM}
@@ -43,7 +42,7 @@ export default function RegionSelector({ sidoName,  sigunList, lowerTopData, sel
             {gasStationData.length > 0 ? (
                 <ul className="list-container gas-station-list">
                     {gasStationData.map(station => (
-                        <li key={station.UNI_ID} className="list-item">
+                        <button key={station.UNI_ID} className="list-item" onClick={() => console.log(station.UNI_ID)}>
                             <strong>
                                 {iconMap[station.POLL_DIV_CD]?.startsWith("http")
                                     ? <img
@@ -56,7 +55,7 @@ export default function RegionSelector({ sidoName,  sigunList, lowerTopData, sel
                                 {station.OS_NM}
                             </strong>
                             <span className="price">{station.PRICE}원</span>
-                        </li>
+                        </button>
                     ))}
                 </ul>
             ) : (
