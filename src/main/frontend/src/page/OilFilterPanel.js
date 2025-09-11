@@ -214,15 +214,15 @@ console.log("검색 요청 파라미터:", {
                         <select value={selectedRegion} onChange={(e) => { setSelectedRegion(e.target.value); setSelectedCity(""); }}>
                             <option value="">전체</option>
                             <option value="서울">서울</option>
-                            <option value="충남">경기</option>
+                            <option value="서울">경기</option>
                             <option value="충남">인천</option>
-                            <option value="충남">강원</option>
-                            <option value="충남">충남</option>
-                            <option value="충남">충북</option>
-                            <option value="충남">전남</option>
-                            <option value="충남">전북</option>
-                            <option value="충남">부산</option>
-                            <option value="충남">제주</option>
+                            <option value="서울">강원</option>
+                            <option value="서울">충남</option>
+                            <option value="서울">충북</option>
+                            <option value="서울">전남</option>
+                            <option value="서울">전북</option>
+                            <option value="서울">부산</option>
+                            <option value="서울">제주</option>
                         </select>
                         {selectedRegion && cityCodes[regionCodes[selectedRegion]] && (
                             <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>

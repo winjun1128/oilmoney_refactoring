@@ -84,7 +84,7 @@ export default function ChargeFilterPanel({ isOpen, handleChargeFilterSearch, on
 
     const MY_COORD = { lat: 36.8072917, lon: 127.1471611 };
 
-    const regionCodes = { 서울: "01", 경기: "44", 인천: "44", 강원: "44", 충남: "44", 충북: "44", 전남: "44", 전북: "44", 부산: "44", 제주: "44" };
+    const regionCodes = { 서울: "01", 경기: "01", 인천: "01", 강원: "01", 충남: "44", 충북: "01", 전남: "01", 전북: "44", 부산: "44", 제주: "44" };
 
     const cityCodes = {
         "01": { "마포구": "0109", "중구": "0102", "성동구": "0104", "서대문구": "0107", "강서구": "0115" },
