@@ -3837,7 +3837,7 @@ const ReviewsSection = () => (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
       {/* 좌: 필터 패널 / 우: 지도  */}
       <div style={{ display: "flex", gap: 12, flex: 1, minHeight: 0 }}>
-        {isFilterOpen && <div className="filter-dim" onClick={() => setIsFilterOpen(false)} />}
+       
         {/* ← 필터 패널 */}
         <aside className={`filter-flyout ${isFilterOpen ? "open" : ""}`}>
           <div className="sidebar-card">
@@ -4068,8 +4068,7 @@ const ReviewsSection = () => (
           </div>
         </aside>
 
-        {/* 딤(배경). 형제요소로 패널 바로 뒤에 둬야 위 CSS가 먹습니다. */}
-  <div className="filter-dim" onClick={() => setIsFilterOpen(false)} />
+
 
        {/* → 오른쪽(제목/요약 + 지도) */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
