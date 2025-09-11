@@ -178,7 +178,7 @@ console.log("검색 요청 파라미터:", {
             {/* ── 유종 색상 기준 ─────────────────────────── */}
             <div style={{ paddingTop: "12px", paddingLeft: "20px", paddingRight: "20px" }}>
                 <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "#111827", textAlign: "center" }}>
-                    유종 색상 기준
+                    유종
                 </h4>
                 {/** LPG 필터가 켜지면 다른 기준은 선택 불가 */}
                 <div style={{ display: "flex", gap: 8 }}>

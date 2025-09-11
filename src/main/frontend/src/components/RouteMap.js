@@ -593,8 +593,6 @@ const zoomOut = () => {
     drawHomeMarker(v);
   };
 
-  
-
   const routeCtxRef = useRef(null);
   const allMarkersRef = useRef([]); // {marker, overlay, type, cat, lat, lng, data}
 
@@ -602,7 +600,7 @@ const zoomOut = () => {
   // 현재 상태 기준 라벨 계산
   const routeBtnLabelForKey = (markerKey) => {
     const ctx = routeCtxRef.current;
-    if (!ctx || !ctx.origin) return "경로지정";
+    if (!ctx || !ctx.origin) return "도착지로";
     // 출발지만 모드(= destFixed=false)에서는 늘 목적지 지정/해제만 허용
     if (!ctx.destFixed) {
       return ctx.destKey === markerKey && ctx.dest ? "목적지 해제" : "목적지로";
@@ -613,15 +611,13 @@ const zoomOut = () => {
   };
   // 인포윈도우용 버튼 HTML
   const routeBtnHtmlForKey = (markerKey) => {
-    const can = !!(routeCtxRef.current && routeCtxRef.current.origin);
     const label = routeBtnLabelForKey(markerKey);
     return `
       <button class="route-btn"
               data-key="${escapeHtml(markerKey || "")}"
-              ${can ? "" : "disabled"}
+        
               style="border:1px solid #ddd;background:#f5f5f5;border-radius:8px;
-                     padding:4px 8px;font-size:12px;
-                     ${can ? "cursor:pointer" : "cursor:not-allowed;opacity:.6"}">
++                   padding:4px 8px;font-size:12px;cursor:pointer">
         ${label}
       </button>`;
   };
@@ -729,6 +725,36 @@ const oilAvgPairPanel = (gs, { lpgOnly = false } = {}) => {
   `;
 };
 
+// 출발지가 없으면 만들어 주는 보조 함수
+async function ensureOrigin() {
+  // 이미 있으면 패스
+  if (routeCtxRef.current?.origin) return true;
+
+  // 입력창에 적힌 출발지 → 좌표, 없으면 homeCoord 사용
+  const baseText = (originInput || "").trim();
+  try {
+    const [lon, lat] = baseText
+      ? await resolveTextToLonLat(baseText)
+      : [homeCoord.lng, homeCoord.lat];
+
+    replaceOriginPin({ lat, lng: lon }); // 지도에 출발지 표시
+
+    routeCtxRef.current = {
+      origin: [lon, lat],
+      dest: null,
+      baseMeters: 0,
+      baseSeconds: 0,
+      path: null,
+      destFixed: false,
+      previewTopN: true,
+    };
+
+    return true;
+  } catch {
+    alert("출발지를 먼저 지정하세요.");
+    return false;
+  }
+}
 
   // ── [API] 추가
  const fetchOilWithAverage = async () => {
@@ -2093,9 +2119,28 @@ const handleResetHome = () => {
     /* ───────── 마커 → 목적지/경유 토글 ───────── */
   // point: {lat,lng,name?}, markerKey: 즐겨찾기 키(or 고유키)
   const toggleRouteForMarker = async (point, markerKey) => {
-    const ctx = routeCtxRef.current;
-    if (!ctx || !ctx.origin) { alert("출발지를 먼저 지정하세요."); return; }
+    // ▣ 아직 '경로 & 표시' 전(게이트 OFF)이면: 도착지에만 바인딩하고 끝낸다.
+  if (!markersVisibleRef.current) {
+    try {
+      const label = await coordToLabel(point.lat, point.lng);
+      setDestInput(label);
+      setSummary("도착지 설정됨 · ‘경로 & 표시’를 눌러 경로를 그리세요");
+      setDetourSummary("");
+      // ⭐️ ‘세션 포커스’와 동일하게: 다음 '경로 & 표시'에서
+     //     이 마커 한 개만 보이게(one-shot) 힌트를 심어둔다.
+     onlyDestNextRef.current = true;
+     // key는 핸들러로부터 받은 즐겨찾기 키(favKey)를 그대로 사용
+     destFocusKeyRef.current = markerKey || favKeyOf(point, activeCatRef.current);
+    } catch {}
+    return; // ★ 경로 계산/그리기 금지
+  }
 
+   let ctx = routeCtxRef.current;
+   if (!ctx || !ctx.origin) {
+     const ok = await ensureOrigin();   // 출발지 자동 세팅(없으면 홈 좌표)
+     if (!ok) return;
+     ctx = routeCtxRef.current;
+   }
    // (A) '출발지만' 모드 → 목적지 지정/해제만 허용(고정 금지)
     if (!ctx.destFixed) {
       // 같은 마커를 다시 누르면 목적지 해제(출발지만 모드로 복귀)
@@ -2112,6 +2157,7 @@ const handleResetHome = () => {
           previewTopN: false,          // ← Top-N 유지!
           destKey: undefined, viaKey: undefined,
         };
+        
         setSummary(`출발지 설정됨 · ‘경로 & 표시’를 눌러 추천을 보세요`);
         setDetourSummary("");
         hideMarkers();          // 게이트 닫기(즐겨찾기/활성만 노출)
@@ -2387,13 +2433,13 @@ const statIdsOfSite = (site) =>
 
     // A) 우측 상단 즐겨찾기 버튼 HTML
   const favBtnHtml = (on) => `
-    <button class="fav-btn ${on ? "on" : ""}"
-            ${isLoggedIn() ? "" : "disabled"}
-            title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
-            style="border:none;background:transparent;font-size:18px;line-height:1;
-                   ${isLoggedIn() ? "cursor:pointer;" : "cursor:not-allowed;opacity:.5"}">
-      ${on ? "★" : "☆"}
-    </button>`;
+  <button class="fav-btn ${on ? "on" : ""}"
+          aria-disabled="${!isLoggedIn()}"   /* 접근성만 유지 */
+          title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
+          style="border:none;background:transparent;font-size:18px;line-height:1;cursor:pointer;${isLoggedIn() ? "" : "opacity:.6"}">
+    ${on ? "★" : "☆"}
+  </button>`;
+
 
   // ── 기본 칩(총 기수/급속/완속) + "상태 불러오는 중..."을 먼저 그림
   const chips = `
@@ -2459,11 +2505,11 @@ const statIdsOfSite = (site) =>
     }
         const rbtn = root?.querySelector?.(".route-btn");
     if (rbtn) {
-      rbtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        await toggleRouteForMarker(it, favKey);
-        rbtn.textContent = routeBtnLabelForKey(favKey);
-      });
+     rbtn.addEventListener("click", async (e) => {
+   e.stopPropagation();
+   await toggleRouteForMarker(it, favKey); // ★ 바로 호출
+   rbtn.textContent = routeBtnLabelForKey(favKey);
+ });
     }
   }
 
@@ -2647,13 +2693,13 @@ const statIdsOfSite = (site) =>
   }
 
   const favBtnHtml = (on) => `
-    <button class="fav-btn ${on ? "on" : ""}"
-            ${isLoggedIn() ? "" : "disabled"}
-            title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
-            style="border:none;background:transparent;font-size:18px;line-height:1;
-                   ${isLoggedIn() ? "cursor:pointer;" : "cursor:not-allowed;opacity:.5"}">
-      ${on ? "★" : "☆"}
-    </button>`;
+  <button class="fav-btn ${on ? "on" : ""}"
+          aria-disabled="${!isLoggedIn()}"   /* 접근성만 유지 */
+          title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
+          style="border:none;background:transparent;font-size:18px;line-height:1;cursor:pointer;${isLoggedIn() ? "" : "opacity:.6"}">
+    ${on ? "★" : "☆"}
+  </button>`;
+
 
   // 편의 플래그
   const flags = {
@@ -2707,7 +2753,7 @@ const statIdsOfSite = (site) =>
     if (rbtn) {
       rbtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        await toggleRouteForMarker(gs, favKey);
+        await toggleRouteForMarker(gs, favKey); // ★ 바로 호출
         rbtn.textContent = routeBtnLabelForKey(favKey);
       });
     }
@@ -3819,7 +3865,7 @@ const ReviewsSection = () => (
               {/* ⚡ 충전소가 아닐 때만 유종 색상 기준 노출 */}
   {activeCat !== "ev" && (
   <>
-    <span className="form-label">유종 색상 기준</span>
+    <span className="form-label">유종</span>
 
     {/* 오일필터패널과 동일한 스타일 */}
     <div style={{ display: "flex", gap: 8 }}>

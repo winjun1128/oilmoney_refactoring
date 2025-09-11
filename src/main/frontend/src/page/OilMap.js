@@ -850,12 +850,13 @@ const handlePick = (sPlus) => {
           const favKey = favKeyOf(sPlus, mode);
           const starredNow = !!(favKey && favSetRef.current?.has(favKey));
           const favBtnHtml = (on) => `
-      <button class="fav-btn ${on ? "on" : ""}"
-              ${isLoggedIn() ? "" : "disabled"}
-              title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
-              style="border:none;background:transparent;font-size:18px;line-height:1;${isLoggedIn() ? "cursor:pointer;" : "cursor:not-allowed;opacity:.5"}">
-        ${on ? "★" : "☆"}
-      </button>`;
+  <button class="fav-btn ${on ? "on" : ""}"
+          aria-disabled="${!isLoggedIn()}"   /* 접근성만 유지 */
+          title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
+          style="border:none;background:transparent;font-size:18px;line-height:1;cursor:pointer;${isLoggedIn() ? "" : "opacity:.6"}">
+    ${on ? "★" : "☆"}
+  </button>`;
+
 
           // 1) 기본 화면
           const baseHtml = `
@@ -1027,12 +1028,13 @@ const handlePick = (sPlus) => {
           const favKey = favKeyOf(sPlus, mode);
           const starredNow = !!(favKey && favSetRef.current?.has(favKey));
           const favBtnHtml = (on) => `
-      <button class="fav-btn ${on ? "on" : ""}"
-              ${isLoggedIn() ? "" : "disabled"}
-              title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
-              style="border:none;background:transparent;font-size:18px;line-height:1;${isLoggedIn() ? "cursor:pointer;" : "cursor:not-allowed;opacity:.5"}">
-        ${on ? "★" : "☆"}
-      </button>`;
+  <button class="fav-btn ${on ? "on" : ""}"
+          aria-disabled="${!isLoggedIn()}"   /* 접근성만 유지 */
+          title="${isLoggedIn() ? (on ? "즐겨찾기 해제" : "즐겨찾기 추가") : "로그인 필요"}"
+          style="border:none;background:transparent;font-size:18px;line-height:1;cursor:pointer;${isLoggedIn() ? "" : "opacity:.6"}">
+    ${on ? "★" : "☆"}
+  </button>`;
+
 
           // (가격 로딩 전 화면)
           const baseHtml = `

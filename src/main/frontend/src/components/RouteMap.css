@@ -485,6 +485,35 @@
   }
 }
 
+/* 없는 옵션(비활성) 칩에 X선 오버레이 */
+.info-flags .flag{
+  position: relative;   /* 배경 겹침 및 overflow 안전 */
+  overflow: hidden;
+}
+
+/* on 이 아닌 칩 = 비활성 */
+.info-flags .flag:not(.on){
+  color:#fff;
+  /* 기본 회색 + 중앙에 교차하는 2개의 대각선 */
+  background:
+    /* ↘ 대각선 1 */
+    linear-gradient(45deg,
+      transparent calc(50% - 1px),
+      rgba(0,0,0,.22) calc(50% - 1px),
+      rgba(0,0,0,.22) calc(50% + 1px),
+      transparent      calc(50% + 1px)
+    ),
+    /* ↙ 대각선 2 */
+    linear-gradient(-45deg,
+      transparent calc(50% - 1px),
+      rgba(0,0,0,.22) calc(50% - 1px),
+      rgba(0,0,0,.22) calc(50% + 1px),
+      transparent      calc(50% + 1px)
+    ),
+    #bdc3c7; /* 기존 회색 */
+  background-repeat: no-repeat;
+}
+
 
 
 
