@@ -5,6 +5,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.client.RestTemplate;
 
 import com.app.dto.SiGun.SigunCodeResult;
@@ -16,9 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class SiGunService {
 
-	private final String API_KEY = "F250822740";
-	//private final String API_KEY = "F250904769";
-	//private final String API_KEY = "F250909785";
+	 @Value("${opinet.api.key}")
+	    private String API_KEY;
 	
     public SigunCodeResult getSigunList(String sidoCode) {
         String apiUrl = "https://www.opinet.co.kr/api/areaCode.do?out=json&code=" + API_KEY + "&area=" + sidoCode;

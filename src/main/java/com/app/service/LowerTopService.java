@@ -10,6 +10,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.web.client.RestTemplate;
 
 import com.app.dto.LowerTop.LowerTopPrice;
@@ -18,11 +20,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Service
+@PropertySource("classpath:/application.properties")
 public class LowerTopService {
 
-	private final String API_KEY = "F250822740";
-	//private final String API_KEY = "F250904769";
-	//private final String API_KEY = "F250909785";
+	@Value("${opinet.api.key}")
+    private String API_KEY;
 	
 	// 선택된 시군(area) 코드로 최저가 주유소 가져오기
 	public List<LowerTopPrice> getAndProcessOilPrices(String area, String prodcd) {
