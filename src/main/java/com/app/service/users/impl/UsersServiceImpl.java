@@ -13,8 +13,14 @@ import java.util.Map;
 import javax.servlet.ServletContext;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -278,5 +284,90 @@ public class UsersServiceImpl implements UsersService {
 	public Car mainCarByUserId(String userId) {
 		return usersDAO.mainCarByUserId(userId);
 	}
+
+	// 카카오 로그인
+	@Override
+	@Transactional
+	public Map<String, Object> loginWithKakao(String code) {
+	    Map<String, Object> response = new HashMap<>();
+	    try {
+	        // 1. 카카오 access token 발급
+	        String tokenUrl = "https://kauth.kakao.com/oauth/token";
+	        RestTemplate restTemplate = new RestTemplate();
+	        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+	        params.add("grant_type", "authorization_code");
+	        params.add("client_id", "e9dfcb07699518cc3e766ce4afc47184");
+	        params.add("redirect_uri", "http://localhost:3000/auth/login/oauth2/kakao");
+	        params.add("code", code);
+
+	        HttpHeaders headers = new HttpHeaders();
+	        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+	        HttpEntity<MultiValueMap<String, String>> tokenRequest = new HttpEntity<>(params, headers);
+	        Map<String, Object> tokenResponse = restTemplate.postForObject(tokenUrl, tokenRequest, Map.class);
+
+	        String accessToken = (String) tokenResponse.get("access_token");
+	        System.out.println("[Kakao] Access Token: " + accessToken);
+	        if (accessToken == null) {
+	            response.put("success", false);
+	            response.put("message", "Access token 발급 실패");
+	            return response;
+	        }
+
+	        // 2. 사용자 정보 요청
+	        String userUrl = "https://kapi.kakao.com/v2/user/me";
+	        HttpHeaders userHeaders = new HttpHeaders();
+	        userHeaders.set("Authorization", "Bearer " + accessToken);
+	        HttpEntity<String> userEntity = new HttpEntity<>(userHeaders);
+	        Map<String, Object> userInfoMap = restTemplate.exchange(userUrl, HttpMethod.GET, userEntity, Map.class).getBody();
+
+	        System.out.println("[Kakao] 사용자 정보: " + userInfoMap);
+	        
+	        String kakaoId = String.valueOf(userInfoMap.get("id"));
+	        Map<String, Object> kakaoAccount = (Map<String, Object>) userInfoMap.get("kakao_account");
+	        String email = kakaoAccount.get("email") != null ? (String) kakaoAccount.get("email") : "kakao_" + kakaoId + "@kakao.com";
+	        Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
+	        System.out.println("프로필에 뭐가있나.... "+profile);
+	        String nickname = profile != null ? (String) profile.get("nickname") : "KakaoUser";
+	        String profileUrl = profile != null ? (String) profile.get("thumbnail_image_url") : "KakaoUser";
+	        
+	        // 3. DB 처리
+	        Users user = usersDAO.getUserByEmail(email);
+	        System.out.println("[DB] 이메일 조회: " + email + ", 사용자: " + user);
+	        System.out.println("프로필 "+ profileUrl + "닉네임 " + nickname);
+	        if (user == null) {
+	            String userId = "kakao_" + kakaoId;
+	            user = new Users();
+	            user.setUserId(userId);
+	            user.setPw(generateRandomPassword());
+	            user.setEmail(email);
+	            user.setName(nickname);
+	            user.setProfileUrl(profileUrl);
+	            user.setState("active");
+	            System.out.println("[Action] 신규 사용자 등록 로직 진입");
+	            int insertResult = usersDAO.insertUser(user);
+	            System.out.println("[Action] insertResult: " + insertResult + ", user: " + user);
+
+	            System.out.println(user.getUserId());
+	            System.out.println(user.getPw());
+	            System.out.println(user.getEmail());
+	            System.out.println(user.getName());
+	            System.out.println(user.getProfileUrl());
+	        }
+
+	        // 4. JWT 발급
+	        String jwt = JwtProvider.createAccessToken(user.getUserId());
+	        System.out.println("[Action] JWT 발급 완료: " + jwt);
+	        response.put("success", true);
+	        response.put("accessToken", jwt);
+	        response.put("userInfo", user);
+
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        response.put("success", false);
+	        response.put("message", e.getMessage());
+	    }
+	    return response;
+	}
+
 
 }

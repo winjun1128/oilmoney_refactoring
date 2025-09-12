@@ -31,6 +31,7 @@ public interface UsersService {
     void changeMainCar(String userId, int carId);
     
     Map<String, Object> loginWithGoogle(String idToken);
+    Map<String, Object> loginWithKakao(String accessToken);
     
     Car mainCarByUserId(String userId);
 }

@@ -5,6 +5,7 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,6 +19,7 @@ import com.app.dto.users.Users;
 import com.app.service.users.UsersService;
 import com.app.util.JwtProvider;
 
+@CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/auth")
 public class UsersController {
@@ -103,7 +105,7 @@ public class UsersController {
 		return response;
 	}
 	
-	// sns 로그인
+	// 구글 로그인
 	@PostMapping("/login/oauth2/google")
 	@ResponseBody
 	public Map<String, Object> googleLogin(@RequestBody Map<String, String> request) {
@@ -115,6 +117,28 @@ public class UsersController {
 	    
 	    return response;
 	}
+	
+	// 카카오 로그인
+	@GetMapping("/kakao/url")
+	@ResponseBody
+	public Map<String, String> getKakaoLoginUrl() {
+	    String clientId = "e9dfcb07699518cc3e766ce4afc47184"; // 정확히 입력
+	    String redirectUri = "http://localhost:3000/auth/login/oauth2/kakao"; // 프론트와 동일해야 함
+	    String url = "https://kauth.kakao.com/oauth/authorize?response_type=code"
+	                 + "&client_id=" + clientId
+	                 + "&redirect_uri=" + redirectUri;
+	    Map<String, String> map = new HashMap<>();
+	    map.put("url", url);
+	    return map;
+	}
+	
+	@PostMapping("/login/oauth2/kakao")
+	@ResponseBody
+	public Map<String, Object> kakaoLogin(@RequestBody Map<String, String> request) {
+	    String code = request.get("code");
+	    return usersService.loginWithKakao(code);
+	}
+	
 
 	// 사용자 정보 반환
 	@GetMapping("/userinfo")

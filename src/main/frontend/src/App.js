@@ -7,6 +7,7 @@ import Auth from "./page/auth/Auth.js";
 import OilPrice from "./page/OilPrice.js";
 import { UserContext } from "./page/contexts/UserContext.js";
 import axios from "axios";
+import KakaoCallback from "./page/auth/KakaoCallback.js";
 
 
 
@@ -48,6 +49,10 @@ function App() {
           <Route path="/mypage" element={<MyPageWrapper isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen}
             setIsLogin={setIsLogin} />} />
           <Route path="/oilPrice" element={<OilPrice isLogin={isLogin} setIsLoginModalOpen={setIsLoginModalOpen} />} />
+          <Route
+            path="/auth/login/oauth2/kakao"
+            element={<KakaoCallback setIsLogin={setIsLogin} setUserInfo={setUserInfo} />}
+          />
         </Routes>
       </BrowserRouter>
     </UserContext.Provider>

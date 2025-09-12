@@ -17,4 +17,5 @@ public class Users {
 	String addr;
 	String state;
 	String profileUrl;
+
 }

@@ -33,4 +33,5 @@ public interface UsersDAO {
 	int resetMainCar(String userId);
 	
 	Users getUserByEmail(String email);
+	
 }

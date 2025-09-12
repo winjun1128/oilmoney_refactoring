@@ -178,11 +178,13 @@ public class MyPageController {
 	public ResponseEntity<?> getMainCarByUserId(HttpServletRequest request){
 		String token = JwtProvider.extractToken(request);
 		String userId = JwtProvider.getUserIdFromToken(token);
-		 Car car = usersService.mainCarByUserId(userId);
-		 return ResponseEntity.ok(Map.of(
-	                "ok", true,
-	                "item", car
-	        ));
+		Car car = usersService.mainCarByUserId(userId);
+
+	    Map<String, Object> result = new HashMap<>();
+	    result.put("ok", true);
+	    result.put("item", car); // car가 null이어도 안전
+
+	    return ResponseEntity.ok(result);
 	}
 
 

@@ -33,6 +33,7 @@ function LoginModal({ isOpen, onClose, onSwitchToSignUp, onSwitchToFindId, onSwi
         }
     };
 
+    // 구글 로그인
     const googleLogin = useGoogleLogin({
         flow: 'implicit',
         onSuccess: async (tokenResponse) => {
@@ -57,6 +58,17 @@ function LoginModal({ isOpen, onClose, onSwitchToSignUp, onSwitchToFindId, onSwi
         },
     });
 
+    // 카카오 로그인
+    const handleKakaoLogin = async () => {
+        try {
+            const res = await axios.get("/auth/kakao/url"); // 백엔드에서 URL 받아오기
+            window.location.href = res.data.url; // 카카오 로그인 페이지로 이동
+        } catch (err) {
+            console.error(err);
+            alert("카카오 로그인 URL 가져오기 실패");
+        }
+    };
+
     if (!isOpen) {
         return null;
     }
@@ -76,7 +88,7 @@ function LoginModal({ isOpen, onClose, onSwitchToSignUp, onSwitchToFindId, onSwi
                     </div>
                     <div className='auth-sns-icons'>
                         <img src='/images/login-icons/naver_icon.png' alt='네이버 로그인'></img>
-                        <img src='/images/login-icons/kakao_icon.png' alt='카카오 로그인'></img>
+                        <img src='/images/login-icons/kakao_icon.png' alt='카카오 로그인' onClick={handleKakaoLogin}></img>
                         <img src='/images/login-icons/google_icon.png' alt='구글 로그인' onClick={() => googleLogin()}></img>
                         <img src='/images/login-icons/apple_icon.png' alt='애플 로그인'></img>
                     </div>

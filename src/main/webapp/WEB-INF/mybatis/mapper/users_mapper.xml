@@ -7,8 +7,8 @@
 	
 	<!-- 회원가입 -->
 	<insert id="insertUser" parameterType="Users">
-		insert into t_users(id, user_id, pw, email, name)
-		values (seq_users.NEXTVAL, #{userId}, #{pw}, #{email}, #{name})
+		insert into t_users(id, user_id, pw, email, name, profile_url, state)
+		values (seq_users.NEXTVAL, #{userId}, #{pw}, #{email}, #{name}, #{profileUrl}, #{state})
 	</insert>
 	
 	<!-- 아이디 중복 확인 -->
