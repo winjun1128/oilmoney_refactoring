@@ -2989,15 +2989,7 @@ const statIdsOfSite = (site) =>
     });
   };
 
-  // RouteMap.jsx (마운트 시 한 번)
-// useEffect(() => {
-//   const s = sessionStorage.getItem("pendingFocusStation");
-//   if (s) {
-//     sessionStorage.removeItem("pendingFocusStation");
-//     const station = JSON.parse(s);
-//     window.dispatchEvent(new CustomEvent("oil:focusStation", { detail: station }));
-//   }
-// }, []);
+
 
 
   const DEFAULT_LEVEL = 6;
